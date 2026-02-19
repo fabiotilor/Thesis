@@ -2,5 +2,5 @@
 
 | Paper | Summary | Tags | Notes |
 |-------|--------|------|-------|
-| Smith 2020 | Key method for X | ML, NLP | [notes](notes/literature_notes.md#smith2020) |
+| DUST3R | Key method for X | Multi-View | [notes](notes/Dust3r.md) |
 | Johnson 2019 | Dataset benchmark | Data, NLP | [notes](notes/literature_notes.md#johnson2019) |
