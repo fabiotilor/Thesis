@@ -1,3 +1,4 @@
+
 ![banner](assets/mast3r.jpg)
 
 Official implementation of `Grounding Image Matching in 3D with MASt3R`  
@@ -506,3 +507,10 @@ python3 visloc.py --model_name MASt3R_ViTLarge_BaseDecoder_512_catmlpdpt_metric 
 python3 visloc.py --model_name MASt3R_ViTLarge_BaseDecoder_512_catmlpdpt_metric --dataset "VislocCambridgeLandmarks('/path/to/prepared/Cambridge_Landmarks/', subscene='${scene}', pairsfile='APGeM-LM18_top50', topk=20)" --pixel_tol 5 --pnp_mode poselib --reprojection_error_diag_ratio 0.008 --output_dir /path/to/output/Cambridge_Landmarks/${scene}/loc
 
 ```
+
+# Thesis
+Bachelor's Thesis Repo: Advancing Sparse Multi-View Depth Estimation
+
+**SiROP Link**
+https://sirop.org/app/cad04039-4d69-48eb-98b9-95d2ac488803?_k=Lj6SAWPEm6htA1WA
+
