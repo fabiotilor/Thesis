@@ -20,11 +20,14 @@ import torch
 from mast3r.cloud_opt.sparse_ga import sparse_global_alignment
 from mast3r.cloud_opt.tsdf_optimizer import TSDFPostProcess
 from mast3r.image_pairs import make_pairs
+
 try:
     from mast3r.retrieval.processor import Retriever
+
     has_retrieval = True
 except Exception as e:
     has_retrieval = False
+
 import mast3r.utils.path_to_dust3r  # noqa
 from dust3r.utils.image import load_images
 from dust3r.utils.device import to_numpy
@@ -32,6 +35,7 @@ from dust3r.viz import add_scene_cam, CAM_COLORS, OPENGL, pts3d_to_trimesh, cat_
 from dust3r.demo import get_args_parser as dust3r_get_args_parser
 
 import matplotlib.pyplot as pl
+
 
 class SparseGAState:
     def __init__(self, sparse_ga, should_delete=False, cache_dir=None, outfile_name=None):
@@ -141,73 +145,126 @@ def get_3D_model_from_scene(silent, scene_state, min_conf_thr=2, as_pointcloud=F
                                         transparent_cams=transparent_cams, cam_size=cam_size, silent=silent)
 
 
-def get_reconstructed_scene(outdir, gradio_delete_cache, model, retrieval_model, device, silent, image_size,
-                            current_scene_state, filelist, optim_level, lr1, niter1, lr2, niter2, min_conf_thr,
-                            matching_conf_thr, as_pointcloud, mask_sky, clean_depth, transparent_cams, cam_size,
-                            scenegraph_type, winsize, win_cyclic, refid, TSDF_thresh, shared_intrinsics, **kw):
+def get_reconstructed_scene_video(outdir, gradio_delete_cache, model, retrieval_model, device, silent, image_size,
+                                  current_scene_state, dataset_path, optim_level, lr1, niter1, lr2, niter2,
+                                  min_conf_thr,
+                                  matching_conf_thr, as_pointcloud, mask_sky, clean_depth, transparent_cams, cam_size,
+                                  scenegraph_type, winsize, win_cyclic, refid, TSDF_thresh, shared_intrinsics, **kw):
+    """Reconstruct a 3-D scene for every timestep in a multi-view dataset.
+
+    The dataset is expected to have the layout:
+        <dataset_path>/view_XX/rgb/<frame>.png   (XX = 00, 01, …)
+
+    For each timestep t the 8 images (one per view) are reconstructed
+    independently, producing 24 separate 3-D scenes.
     """
-    from a list of images, run mast3r inference, sparse global aligner.
-    then run get_3D_model_from_scene
-    """
-    imgs = load_images(filelist, size=image_size, verbose=not silent)
-    if len(imgs) == 1:
-        imgs = [imgs[0], copy.deepcopy(imgs[0])]
-        imgs[1]['idx'] = 1
-        filelist = [filelist[0], filelist[0] + '_2']
+    dataset_path = (dataset_path or '').strip()
+    if not dataset_path or not os.path.isdir(dataset_path):
+        print(f'[ERROR] Dataset path not found: {dataset_path!r}')
+        return None, [], None, gradio.update()
 
-    scene_graph_params = [scenegraph_type]
-    if scenegraph_type in ["swin", "logwin"]:
-        scene_graph_params.append(str(winsize))
-    elif scenegraph_type == "oneref":
-        scene_graph_params.append(str(refid))
-    elif scenegraph_type == "retrieval":
-        scene_graph_params.append(str(winsize))  # Na
-        scene_graph_params.append(str(refid))  # k
+    import glob as _glob
+    from collections import defaultdict
 
-    if scenegraph_type in ["swin", "logwin"] and not win_cyclic:
-        scene_graph_params.append('noncyclic')
-    scene_graph = '-'.join(scene_graph_params)
+    img_exts = {'.png', '.jpg', '.jpeg', '.bmp'}
 
-    sim_matrix = None
-    if 'retrieval' in scenegraph_type:
-        assert has_retrieval
-        assert retrieval_model is not None
-        retriever = Retriever(retrieval_model, backbone=model, device=device)
-        with torch.no_grad():
-            sim_matrix = retriever(filelist)
+    # Build views dict: {view_name -> sorted list of frame paths}
+    # Primary layout: <dataset_path>/view_XX/rgb/*.png
+    view_dirs = sorted(_glob.glob(os.path.join(dataset_path, 'view_*')))
+    views = defaultdict(list)
 
-        # Cleanup
-        del retriever
-        torch.cuda.empty_cache()
-
-    pairs = make_pairs(imgs, scene_graph=scene_graph, prefilter=None, symmetrize=True, sim_mat=sim_matrix)
-    if optim_level == 'coarse':
-        niter2 = 0
-    # Sparse GA (forward mast3r -> matching -> 3D optim -> 2D refinement -> triangulation)
-    if current_scene_state is not None and \
-        not current_scene_state.should_delete and \
-            current_scene_state.cache_dir is not None:
-        cache_dir = current_scene_state.cache_dir
-    elif gradio_delete_cache:
-        cache_dir = tempfile.mkdtemp(suffix='_cache', dir=outdir)
+    if view_dirs:
+        for vd in view_dirs:
+            vname = os.path.basename(vd)
+            rgb_dir = os.path.join(vd, 'rgb')
+            search_dir = rgb_dir if os.path.isdir(rgb_dir) else vd
+            frames = sorted([
+                f for f in _glob.glob(os.path.join(search_dir, '*'))
+                if os.path.splitext(f.lower())[1] in img_exts
+            ])
+            if frames:
+                views[vname] = frames
     else:
-        cache_dir = os.path.join(outdir, 'cache')
-    os.makedirs(cache_dir, exist_ok=True)
-    scene = sparse_global_alignment(filelist, pairs, cache_dir,
-                                    model, lr1=lr1, niter1=niter1, lr2=lr2, niter2=niter2, device=device,
-                                    opt_depth='depth' in optim_level, shared_intrinsics=shared_intrinsics,
-                                    matching_conf_thr=matching_conf_thr, **kw)
-    if current_scene_state is not None and \
-        not current_scene_state.should_delete and \
-            current_scene_state.outfile_name is not None:
-        outfile_name = current_scene_state.outfile_name
-    else:
-        outfile_name = tempfile.mktemp(suffix='_scene.glb', dir=outdir)
+        # Fallback: flat layout where sub-directories are the view folders
+        for entry in sorted(os.scandir(dataset_path), key=lambda e: e.name):
+            if not entry.is_dir():
+                continue
+            frames = sorted([
+                f for f in _glob.glob(os.path.join(entry.path, '*'))
+                if os.path.splitext(f.lower())[1] in img_exts
+            ])
+            if frames:
+                views[entry.name] = frames
 
-    scene_state = SparseGAState(scene, gradio_delete_cache, cache_dir, outfile_name)
-    outfile = get_3D_model_from_scene(silent, scene_state, min_conf_thr, as_pointcloud, mask_sky,
-                                      clean_depth, transparent_cams, cam_size, TSDF_thresh)
-    return scene_state, outfile
+    view_names = sorted(views.keys())
+    if not view_names:
+        print('[ERROR] No views found in dataset path.')
+        return None, [], None, gradio.update()
+
+    n_frames = len(views[view_names[0]])
+    print(f'[INFO] Found {len(view_names)} views × {n_frames} frames '
+          f'→ {n_frames} reconstructions with {len(view_names)} images each.')
+
+    master_scene_state = []
+    outfiles = []
+    ref_intrinsics = None
+    ref_cam2w = None
+
+    for t in range(n_frames):
+        current_files = [views[v][t] for v in view_names]
+        imgs = load_images(current_files, size=image_size, verbose=not silent)
+        if len(imgs) == 1:
+            imgs = [imgs[0], copy.deepcopy(imgs[0])]
+            imgs[1]['idx'] = 1
+            current_files = [current_files[0], current_files[0] + '_2']
+
+        scene_graph_params = [scenegraph_type]
+        if scenegraph_type in ["swin", "logwin"]:
+            scene_graph_params.append(str(winsize))
+        elif scenegraph_type == "oneref":
+            scene_graph_params.append(str(refid))
+        elif scenegraph_type == "retrieval":
+            scene_graph_params.append(str(winsize))
+            scene_graph_params.append(str(refid))
+
+        if scenegraph_type in ["swin", "logwin"] and not win_cyclic:
+            scene_graph_params.append('noncyclic')
+        scene_graph = '-'.join(scene_graph_params)
+
+        sim_matrix = None
+        if 'retrieval' in scenegraph_type:
+            assert has_retrieval
+            assert retrieval_model is not None
+            retriever = Retriever(retrieval_model, backbone=model, device=device)
+            with torch.no_grad():
+                sim_matrix = retriever(current_files)
+            del retriever
+            torch.cuda.empty_cache()
+
+        pairs = make_pairs(imgs, scene_graph=scene_graph, prefilter=None, symmetrize=True, sim_mat=sim_matrix)
+
+        # Sparse GA
+        if gradio_delete_cache:
+            cache_dir = tempfile.mkdtemp(suffix=f'_cache_t{t}', dir=outdir)
+        else:
+            cache_dir = os.path.join(outdir, f'cache_t{t}')
+        os.makedirs(cache_dir, exist_ok=True)
+
+        niter2_val = 0 if optim_level == 'coarse' else niter2
+        scene = sparse_global_alignment(current_files, pairs, cache_dir,
+                                        model, lr1=lr1, niter1=niter1, lr2=lr2, niter2=niter2_val, device=device,
+                                        opt_depth='depth' in optim_level, shared_intrinsics=shared_intrinsics,
+                                        matching_conf_thr=matching_conf_thr, **kw)
+
+        outfile_name = tempfile.mktemp(suffix=f'_scene_{t}.glb', dir=outdir)
+        scene_state = SparseGAState(scene, gradio_delete_cache, cache_dir, outfile_name)
+        outfile = get_3D_model_from_scene(silent, scene_state, min_conf_thr, as_pointcloud, mask_sky,
+                                          clean_depth, transparent_cams, cam_size, TSDF_thresh)
+
+        master_scene_state.append(scene_state)
+        outfiles.append(outfile)
+
+    return master_scene_state, outfiles, outfiles[0], gradio.update(maximum=max(0, n_frames - 1), value=0, visible=True)
 
 
 def set_scenegraph_options(inputfiles, win_cyclic, refid, scenegraph_type):
@@ -258,11 +315,11 @@ def set_scenegraph_options(inputfiles, win_cyclic, refid, scenegraph_type):
 
 
 def main_demo(tmpdirname, model, retrieval_model, device, image_size, server_name, server_port, silent=False,
-              share=False, gradio_delete_cache=False):
+              share=False, gradio_delete_cache=False, default_files=None, default_dataset_path=None):
     if not silent:
         print('Outputing stuff in', tmpdirname)
 
-    recon_fun = functools.partial(get_reconstructed_scene, tmpdirname, gradio_delete_cache, model,
+    recon_fun = functools.partial(get_reconstructed_scene_video, tmpdirname, gradio_delete_cache, model,
                                   retrieval_model, device, silent, image_size)
     model_from_scene_fun = functools.partial(get_3D_model_from_scene, silent)
 
@@ -282,11 +339,20 @@ def main_demo(tmpdirname, model, retrieval_model, device, image_size, server_nam
             return gradio.Blocks(css=css, title="MASt3R Demo")  # for compatibility with older versions
 
     with get_context(gradio_delete_cache) as demo:
-        # scene state is save so that you can change conf_thr, cam_size... without rerunning the inference
+        # scene state is saved so that you can change conf_thr, cam_size... without rerunning the inference
         scene = gradio.State(None)
-        gradio.HTML('<h2 style="text-align: center;">MASt3R Demo</h2>')
+        outfiles_state = gradio.State([])
+        gradio.HTML('<h2 style="text-align: center;">MASt3R Video Demo</h2>')
         with gradio.Column():
-            inputfiles = gradio.File(file_count="multiple")
+            # Dataset path textbox — pre-filled with the hardcoded sequence.
+            # Images are loaded directly from disk (view_XX/rgb/*.png), so
+            # Gradio never copies files and the folder structure is preserved.
+            _default_path = default_dataset_path or (default_files[0].rsplit('/', 3)[0] if default_files else '')
+            dataset_path_box = gradio.Textbox(
+                label="Dataset path  (must contain view_00/rgb, view_01/rgb, …)",
+                value=_default_path,
+                placeholder="/path/to/sequence/",
+            )
             with gradio.Row():
                 with gradio.Column():
                     with gradio.Row():
@@ -331,49 +397,45 @@ def main_demo(tmpdirname, model, retrieval_model, device, image_size, server_nam
                 clean_depth = gradio.Checkbox(value=True, label="Clean-up depthmaps")
                 transparent_cams = gradio.Checkbox(value=False, label="Transparent cameras")
 
+            with gradio.Row():
+                time_slider = gradio.Slider(minimum=0, maximum=0, step=1, value=0, label="Time Frame", interactive=True)
+
             outmodel = gradio.Model3D()
+
+            # Dummy n_files state used only to satisfy set_scenegraph_options which needs a file count.
+            # We approximate it as 8 (number of views).
+            _dummy_filelist = gradio.State(None)
 
             # events
             scenegraph_type.change(set_scenegraph_options,
-                                   inputs=[inputfiles, win_cyclic, refid, scenegraph_type],
+                                   inputs=[_dummy_filelist, win_cyclic, refid, scenegraph_type],
                                    outputs=[graph_opt, winsize, win_cyclic, refid])
-            inputfiles.change(set_scenegraph_options,
-                              inputs=[inputfiles, win_cyclic, refid, scenegraph_type],
-                              outputs=[graph_opt, winsize, win_cyclic, refid])
             win_cyclic.change(set_scenegraph_options,
-                              inputs=[inputfiles, win_cyclic, refid, scenegraph_type],
+                              inputs=[_dummy_filelist, win_cyclic, refid, scenegraph_type],
                               outputs=[graph_opt, winsize, win_cyclic, refid])
+
             run_btn.click(fn=recon_fun,
-                          inputs=[scene, inputfiles, optim_level, lr1, niter1, lr2, niter2, min_conf_thr, matching_conf_thr,
-                                  as_pointcloud, mask_sky, clean_depth, transparent_cams, cam_size,
+                          inputs=[scene, dataset_path_box, optim_level, lr1, niter1, lr2, niter2, min_conf_thr,
+                                  matching_conf_thr, as_pointcloud, mask_sky, clean_depth, transparent_cams, cam_size,
                                   scenegraph_type, winsize, win_cyclic, refid, TSDF_thresh, shared_intrinsics],
-                          outputs=[scene, outmodel])
-            min_conf_thr.release(fn=model_from_scene_fun,
-                                 inputs=[scene, min_conf_thr, as_pointcloud, mask_sky,
-                                         clean_depth, transparent_cams, cam_size, TSDF_thresh],
-                                 outputs=outmodel)
-            cam_size.change(fn=model_from_scene_fun,
-                            inputs=[scene, min_conf_thr, as_pointcloud, mask_sky,
-                                    clean_depth, transparent_cams, cam_size, TSDF_thresh],
-                            outputs=outmodel)
-            TSDF_thresh.change(fn=model_from_scene_fun,
-                               inputs=[scene, min_conf_thr, as_pointcloud, mask_sky,
-                                       clean_depth, transparent_cams, cam_size, TSDF_thresh],
-                               outputs=outmodel)
-            as_pointcloud.change(fn=model_from_scene_fun,
-                                 inputs=[scene, min_conf_thr, as_pointcloud, mask_sky,
-                                         clean_depth, transparent_cams, cam_size, TSDF_thresh],
-                                 outputs=outmodel)
-            mask_sky.change(fn=model_from_scene_fun,
-                            inputs=[scene, min_conf_thr, as_pointcloud, mask_sky,
-                                    clean_depth, transparent_cams, cam_size, TSDF_thresh],
-                            outputs=outmodel)
-            clean_depth.change(fn=model_from_scene_fun,
-                               inputs=[scene, min_conf_thr, as_pointcloud, mask_sky,
-                                       clean_depth, transparent_cams, cam_size, TSDF_thresh],
-                               outputs=outmodel)
-            transparent_cams.change(model_from_scene_fun,
-                                    inputs=[scene, min_conf_thr, as_pointcloud, mask_sky,
-                                            clean_depth, transparent_cams, cam_size, TSDF_thresh],
-                                    outputs=outmodel)
+                          outputs=[scene, outfiles_state, outmodel, time_slider])
+
+            def re_render_model(scene_states, time_idx, min_conf_thr, as_pointcloud, mask_sky, clean_depth,
+                                transparent_cams, cam_size, TSDF_thresh, outfiles_list):
+                if not scene_states or time_idx >= len(scene_states):
+                    return None
+                outfile = model_from_scene_fun(scene_states[time_idx], min_conf_thr, as_pointcloud, mask_sky,
+                                               clean_depth, transparent_cams, cam_size, TSDF_thresh)
+                if outfiles_list and time_idx < len(outfiles_list):
+                    outfiles_list[time_idx] = outfile
+                return outfile
+
+            time_events = [time_slider, min_conf_thr, cam_size, TSDF_thresh, as_pointcloud, mask_sky, clean_depth,
+                           transparent_cams]
+            for ev in time_events:
+                ev_hook = ev.release if hasattr(ev, 'release') else ev.change
+                ev_hook(fn=re_render_model,
+                        inputs=[scene, time_slider, min_conf_thr, as_pointcloud, mask_sky, clean_depth,
+                                transparent_cams, cam_size, TSDF_thresh, outfiles_state],
+                        outputs=outmodel)
     demo.launch(share=share, server_name=server_name, server_port=server_port)
