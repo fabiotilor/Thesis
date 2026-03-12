@@ -1,222 +1,148 @@
 #!/usr/bin/env python3
-"""
-view_gt_rerun.py  –  Ground Truth visualization for DEX-YCB multi-view sequence
-================================================================================
-
-This script loads the ground truth (GT) depth and camera parameters from the
-DEX-YCB dataset and visualizes them in Rerun.
-
-SSH tunnel setup:
-    RemoteForward 9876 localhost:9876
-
-Workflow:
-1. Launch `rerun` on your Mac (it auto-listens on 0.0.0.0:9876).
-2. SSH into the remote: `ssh vlg`
-3. Run this script: `python view_gt_rerun.py`
-"""
-
 import os
 import glob
 import numpy as np
 import cv2
+import torch
 import rerun as rr
-from PIL import Image
 
 # ── configuration ─────────────────────────────────────────────────────────────
 DATASET_ROOT = "/home/fabio/datasets/dex-ycb-multiview/20200709-subject-01__20200709_141754"
+IMAGE_SIZE = 512
 RERUN_ADDR = "rerun+http://127.0.0.1:9876/proxy"
-DEPTH_SCALE = 1000.0  # Assuming depth is in mm, convert to meters if needed. Adjust as necessary.
+DEPTH_SCALE = 0.001        # Convert mm → metres
+DEPTH_MAX_M = 2.0          # Discard depths beyond 2 m (uint16 max = sentinel)
+SUBSAMPLE   = 1
 
 
 # ── helpers ───────────────────────────────────────────────────────────────────
 
-def load_gt_cameras(view_dir):
-    npz_path = os.path.join(view_dir, "intrinsics_extrinsics.npz")
-
-    if os.path.exists(npz_path):
-        data = np.load(npz_path)
-        print(data.files) # Checking for cam2world or world2cam
-
-        intrinsics = None
-        extrinsics = None
-
-        if 'intrinsics' in data:
-            intrinsics = data['intrinsics']
-        elif 'K' in data:
-            intrinsics = data['K']
-
-        if 'extrinsics' in data:
-            extrinsics = data['extrinsics']
-        elif 'cam2world' in data:
-            extrinsics = data['cam2world']
-
-        if extrinsics is not None:
-            extrinsics = np.linalg.inv(extrinsics)
-
-        return intrinsics, extrinsics
-
-    txt_path = os.path.join(view_dir, "intrinsics.txt")
-    if os.path.exists(txt_path):
-        intrinsics = np.loadtxt(txt_path)
-        return intrinsics, None
-
-    return None, None
-
-
-def project_depth_to_3d(depth, intrinsics, extrinsics):
-    """Unproject depth map to 3D points in world coordinates."""
-    h, w = depth.shape
-    fx = intrinsics[0, 0]
-    fy = intrinsics[1, 1]
-    cx = intrinsics[0, 2]
-    cy = intrinsics[1, 2]
-
-    # Create coordinate grid
-    u, v = np.meshgrid(np.arange(w), np.arange(h))
-
-    # Mask valid depth
-    mask = depth > 0
-    u = u[mask]
-    v = v[mask]
-    z = depth[mask] / DEPTH_SCALE
-
-    # Unproject to camera coordinates
-    x = (u - cx) * z / fx
-    y = (v - cy) * z / fy
-    pts_cam = np.stack([x, y, z], axis=1)
-
-    # Transform to world coordinates
-    if extrinsics is not None:
-        # P_world = R * P_cam + t
-        # extrinsics is usually 4x4 cam2world
-        R = extrinsics[:3, :3]
-        t = extrinsics[:3, 3]
-        pts_world = (R @ pts_cam.T).T + t
-        return pts_world
-    else:
-        return pts_cam
-
-
-def build_view_data(dataset_root):
-    """Collect view directories and frame counts."""
+def build_views(dataset_root: str) -> dict:
+    from collections import defaultdict
+    img_exts = {".png", ".jpg", ".jpeg", ".bmp"}
+    views = defaultdict(list)
     view_dirs = sorted(glob.glob(os.path.join(dataset_root, "view_*")))
-    views = {}
     for vd in view_dirs:
         vname = os.path.basename(vd)
-        depth_dir = os.path.join(vd, "depth")
         rgb_dir = os.path.join(vd, "rgb")
+        if os.path.isdir(rgb_dir):
+            frames = sorted(
+                f for f in glob.glob(os.path.join(rgb_dir, "*"))
+                if os.path.splitext(f.lower())[1] in img_exts
+            )
+            if frames:
+                views[vname] = frames
+    return dict(views)
 
-        depth_files = sorted(glob.glob(os.path.join(depth_dir, "*.png")))
-        rgb_files = sorted(glob.glob(os.path.join(rgb_dir, "*.png")))
 
-        if depth_files:
-            views[vname] = {
-                'dir': vd,
-                'depth_files': depth_files,
-                'rgb_files': rgb_files if len(rgb_files) == len(depth_files) else None
-            }
-    return views
+def load_gt_params(view_dir: str):
+    """
+    Returns (K, cam2world) both as float64.
+    'extrinsics' in DEX-YCB npz is world2cam -> invert to get cam2world.
+    'intrinsics' is stored as 4x4 -> take top-left 3x3.
+    """
+    data = np.load(os.path.join(view_dir, "intrinsics_extrinsics.npz"))
+
+    K_raw = data['intrinsics'].astype(np.float64)
+    K = K_raw[:3, :3]   # top-left 3x3 (handles both 3x3 and 4x4 storage)
+
+    world2cam = data['extrinsics'].astype(np.float64)
+    cam2world = np.linalg.inv(world2cam)   # flip convention
+
+    return K, cam2world
+
+
+def backproject(depth_m: np.ndarray, K: np.ndarray):
+    """
+    Unproject a depth image (in metres) to camera-space points.
+    Returns (pts_cam [Nx3], mask [HxW bool]).
+    """
+    H, W = depth_m.shape
+    fx, fy = K[0, 0], K[1, 1]
+    cx, cy = K[0, 2], K[1, 2]
+    v, u = np.meshgrid(np.arange(H), np.arange(W), indexing='ij')
+    mask = (depth_m > 0) & (depth_m < DEPTH_MAX_M)
+    u, v, z = u[mask], v[mask], depth_m[mask]
+    x = (u - cx) * z / fx
+    y = (v - cy) * z / fy
+    return np.stack([x, y, z], axis=-1), mask
+
+
+def log_gt_timestep(t: int, view_names: list, views_dict: dict, dataset_root: str) -> None:
+    # FIX 1: correct API - rr.set_time_sequence does not exist
+    rr.set_time("timestep", sequence=t)
+
+    all_pts  = []
+    all_cols = []
+
+    for vname in view_names:
+        view_dir = os.path.join(dataset_root, vname)
+        rgb_path = views_dict[vname][t]
+        img_rgb  = cv2.cvtColor(cv2.imread(rgb_path), cv2.COLOR_BGR2RGB)
+        H, W     = img_rgb.shape[:2]
+
+        depth_path = os.path.join(view_dir, "depth", f"{t:05d}.png")
+        depth_raw  = cv2.imread(depth_path, cv2.IMREAD_UNCHANGED).astype(np.float32)
+        depth_m    = depth_raw * DEPTH_SCALE   # mm -> metres
+
+        # FIX 2: invert extrinsics (world2cam -> cam2world)
+        K, cam2world = load_gt_params(view_dir)
+        entity = f"world/cameras/{vname}"
+
+        # intrinsics
+        rr.log(entity, rr.Pinhole(
+            image_from_camera    = K,
+            width                = W,
+            height               = H,
+            image_plane_distance = 0.2,
+        ))
+
+        # pose (cam2world: translation = camera origin in world)
+        rr.log(entity, rr.Transform3D(
+            translation = cam2world[:3, 3],
+            mat3x3      = cam2world[:3, :3],
+        ))
+
+        rr.log(f"{entity}/rgb", rr.Image(img_rgb))
+
+        # backproject + transform to world
+        pts_cam, mask = backproject(depth_m, K)
+        pts_world     = (cam2world[:3, :3] @ pts_cam.T).T + cam2world[:3, 3]
+        cols          = img_rgb[mask]
+
+        all_pts.append(pts_world[::SUBSAMPLE])
+        all_cols.append(cols[::SUBSAMPLE])
+
+    if all_pts:
+        rr.log("world/point_cloud", rr.Points3D(
+            positions = np.concatenate(all_pts,  axis=0),
+            colors    = np.concatenate(all_cols, axis=0),
+            radii     = 0.003,
+        ))
 
 
 # ── main ──────────────────────────────────────────────────────────────────────
 
 def main():
-    print(f"[gt] scanning dataset at {DATASET_ROOT} ...")
-    views = build_view_data(DATASET_ROOT)
-    if not views:
-        print("[error] no views found!")
-        return
-
-    view_names = sorted(views.keys())
-    n_frames = len(views[view_names[0]]['depth_files'])
-    print(f"[gt] found {len(view_names)} views x {n_frames} frames")
-
-    rr.init("mast3r_gt_viz", spawn=False)
+    torch.backends.cuda.matmul.allow_tf32 = True
+    rr.init("mast3r_dexycb", spawn=False)
     rr.connect_grpc(RERUN_ADDR)
-    print(f"[gt] streaming to {RERUN_ADDR}")
+    print(f"[rerun] streaming GT to {RERUN_ADDR} (gRPC)")
 
     rr.log("world", rr.ViewCoordinates.RIGHT_HAND_Y_UP, static=True)
 
-    # -------------------------
-    # Load cameras ONCE
-    # -------------------------
-    camera_data = {}
+    views_dict = build_views(DATASET_ROOT)
+    view_names = sorted(views_dict.keys())
+    n_frames   = len(views_dict[view_names[0]])
+    print(f"[INFO] {len(view_names)} views x {n_frames} frames")
 
-    for vname in view_names:
-        intrinsics, extrinsics = load_gt_cameras(views[vname]['dir'])
-        camera_data[vname] = (intrinsics, extrinsics)
-
-    # -------------------------
-    # Frame loop
-    # -------------------------
     for t in range(n_frames):
+        print(f"-- t={t:02d} / {n_frames - 1} --")
+        log_gt_timestep(t, view_names, views_dict, DATASET_ROOT)
+        print(f"  GT t={t:02d} logged\n")
 
-        print(f"── t={t:02d} / {n_frames - 1} ──────────────────────────────────────")
-        rr.set_time("timestep", sequence=t)
+    print("[done] all GT timesteps streamed to Rerun.")
 
-        all_gt_pts = []
-        all_gt_cols = []
 
-        for vname in view_names:
-
-            vdata = views[vname]
-            intrinsics, extrinsics = camera_data[vname]
-
-            if intrinsics is None:
-                continue
-
-            depth_path = vdata['depth_files'][t]
-            depth = np.array(Image.open(depth_path))
-
-            rgb = None
-            if vdata['rgb_files']:
-                rgb_path = vdata['rgb_files'][t]
-                rgb = np.array(Image.open(rgb_path))
-
-            entity_path = f"world/gt/cameras/{vname}"
-
-            if extrinsics is not None:
-                rr.log(entity_path, rr.Pinhole(
-                    focal_length=intrinsics[0, 0],
-                    width=depth.shape[1],
-                    height=depth.shape[0],
-                ))
-
-                rr.log(entity_path, rr.Transform3D(
-                    translation=extrinsics[:3, 3],
-                    mat3x3=extrinsics[:3, :3],
-                ))
-
-                if rgb is not None:
-                    rr.log(f"{entity_path}/rgb", rr.Image(rgb))
-
-            pts_world = project_depth_to_3d(depth, intrinsics, extrinsics)
-            all_gt_pts.append(pts_world)
-
-            if rgb is not None:
-                mask = depth > 0
-                cols = rgb[mask]
-                all_gt_cols.append(cols)
-
-        if all_gt_pts:
-            pts_cat = np.concatenate(all_gt_pts, axis=0)[::5]
-
-            if all_gt_cols:
-                cols_cat = np.concatenate(all_gt_cols, axis=0)[::5]
-
-                rr.log("world/gt/point_cloud", rr.Points3D(
-                    positions=pts_cat,
-                    colors=cols_cat,
-                    radii=0.002,
-                ))
-            else:
-                rr.log("world/gt/point_cloud", rr.Points3D(
-                    positions=pts_cat,
-                    radii=0.002,
-                ))
-
-            print(f"  ✓ t={t:02d} logged {len(pts_cat)} points")
-
-    print("[done] ground truth visualization finished.")
 if __name__ == "__main__":
     main()
