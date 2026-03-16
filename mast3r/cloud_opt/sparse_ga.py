@@ -34,12 +34,15 @@ from dust3r.viz import SceneViz
 class SparseGA():
     def __init__(self, img_paths, pairs_in, res_fine, anchors, canonical_paths=None):
         def fetch_img(im):
-            def torgb(x): return (x[0].permute(1, 2, 0).numpy() * .5 + .5).clip(min=0., max=1.)
+            def torgb(x):
+                return (x[0].permute(1, 2, 0).numpy() * .5 + .5).clip(min=0., max=1.)
+
             for im1, im2 in pairs_in:
                 if im1['instance'] == im:
                     return torgb(im1['img'])
                 if im2['instance'] == im:
                     return torgb(im2['img'])
+
         self.canonical_paths = canonical_paths
         self.img_paths = img_paths
         self.imgs = [fetch_img(img) for img in img_paths]
@@ -86,7 +89,7 @@ class SparseGA():
 
         # densify sparse depthmaps
         pts3d, depthmaps = make_pts3d(anchors, self.intrinsics, self.cam2w, [
-                                      d.ravel() for d in self.depthmaps], base_focals=base_focals, ret_depth=True)
+            d.ravel() for d in self.depthmaps], base_focals=base_focals, ret_depth=True)
 
         if clean_depth:
             confs = clean_pointcloud(confs, self.intrinsics, inv(self.cam2w), depthmaps, pts3d)
@@ -117,7 +120,8 @@ def convert_dust3r_pairs_naming(imgs, pairs_in):
 
 
 def sparse_global_alignment(imgs, pairs_in, cache_path, model, subsample=8, desc_conf='desc_conf',
-                            kinematic_mode='hclust-ward', device='cuda', dtype=torch.float32, shared_intrinsics=False, **kw):
+                            kinematic_mode='hclust-ward', device='cuda', dtype=torch.float32, shared_intrinsics=False,
+                            **kw):
     """ Sparse alignment with MASt3R
         imgs: list of image paths
         cache_path: path where to dump temporary files (str)
@@ -152,7 +156,7 @@ def sparse_global_alignment(imgs, pairs_in, cache_path, model, subsample=8, desc
 
         # Convert the affinity matrix to a distance matrix (if needed)
         n_patches = (imsizes // subsample).prod(dim=1)
-        max_n_corres = 3 * torch.minimum(n_patches[:,None], n_patches[None,:])
+        max_n_corres = 3 * torch.minimum(n_patches[:, None], n_patches[None, :])
         pws = (pairwise_scores.clone() / max_n_corres).clip(max=1)
         pws.fill_diagonal_(1)
         pws = to_numpy(pws)
@@ -166,17 +170,18 @@ def sparse_global_alignment(imgs, pairs_in, cache_path, model, subsample=8, desc
         # dendrogram = sch.dendrogram(Z)
 
         tree = np.eye(len(imgs))
-        new_to_old_nodes = {i:i for i in range(len(imgs))}
-        for i, (a, b) in enumerate(Z[:,:2].astype(int)):
+        new_to_old_nodes = {i: i for i in range(len(imgs))}
+        for i, (a, b) in enumerate(Z[:, :2].astype(int)):
             # given two nodes to be merged, we choose which one is the best representant
             a = new_to_old_nodes[a]
             b = new_to_old_nodes[b]
-            tree[a,b] = tree[b,a] = 1
+            tree[a, b] = tree[b, a] = 1
             best = a if pws[a].sum() > pws[b].sum() else b
-            new_to_old_nodes[len(imgs)+i] = best
-            pws[best] = np.maximum(pws[a], pws[b]) # update the node
+            new_to_old_nodes[len(imgs) + i] = best
+            pws[best] = np.maximum(pws[a], pws[b])  # update the node
 
-        pairwise_scores = torch.from_numpy(tree) # this output just gives 1s for connected edges and zeros for other, i.e. no scores or priority
+        pairwise_scores = torch.from_numpy(
+            tree)  # this output just gives 1s for connected edges and zeros for other, i.e. no scores or priority
         mst = compute_min_spanning_tree(pairwise_scores)
 
     else:
@@ -187,7 +192,8 @@ def sparse_global_alignment(imgs, pairs_in, cache_path, model, subsample=8, desc
     # tmp_pairs = {(a,b):v for (a,b),v in tmp_pairs.items() if {(a,b),(b,a)} & min_spanning_tree}
 
     imgs, res_coarse, res_fine = sparse_scene_optimizer(
-        imgs, subsample, imsizes, pps, base_focals, core_depth, anchors, corres, corres2d, preds_21, canonical_paths, mst,
+        imgs, subsample, imsizes, pps, base_focals, core_depth, anchors, corres, corres2d, preds_21, canonical_paths,
+        mst,
         shared_intrinsics=shared_intrinsics, cache_path=cache_path, device=device, dtype=dtype, **kw)
 
     return SparseGA(imgs, pairs_in, res_fine or res_coarse, anchors, canonical_paths)
@@ -238,13 +244,39 @@ def sparse_scene_optimizer(imgs, subsample, imsizes, pps, base_focals, core_dept
 
         cam2w = init_values.get('cam2w')
         if cam2w is not None:
-            rot = cam2w[:3, :3].detach()
-            cam_center = cam2w[:3, 3].detach()
-            quats[idx].data[:] = roma.rotmat_to_unitquat(rot)
-            trans_offset = med_depth * torch.cat((imsizes[idx] / base_focals[idx] * (0.5 - pps[idx]), ones[:1, 0]))
-            trans[idx].data[:] = cam_center + rot @ trans_offset
-            del rot
-            assert False, 'inverse kinematic chain not yet implemented'
+            # We will handle the inverse kinematic chain after all init_values are processed
+            pass
+
+    # Process inverse kinematic chain if any cam2w was provided
+    if any('cam2w' in init.get(img, {}) for img in imgs):
+        rel_cam2cam = torch.eye(4, dtype=dtype, device=device)[None].expand(len(imgs), 4, 4).clone()
+
+        # Base case: root node is its own absolute pose
+        if 'cam2w' in init.get(imgs[mst[0]], {}):
+            rel_cam2cam[mst[0]] = init[imgs[mst[0]]]['cam2w'].detach()
+
+        # Traverse the MST
+        for i, j in mst[1]:
+            cam2w_i = init.get(imgs[i], {}).get('cam2w')
+            cam2w_j = init.get(imgs[j], {}).get('cam2w')
+
+            if cam2w_i is not None and cam2w_j is not None:
+                # cam2w_j = cam2w_i @ rel_cam2cam_j => rel_cam2cam_j = inv(cam2w_i) @ cam2w_j
+                rel_cam2cam[j] = inv(cam2w_i.detach()) @ cam2w_j.detach()
+            elif cam2w_j is not None:
+                # If parent is not initialized but child is, we just use child's absolute pose (fallback)
+                rel_cam2cam[j] = cam2w_j.detach()
+
+        for idx, img in enumerate(imgs):
+            if 'cam2w' in init.get(img, {}):
+                rot = rel_cam2cam[idx, :3, :3]
+                cam_center = rel_cam2cam[idx, :3, 3]
+
+                quats[idx].data[:] = roma.rotmat_to_unitquat(rot)
+
+                trans_offset = median_depths[idx] * torch.cat(
+                    (imsizes[idx] / base_focals[idx] * (0.5 - pps[idx]), ones[:1, 0]))
+                trans[idx].data[:] = cam_center + rot @ trans_offset
 
     # intrinsics parameters
     if shared_intrinsics:
@@ -289,19 +321,56 @@ def sparse_scene_optimizer(imgs, subsample, imsizes, pps, base_focals, core_dept
         rel_cam2cam[:, :3, :3] = roma.unitquat_to_rotmat(F.normalize(torch.stack(quats), dim=1))
         rel_cam2cam[:, :3, 3] = torch.stack(trans)
 
-        # camera are defined as a kinematic chain
+        # check if we should override the kinematic chain and use direct absolute poses
+        # this happens when `freeze` is True and `cam2w` is provided in init parameters
         tmp_cam2w = [None] * len(K)
-        tmp_cam2w[mst[0]] = rel_cam2cam[mst[0]]
-        for i, j in mst[1]:
-            # i is the cam_i_to_world reference, j is the relative pose = cam_j_to_cam_i
-            tmp_cam2w[j] = tmp_cam2w[i] @ rel_cam2cam[j]
-        tmp_cam2w = torch.stack(tmp_cam2w)
+
+        has_frozen_cam = False
+        for i, img in enumerate(imgs):
+            # Support granular freeze_pose
+            is_frozen = init.get(img, {}).get('freeze')
+            freeze_pose = init.get(img, {}).get('freeze_pose', is_frozen)
+            if freeze_pose and 'cam2w' in init.get(img, {}):
+                tmp_cam2w[i] = init[img]['cam2w'].to(device).type(dtype)
+                has_frozen_cam = True
+
+        if has_frozen_cam:
+            # For any camera that doesn't have a frozen absolute pose, use its `rel_cam2cam`
+            # as an absolute pose (since it was initialized that way when quats/trans were forced)
+            for i in range(len(K)):
+                if tmp_cam2w[i] is None:
+                    tmp_cam2w[i] = rel_cam2cam[i]
+            tmp_cam2w = torch.stack(tmp_cam2w)
+        else:
+            # camera are defined as a kinematic chain
+            tmp_cam2w[mst[0]] = rel_cam2cam[mst[0]]
+            for i, j in mst[1]:
+                # i is the cam_i_to_world reference, j is the relative pose = cam_j_to_cam_i
+                tmp_cam2w[j] = tmp_cam2w[i] @ rel_cam2cam[j]
+            tmp_cam2w = torch.stack(tmp_cam2w)
 
         # smart reparameterizaton of cameras
         trans_offset = z_cameras.unsqueeze(1) * torch.cat((imsizes / focals.unsqueeze(1) * (0.5 - pps), ones), dim=-1)
-        new_trans = global_scaling * (tmp_cam2w[:, :3, 3:4] - tmp_cam2w[:, :3, :3] @ trans_offset.unsqueeze(-1))
-        cam2w = torch.cat((torch.cat((tmp_cam2w[:, :3, :3], new_trans), dim=2),
-                          vec0001.view(1, 1, 4).expand(len(K), 1, 4)), dim=1)
+
+        # When poses are explicitly initialized + frozen, do not alter their translations via scaling re-parameterization
+        has_frozen_cam = False
+        cam2w_list = []
+        for i, img in enumerate(imgs):
+            is_frozen = init.get(img, {}).get('freeze')
+            freeze_pose = init.get(img, {}).get('freeze_pose', is_frozen)
+            if freeze_pose and 'cam2w' in init.get(img, {}):
+                # Use exactly the provided frozen matrix
+                cam2w_list.append(tmp_cam2w[i].view(1, 4, 4))
+                has_frozen_cam = True
+            else:
+                new_trans_i = global_scaling * (
+                            tmp_cam2w[i:i + 1, :3, 3:4] - tmp_cam2w[i:i + 1, :3, :3] @ trans_offset[i:i + 1].unsqueeze(
+                        -1))
+                cam2w_i = torch.cat(
+                    (torch.cat((tmp_cam2w[i:i + 1, :3, :3], new_trans_i), dim=2), vec0001.view(1, 1, 4)), dim=1)
+                cam2w_list.append(cam2w_i)
+
+        cam2w = torch.cat(cam2w_list, dim=0)
 
         depthmaps = []
         for i in range(len(imgs)):
@@ -316,7 +385,14 @@ def sparse_scene_optimizer(imgs, subsample, imsizes, pps, base_focals, core_dept
                 core_depth_img = z_cameras[i] * core_depth_img
             else:
                 raise ValueError(f'Bad {depth_mode=}')
-            depthmaps.append(global_scaling * core_depth_img)
+
+            # Keep original frozen initialization scale if preserving absolute poses
+            is_frozen = init.get(imgs[i], {}).get('freeze')
+            freeze_pose = init.get(imgs[i], {}).get('freeze_pose', is_frozen)
+            if freeze_pose and 'cam2w' in init.get(imgs[i], {}):
+                depthmaps.append(core_depth_img)
+            else:
+                depthmaps.append(global_scaling * core_depth_img)
 
         return K, (inv(cam2w), cam2w), depthmaps
 
@@ -340,7 +416,9 @@ def sparse_scene_optimizer(imgs, subsample, imsizes, pps, base_focals, core_dept
     _, confs_sum, imgs_slices = corres
 
     # Define which pairs are fine to use with matching
-    def matching_check(x): return x.max() > matching_conf_thr
+    def matching_check(x):
+        return x.max() > matching_conf_thr
+
     is_matching_ok = {}
     for s in imgs_slices:
         is_matching_ok[s.img1, s.img2] = matching_check(s.confs)
@@ -447,8 +525,9 @@ def sparse_scene_optimizer(imgs, subsample, imsizes, pps, base_focals, core_dept
                 pix_loss = ploss(1 - alpha)
                 optimizer.zero_grad()
                 loss = loss_func(K, w2cam, pts3d, pix_loss) + loss_dust3r_w * loss_dust3r(cam2w, pts3d, lossd)
-                loss.backward()
-                optimizer.step()
+                if isinstance(loss, torch.Tensor) and loss.requires_grad:
+                    loss.backward()
+                    optimizer.step()
 
                 # make sure the pose remains well optimizable
                 for i in range(len(imgs)):
@@ -467,12 +546,16 @@ def sparse_scene_optimizer(imgs, subsample, imsizes, pps, base_focals, core_dept
 
     # at start, don't optimize 3d points
     for i, img in enumerate(imgs):
-        trainable = not (init[img].get('freeze'))
+        # Allow granular freeze: freeze_pose, freeze_intrinsics, or global freeze
+        is_frozen = init[img].get('freeze')
+        freeze_pose = init[img].get('freeze_pose', is_frozen)
+
+        trainable_pose = not freeze_pose
         pps[i].requires_grad_(False)
         log_focals[i].requires_grad_(False)
-        quats[i].requires_grad_(trainable)
-        trans[i].requires_grad_(trainable)
-        log_sizes[i].requires_grad_(trainable)
+        quats[i].requires_grad_(trainable_pose)
+        trans[i].requires_grad_(trainable_pose)
+        log_sizes[i].requires_grad_(trainable_pose)
         core_depth[i].requires_grad_(False)
 
     res_coarse = optimize_loop(loss_3d, lr_base=lr1, niter=niter1, pix_loss=loss1)
@@ -481,11 +564,19 @@ def sparse_scene_optimizer(imgs, subsample, imsizes, pps, base_focals, core_dept
     if niter2:
         # now we can optimize 3d points
         for i, img in enumerate(imgs):
-            if init[img].get('freeze', 0) >= 1:
+            is_frozen = init[img].get('freeze')
+            # If globally frozen, we really don't optimize anything.
+            # But if only pose/intrinsics are frozen, we still optimize depth.
+            if is_frozen:
                 continue
-            pps[i].requires_grad_(bool(opt_pp))
-            log_focals[i].requires_grad_(True)
-            core_depth[i].requires_grad_(opt_depth)
+
+            freeze_pp = init[img].get('freeze_intrinsics', is_frozen)
+            freeze_focal = init[img].get('freeze_intrinsics', is_frozen)
+            freeze_depth = init[img].get('freeze_depth', is_frozen)
+
+            pps[i].requires_grad_(bool(opt_pp) and not freeze_pp)
+            log_focals[i].requires_grad_(not freeze_focal)
+            core_depth[i].requires_grad_(opt_depth and not freeze_depth)
 
         # refinement with 2d reproj
         res_fine = optimize_loop(loss_2d, lr_base=lr2, niter=niter2, pix_loss=loss2)
@@ -554,7 +645,7 @@ def make_dense_pts3d(intrinsics, cam2w, depthmaps, canonical_paths, subsample, d
 
     # densify sparse depthmaps
     pts3d, depthmaps_out = make_pts3d(anchors, intrinsics, cam2w, [
-                                      d.ravel() for d in depthmaps], base_focals=base_focals, ret_depth=True)
+        d.ravel() for d in depthmaps], base_focals=base_focals, ret_depth=True)
 
     return pts3d, depthmaps_out, confs
 
@@ -639,7 +730,7 @@ def extract_correspondences(feats, qonfs, subsample=8, device=None, ptmap_key='p
     if '3d' in ptmap_key:
         opt = dict(device='cpu', workers=32)
     else:
-        opt = dict(device=device, dist='dot', block_size=2**13)
+        opt = dict(device=device, dist='dot', block_size=2 ** 13)
 
     # matching the two pairs
     idx1 = []
@@ -835,6 +926,7 @@ def condense_data(imgs, tmp_paths, canonical_views, preds_21, dtype=torch.float3
         all_pix1 = torch.cat(pix1).to(dtype)
         all_confs = torch.cat(confs).to(dtype)
         return img1, all_pix1, all_confs, float(all_confs.sum()), [(j, sl2) for j, sl2 in zip(img2, slice2)]
+
     corres2d = [aggreg_matches(img, m) for img, m in corres2d.items()]
 
     imsizes = torch.tensor([(W, H) for H, W in shapes], device=pp.device)  # (W,H)
