@@ -1,23 +1,33 @@
 #!/usr/bin/env python3
+"""
+view_gt_rerun.py  –  Ground truth visualization with Rerun
+==========================================================
+
+This script loads ground truth RGB, depth, and camera parameters from the
+DEX-YCB dataset and visualizes them in Rerun, maintaining the same structure
+as run_rerun.py for easy comparison.
+"""
+
 import os
 import glob
 import numpy as np
 import cv2
 import torch
+import mast3r.utils.path_to_dust3r  # noqa
 import rerun as rr
 
 # ── configuration ─────────────────────────────────────────────────────────────
 DATASET_ROOT = "/home/fabio/datasets/dex-ycb-multiview/20200709-subject-01__20200709_141754"
 IMAGE_SIZE = 512
-RERUN_ADDR = "rerun+http://127.0.0.1:9876/proxy"
-DEPTH_SCALE = 0.001        # Convert mm → metres
-DEPTH_MAX_M = 2.0          # Discard depths beyond 2 m (uint16 max = sentinel)
-SUBSAMPLE   = 1
+RERUN_ADDR = "127.0.0.1:9876"
+DEPTH_SCALE = 0.001  # Convert mm to meters
+NUM_FRAMES_TO_LOG = None  # Process all frames
 
 
 # ── helpers ───────────────────────────────────────────────────────────────────
 
 def build_views(dataset_root: str) -> dict:
+    """Return {view_name: [sorted frame paths]} for the view_*/rgb layout."""
     from collections import defaultdict
     img_exts = {".png", ".jpg", ".jpeg", ".bmp"}
     views = defaultdict(list)
@@ -36,110 +46,153 @@ def build_views(dataset_root: str) -> dict:
 
 
 def load_gt_params(view_dir: str):
-    """
-    Returns (K, cam2world) both as float64.
-    'extrinsics' in DEX-YCB npz is world2cam -> invert to get cam2world.
-    'intrinsics' is stored as 4x4 -> take top-left 3x3.
-    """
-    data = np.load(os.path.join(view_dir, "intrinsics_extrinsics.npz"))
-
-    K_raw = data['intrinsics'].astype(np.float64)
-    K = K_raw[:3, :3]   # top-left 3x3 (handles both 3x3 and 4x4 storage)
-
-    world2cam = data['extrinsics'].astype(np.float64)
-    cam2world = np.linalg.inv(world2cam)   # flip convention
-
-    return K, cam2world
+    """Load intrinsics and extrinsics for a view."""
+    path = os.path.join(view_dir, "intrinsics_extrinsics.npz")
+    data = np.load(path)
+    return data['intrinsics'], data['extrinsics']
 
 
-def backproject(depth_m: np.ndarray, K: np.ndarray):
-    """
-    Unproject a depth image (in metres) to camera-space points.
-    Returns (pts_cam [Nx3], mask [HxW bool]).
-    """
-    H, W = depth_m.shape
-    fx, fy = K[0, 0], K[1, 1]
-    cx, cy = K[0, 2], K[1, 2]
+def backproject(depth, intrinsics):
+    """Backproject depth map to 3D points in camera frame."""
+    H, W = depth.shape
+    fx, fy = intrinsics[0, 0], intrinsics[1, 1]
+    cx, cy = intrinsics[0, 2], intrinsics[1, 2]
+
     v, u = np.meshgrid(np.arange(H), np.arange(W), indexing='ij')
-    mask = (depth_m > 0) & (depth_m < DEPTH_MAX_M)
-    u, v, z = u[mask], v[mask], depth_m[mask]
+
+    # Filter 0 depth
+    mask = depth > 0
+    u = u[mask]
+    v = v[mask]
+    z = depth[mask]
+
     x = (u - cx) * z / fx
     y = (v - cy) * z / fy
-    return np.stack([x, y, z], axis=-1), mask
+
+    pts_cam = np.stack([x, y, z], axis=-1)
+    return pts_cam, mask
 
 
-def log_gt_timestep(t: int, view_names: list, views_dict: dict, dataset_root: str) -> None:
-    # FIX 1: correct API - rr.set_time_sequence does not exist
-    rr.set_time("timestep", sequence=t)
+def log_gt_timestep(t: int, view_names: list, views_dict: dict, dataset_root: str, mask_mode: str) -> None:
+    """Log ground truth data for one timestep to Rerun."""
+    rr.set_time_sequence("timestep", t)
 
-    all_pts  = []
+    all_pts = []
     all_cols = []
 
     for vname in view_names:
         view_dir = os.path.join(dataset_root, vname)
         rgb_path = views_dict[vname][t]
-        img_rgb  = cv2.cvtColor(cv2.imread(rgb_path), cv2.COLOR_BGR2RGB)
-        H, W     = img_rgb.shape[:2]
 
+        # Load RGB
+        img_bgr = cv2.imread(rgb_path)
+        img_rgb = cv2.cvtColor(img_bgr, cv2.COLOR_BGR2RGB)
+        H, W = img_rgb.shape[:2]
+
+        # Load Depth
         depth_path = os.path.join(view_dir, "depth", f"{t:05d}.png")
-        depth_raw  = cv2.imread(depth_path, cv2.IMREAD_UNCHANGED).astype(np.float32)
-        depth_m    = depth_raw * DEPTH_SCALE   # mm -> metres
+        depth = cv2.imread(depth_path, cv2.IMREAD_UNCHANGED).astype(np.float32) * DEPTH_SCALE
 
-        # FIX 2: invert extrinsics (world2cam -> cam2world)
-        K, cam2world = load_gt_params(view_dir)
+        # Load Params
+        K, c2w = load_gt_params(view_dir)
+
         entity = f"world/cameras/{vname}"
 
-        # intrinsics
+        # ── camera intrinsics ──────────────────────────────────────────
         rr.log(entity, rr.Pinhole(
-            image_from_camera    = K,
-            width                = W,
-            height               = H,
-            image_plane_distance = 0.2,
+            focal_length=K[0, 0],
+            width=W,
+            height=H,
+            image_plane_distance=0.2,
         ))
 
-        # pose (cam2world: translation = camera origin in world)
+        # ── camera extrinsics (cam-to-world) ───────────────────────────
         rr.log(entity, rr.Transform3D(
-            translation = cam2world[:3, 3],
-            mat3x3      = cam2world[:3, :3],
+            translation=c2w[:3, 3],
+            mat3x3=c2w[:3, :3],
         ))
 
+        # ── RGB image inside the frustum ───────────────────────────────
         rr.log(f"{entity}/rgb", rr.Image(img_rgb))
 
-        # backproject + transform to world
-        pts_cam, mask = backproject(depth_m, K)
-        pts_world     = (cam2world[:3, :3] @ pts_cam.T).T + cam2world[:3, 3]
-        cols          = img_rgb[mask]
+        # ── points ─────────────────────────────────────────────────────
+        pts_cam, orig_mask = backproject(depth, K)
 
-        all_pts.append(pts_world[::SUBSAMPLE])
-        all_cols.append(cols[::SUBSAMPLE])
+        # Apply segmentation mask
+        if mask_mode != "none":
+            # load segmentation mask
+            mask_path = os.path.join(view_dir, "mask", f"{t:05d}.png")
+            if not os.path.exists(mask_path):
+                mask_path = os.path.join(view_dir, "mask", f"{t:06d}.png")
 
+            if os.path.exists(mask_path):
+                seg_mask = cv2.imread(mask_path, cv2.IMREAD_GRAYSCALE)
+                if seg_mask.shape[:2] != depth.shape[:2]:
+                    seg_mask = cv2.resize(seg_mask, (depth.shape[1], depth.shape[0]), interpolation=cv2.INTER_NEAREST)
+
+        # Transform to world
+        pts_world = (c2w[:3, :3] @ pts_cam.T).T + c2w[:3, 3]
+
+        if mask_mode != "none" and os.path.exists(mask_path):
+            if mask_mode == "masked":
+                valid_seg = (seg_mask > 0)[orig_mask]
+            else:
+                valid_seg = (seg_mask == 0)[orig_mask]
+            pts_world = pts_world[valid_seg]
+            cols = img_rgb[orig_mask][valid_seg]
+        else:
+            cols = img_rgb[orig_mask]
+
+        # Downsample for performance if needed
+        step = 4
+        all_pts.append(pts_world[::step])
+        all_cols.append(cols[::step])
+
+    # ── fused colour point cloud ───────────────────────────────────────────
     if all_pts:
+        pts_cat = np.concatenate(all_pts, axis=0)
+        cols_cat = np.concatenate(all_cols, axis=0)
         rr.log("world/point_cloud", rr.Points3D(
-            positions = np.concatenate(all_pts,  axis=0),
-            colors    = np.concatenate(all_cols, axis=0),
-            radii     = 0.003,
+            positions=pts_cat,
+            colors=cols_cat,
+            radii=0.003,
         ))
 
 
 # ── main ──────────────────────────────────────────────────────────────────────
 
 def main():
-    torch.backends.cuda.matmul.allow_tf32 = True
-    rr.init("mast3r_dexycb", spawn=False)
-    rr.connect_grpc(RERUN_ADDR)
-    print(f"[rerun] streaming GT to {RERUN_ADDR} (gRPC)")
+    import argparse
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--mask_mode", type=str, choices=["none", "masked", "inverse_masked"], default="none")
+    args = parser.parse_args()
 
+    torch.backends.cuda.matmul.allow_tf32 = True  # Ampere+
+
+    # ── connect to Rerun viewer ────────────────────────────────────────────
+    rr.init("mast3r_dexycb", spawn=False)
+    try:
+        rr.connect_tcp(RERUN_ADDR)
+    except AttributeError:
+        # older rerun SDK (<0.14) uses rr.connect()
+        rr.connect(RERUN_ADDR)
+    print(f"[rerun] streaming GT to {RERUN_ADDR}")
+
+    # world coordinate-system annotation (OpenGL: Y-up, right-handed)
     rr.log("world", rr.ViewCoordinates.RIGHT_HAND_Y_UP, static=True)
 
+    # ── dataset ────────────────────────────────────────────────────────────
     views_dict = build_views(DATASET_ROOT)
     view_names = sorted(views_dict.keys())
-    n_frames   = len(views_dict[view_names[0]])
-    print(f"[INFO] {len(view_names)} views x {n_frames} frames")
+    n_frames = len(views_dict[view_names[0]])
+    print(f"[INFO] {len(view_names)} views × {n_frames} frames")
 
-    for t in range(n_frames):
-        print(f"-- t={t:02d} / {n_frames - 1} --")
-        log_gt_timestep(t, view_names, views_dict, DATASET_ROOT)
-        print(f"  GT t={t:02d} logged\n")
+    # ── loop ───────────────────────────────────────────────────────────────
+    stop_frame = min(n_frames, NUM_FRAMES_TO_LOG) if NUM_FRAMES_TO_LOG else n_frames
+    for t in range(stop_frame):
+        print(f"── t={t:02d} / {n_frames - 1} ──────────────────────────────────────")
+        log_gt_timestep(t, view_names, views_dict, DATASET_ROOT, args.mask_mode)
+        print(f"  ✓ GT t={t:02d} logged to Rerun\n")
 
     print("[done] all GT timesteps streamed to Rerun.")
 
