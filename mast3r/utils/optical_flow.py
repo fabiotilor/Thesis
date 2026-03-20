@@ -39,6 +39,7 @@ def stabilise_static_points(
         estimate_transform_fn,
         log_rerun_fn,
         dataset_root,
+        static_masks=None, # Optional pre-computed masks for reuse
         out_dir_in="aligned_outputs",
         out_dir_out="aligned_outputs_stabilised",
         flow_threshold=1.0,
@@ -46,14 +47,15 @@ def stabilise_static_points(
         subsample=4,
         verbose=True,
 ):
-    print(f"\n[stabilise] Computing static masks (flow_threshold={flow_threshold}px)...")
-    static_masks = {}
-    for vname in view_names:
-        mask = compute_static_mask(views[vname], flow_threshold)
-        static_masks[vname] = mask
-        if verbose:
-            pct = 100 * mask.mean()
-            print(f"  cam {vname}: {pct:.1f}% pixels static")
+    if static_masks is None:
+        print(f"\n[stabilise] Computing static masks (flow_threshold={flow_threshold}px)...")
+        static_masks = {}
+        for vname in view_names:
+            mask = compute_static_mask(views[vname], flow_threshold)
+            static_masks[vname] = mask
+            if verbose:
+                pct = 100 * mask.mean()
+                print(f"  cam {vname}: {pct:.1f}% pixels static")
 
     T = len(all_scenes)
     os.makedirs(out_dir_out, exist_ok=True)
