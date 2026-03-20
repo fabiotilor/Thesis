@@ -5,6 +5,7 @@
       <sourceFolder url="file://$MODULE_DIR$/dust3r" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/dust3r/croco" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/mast3r" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$" isTestSource="false" />
     </content>
     <orderEntry type="jdk" jdkName="Python 3.11 (mast3r)" jdkType="Python SDK" />
     <orderEntry type="sourceFolder" forTests="false" />

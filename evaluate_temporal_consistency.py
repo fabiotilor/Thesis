@@ -12,36 +12,34 @@ from mast3r.utils.temporal_metrics import (
     compute_temporal_variance
 )
 
-NUM_POINTS = 2000
-
-
-def subsample(points, target_size=NUM_POINTS):
-    """
-    Randomly subsample points without replacement.
-    """
-    if len(points) > target_size:
-        indices = np.random.choice(len(points), target_size, replace=False)
-        return points[indices]
-    return points
-
 
 def main():
     import argparse
     parser = argparse.ArgumentParser()
     parser.add_argument("--mask_mode", type=str, choices=["none", "masked", "inverse_masked"], default="none")
+    parser.add_argument("--input_dir", type=str, default=None, help="Custom directory containing frame_*.npz files")
     args = parser.parse_args()
 
     np.random.seed(42)  # For reproducibility
 
-    if args.mask_mode == "masked":
-        in_dir = "aligned_outputs_masked"
-        out_plot_dir = "plots_masked"
-    elif args.mask_mode == "inverse_masked":
-        in_dir = "aligned_outputs_inverse"
-        out_plot_dir = "plots_inverse"
+    # Determine base directory prefix
+    if args.input_dir:
+        in_dir = args.input_dir
+        # Derived out_plot_dir from input_dir
+        out_plot_dir = in_dir.replace("aligned_outputs", "plots")
     else:
-        in_dir = "aligned_outputs"
-        out_plot_dir = "plots"
+        prefix = "aligned_outputs_temporal" if args.use_temporal_ba else "aligned_outputs"
+        plot_prefix = "plots_temporal" if args.use_temporal_ba else "plots"
+
+        if args.mask_mode == "masked":
+            in_dir = f"{prefix}_masked"
+            out_plot_dir = f"{plot_prefix}_masked"
+        elif args.mask_mode == "inverse_masked":
+            in_dir = f"{prefix}_inverse"
+            out_plot_dir = f"{plot_prefix}_inverse"
+        else:
+            in_dir = prefix
+            out_plot_dir = plot_prefix
 
     files = sorted(glob.glob(f"{in_dir}/frame_*.npz"))
     if not files:
@@ -60,24 +58,20 @@ def main():
         gt_pts = data['gt_pts']
         est_pts = data['aligned_pts']
 
-        # Subsample to NUM_POINTS according to rules
-        sub_gt = subsample(gt_pts, NUM_POINTS)
-        sub_est = subsample(est_pts, NUM_POINTS)
-
-        # Compute single frame metrics
-        l2 = compute_l2_error(sub_est, sub_gt)
-        chamfer = compute_chamfer_distance(sub_est, sub_gt)
+        # Compute single frame metrics using ALL points
+        l2 = compute_l2_error(est_pts, gt_pts)
+        chamfer = compute_chamfer_distance(est_pts, gt_pts)
 
         l2_errors.append(l2)
         chamfer_distances.append(chamfer)
 
         # For temporal trajectory metrics, establish point correspondence across time.
-        # We establish identity by nearest neighbor matching to the first frame's sampled points.
+        # We establish identity by nearest neighbor matching to the first frame's points (no subsampling).
         if i == 0:
-            point_sequence.append(sub_est)
-            base_points = sub_est
+            point_sequence.append(est_pts)
+            base_points = est_pts
         else:
-            tree = cKDTree(est_pts)  # search over all original est_pts for better correspondence
+            tree = cKDTree(est_pts)
             _, idx = tree.query(base_points, k=1)
             matched_est = est_pts[idx]
             point_sequence.append(matched_est)

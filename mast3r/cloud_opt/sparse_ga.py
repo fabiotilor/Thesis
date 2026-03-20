@@ -32,7 +32,8 @@ from dust3r.viz import SceneViz
 
 
 class SparseGA():
-    def __init__(self, img_paths, pairs_in, res_fine, anchors, canonical_paths=None):
+    def __init__(self, img_paths, pairs_in, res_fine, anchors, canonical_paths=None, corres2d=None, imsizes=None,
+                 corres=None):
         def fetch_img(im):
             def torgb(x):
                 return (x[0].permute(1, 2, 0).numpy() * .5 + .5).clip(min=0., max=1.)
@@ -67,6 +68,10 @@ class SparseGA():
 
     def get_im_poses(self):
         return self.cam2w
+
+    def get_images(self):
+        """Return list of RGB images as float [0,1] numpy arrays."""
+        return self.imgs
 
     def get_sparse_pts3d(self):
         return self.pts3d
@@ -196,7 +201,8 @@ def sparse_global_alignment(imgs, pairs_in, cache_path, model, subsample=8, desc
         mst,
         shared_intrinsics=shared_intrinsics, cache_path=cache_path, device=device, dtype=dtype, **kw)
 
-    return SparseGA(imgs, pairs_in, res_fine or res_coarse, anchors, canonical_paths)
+    return SparseGA(imgs, pairs_in, res_fine or res_coarse, anchors, canonical_paths, corres2d=corres2d,
+                    imsizes=imsizes, corres=corres)
 
 
 def sparse_scene_optimizer(imgs, subsample, imsizes, pps, base_focals, core_depth, anchors, corres, corres2d,
