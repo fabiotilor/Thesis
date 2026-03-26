@@ -66,18 +66,18 @@ def build_static_gt_pointcloud(t, view_names, dataset_root,
                                flow_threshold=2.0,
                                mask_mode="none"):
     """
-    Build a GT point cloud using only static background regions.
+    Build a GT point cloud using only static regions (low RGB optical flow).
 
-    Static pixels are defined as those that:
-      - Belong to the background (mask == 0, i.e. complement of the segmentation mask)
-      - Have low optical flow magnitude between frame t and the adjacent frame
+    The static mask is derived by computing optical flow on the RGB images between
+    frame t and an adjacent frame. Pixels with flow magnitude < flow_threshold are
+    considered static. The mask is saved for inspection.
 
     Args:
         t: frame index
         view_names: list of view directory names
         dataset_root: path to the dataset root
-        flow_threshold: max optical flow (px) for a pixel to be considered static
-        mask_mode: "none" skips segmentation filtering; "masked"/"inverse_masked" apply it
+        flow_threshold: max optical flow magnitude (px) to be considered static
+        mask_mode: unused (kept for API compatibility)
 
     Returns:
         np.ndarray: (K, 3) static GT points in world coords, or None if none found.
@@ -95,7 +95,7 @@ def build_static_gt_pointcloud(t, view_names, dataset_root,
         depth_m = depth_raw * DEPTH_SCALE
         H, W = depth_m.shape
 
-        # ── RGB paths for optical flow ─────────────────────────────────────────
+        # ── RGB optical flow static mask ───────────────────────────────────────
         rgb_dir = os.path.join(view_dir, "rgb")
         if not os.path.isdir(rgb_dir):
             rgb_dir = view_dir
@@ -108,80 +108,39 @@ def build_static_gt_pointcloud(t, view_names, dataset_root,
             return None
 
         rgb_t = _rgb_path(t)
+        rgb_adj = _rgb_path(t + 1) or _rgb_path(t - 1)
 
-        # ── Static mask via optical flow ───────────────────────────────────────
-        flow_mask = np.ones((H, W), dtype=bool)  # conservative default: all static
-        if rgb_t is not None:
-            # try t+1, fallback to t-1
-            rgb_adj = _rgb_path(t + 1) or _rgb_path(t - 1)
-            if rgb_adj is not None:
-                f0 = cv2.imread(rgb_t, cv2.IMREAD_GRAYSCALE).astype(np.float32)
-                f1 = cv2.imread(rgb_adj, cv2.IMREAD_GRAYSCALE).astype(np.float32)
-                if f0.shape == f1.shape:
-                    flow = cv2.calcOpticalFlowFarneback(
-                        f0, f1, None,
-                        pyr_scale=0.5, levels=3, winsize=15,
-                        iterations=3, poly_n=5, poly_sigma=1.2, flags=0)
-                    flow_mag = np.linalg.norm(flow, axis=-1)
-                    # Resize flow_mask to H x W (same as depth)
-                    flow_mask_full = (flow_mag < flow_threshold)
-                    if flow_mask_full.shape != (H, W):
-                        flow_mask = cv2.resize(
-                            flow_mask_full.astype(np.uint8), (W, H),
-                            interpolation=cv2.INTER_NEAREST).astype(bool)
-                    else:
-                        flow_mask = flow_mask_full
+        # Default: treat all pixels as static if we can't compute flow
+        static_mask = np.ones((H, W), dtype=bool)
 
-        # ── Segmentation mask (background = static candidates) ─────────────────
-        seg_mask = np.ones((H, W), dtype=bool)  # default: keep all
-        mask_path = os.path.join(view_dir, "mask", f"{t:05d}.png")
-        if not os.path.exists(mask_path):
-            mask_path = os.path.join(view_dir, "mask", f"{t:06d}.png")
+        if rgb_t is not None and rgb_adj is not None:
+            f0 = cv2.imread(rgb_t, cv2.IMREAD_GRAYSCALE).astype(np.float32)
+            f1 = cv2.imread(rgb_adj, cv2.IMREAD_GRAYSCALE).astype(np.float32)
+            if f0.shape == f1.shape:
+                flow = cv2.calcOpticalFlowFarneback(
+                    f0, f1, None,
+                    pyr_scale=0.5, levels=3, winsize=15,
+                    iterations=3, poly_n=5, poly_sigma=1.2, flags=0)
+                flow_mag = np.linalg.norm(flow, axis=-1)
+                flow_mask = (flow_mag < flow_threshold)
 
-        if os.path.exists(mask_path):
-            seg_t = cv2.imread(mask_path, cv2.IMREAD_GRAYSCALE)
-            if seg_t.shape[:2] != (H, W):
-                seg_t = cv2.resize(seg_t, (W, H), interpolation=cv2.INTER_NEAREST)
+                # Resize to depth resolution if needed
+                if flow_mask.shape != (H, W):
+                    static_mask = cv2.resize(
+                        flow_mask.astype(np.uint8), (W, H),
+                        interpolation=cv2.INTER_NEAREST).astype(bool)
+                else:
+                    static_mask = flow_mask
 
-            # Define background candidate
-            is_background = (seg_t == 0)
+        # ── Save mask for inspection ───────────────────────────────────────────
+        _dbg_out = os.path.join("flow_masks_output", vname)
+        os.makedirs(_dbg_out, exist_ok=True)
+        cv2.imwrite(os.path.join(_dbg_out, f"gt_mask_used_{t:05d}.png"),
+                    static_mask.astype(np.uint8) * 255)
 
-            # ── Mask Stability: Compute flow on the segmentation mask itself ──
-            # This helps remove background pixels near moving object boundaries.
-            mask_stable = np.ones((H, W), dtype=bool)
-            t_adj = t + 1 if _rgb_path(t + 1) else (t - 1 if _rgb_path(t - 1) else None)
-            if t_adj is not None:
-                mask_adj_path = os.path.join(view_dir, "mask", f"{t_adj:05d}.png")
-                if not os.path.exists(mask_adj_path):
-                    mask_adj_path = os.path.join(view_dir, "mask", f"{t_adj:06d}.png")
-
-                if os.path.exists(mask_adj_path):
-                    seg_adj = cv2.imread(mask_adj_path, cv2.IMREAD_GRAYSCALE)
-                    if seg_adj.shape[:2] != (H, W):
-                        seg_adj = cv2.resize(seg_adj, (W, H), interpolation=cv2.INTER_NEAREST)
-
-                    # Compute flow on the masks (treated as grayscale images)
-                    flow_seg = cv2.calcOpticalFlowFarneback(
-                        seg_t.astype(np.float32), seg_adj.astype(np.float32), None,
-                        pyr_scale=0.5, levels=3, winsize=15,
-                        iterations=3, poly_n=5, poly_sigma=1.2, flags=0)
-                    flow_mag_seg = np.linalg.norm(flow_seg, axis=-1)
-                    mask_stable = (flow_mag_seg < flow_threshold)
-
-            # Union Logic:
-            # - Background (is_background) is always a candidate
-            # - Foreground is only a candidate if it is stable (mask flow and RGB flow)
-            # User request: "Take all of the complemented pixels (background).
-            # Then to the complement add all pixels in original mask (foreground) that have motion of almost 0."
-            seg_mask = is_background | (mask_stable & flow_mask)
-
-        # ── Final Static Mask ──────────────────────────────────────────────────
-        static_mask = seg_mask & flow_mask
-
-        # ── Backproject and transform to world ─────────────────────────────────
+        # ── Backproject valid static depth pixels to world ─────────────────────
         K, cam2world = load_gt_params(view_dir)
 
-        # Apply depth validity + static mask
         depth_valid = (depth_m > 0) & (depth_m < DEPTH_MAX_M)
         keep = depth_valid & static_mask
 
@@ -232,56 +191,34 @@ def get_static_correspondences(t, view_names, scene, dataset_root,
         depth_gt = depth_raw * DEPTH_SCALE
         H, W = depth_gt.shape
 
-        # ── Compute Union Static Mask (same as build_static_gt_pointcloud) ──────
-        mask_path = os.path.join(view_dir, "mask", f"{t:05d}.png")
-        if not os.path.exists(mask_path):
-            mask_path = os.path.join(view_dir, "mask", f"{t:06d}.png")
-
-        # Basic RGB Flow (re-compute or assume available)
-        # Note: In a real optimized system we would share these masks
-        # For now, we replicate the logic to ensure identical masks.
+        # ── RGB optical flow static mask (same logic as build_static_gt_pointcloud) ──
         rgb_dir = os.path.join(view_dir, "rgb")
-        if not os.path.isdir(rgb_dir): rgb_dir = view_dir
+        if not os.path.isdir(rgb_dir):
+            rgb_dir = view_dir
+
         def _rgb_path(frame_t):
             for ext in (".png", ".jpg", ".jpeg"):
                 p = os.path.join(rgb_dir, f"{frame_t:05d}{ext}")
-                if os.path.exists(p): return p
+                if os.path.exists(p):
+                    return p
             return None
 
         rgb_t = _rgb_path(t)
         rgb_adj = _rgb_path(t + 1) or _rgb_path(t - 1)
-        rgb_flow_mask = np.ones((H, W), dtype=bool)
+        static_mask = np.ones((H, W), dtype=bool)
         if rgb_t and rgb_adj:
             f0 = cv2.imread(rgb_t, cv2.IMREAD_GRAYSCALE).astype(np.float32)
             f1 = cv2.imread(rgb_adj, cv2.IMREAD_GRAYSCALE).astype(np.float32)
             if f0.shape == f1.shape:
                 flow = cv2.calcOpticalFlowFarneback(f0, f1, None, 0.5, 3, 15, 3, 5, 1.2, 0)
-                rgb_flow_mask = (np.linalg.norm(flow, axis=-1) < flow_threshold)
+                flow_mask = (np.linalg.norm(flow, axis=-1) < flow_threshold)
+                if flow_mask.shape != (H, W):
+                    static_mask = cv2.resize(
+                        flow_mask.astype(np.uint8), (W, H),
+                        interpolation=cv2.INTER_NEAREST).astype(bool)
+                else:
+                    static_mask = flow_mask
 
-        if os.path.exists(mask_path):
-            seg_t = cv2.imread(mask_path, cv2.IMREAD_GRAYSCALE)
-            if seg_t.shape[:2] != (H, W):
-                seg_t = cv2.resize(seg_t, (W, H), interpolation=cv2.INTER_NEAREST)
-
-            is_background = (seg_t == 0)
-
-            mask_stable = np.ones((H, W), dtype=bool)
-            t_adj = t + 1 if _rgb_path(t + 1) else (t - 1 if _rgb_path(t - 1) else None)
-            if t_adj:
-                m_adj_path = os.path.join(view_dir, "mask", f"{t_adj:05d}.png")
-                if not os.path.exists(m_adj_path): m_adj_path = os.path.join(view_dir, "mask", f"{t_adj:06d}.png")
-                if os.path.exists(m_adj_path):
-                    seg_adj = cv2.imread(m_adj_path, cv2.IMREAD_GRAYSCALE)
-                    if seg_adj.shape[:2] != (H, W): seg_adj = cv2.resize(seg_adj, (W, H), interpolation=cv2.INTER_NEAREST)
-                    flow_s = cv2.calcOpticalFlowFarneback(seg_t.astype(np.float32), seg_adj.astype(np.float32), None, 0.5, 3, 15, 3, 5, 1.2, 0)
-                    mask_stable = (np.linalg.norm(flow_s, axis=-1) < flow_threshold)
-
-            # Union Logic:
-            # - Always keep Background (is_background)
-            # - Add Foreground (seg_t > 0) IF it is stable
-            static_mask = is_background | (mask_stable & rgb_flow_mask)
-        else:
-            static_mask = rgb_flow_mask
 
         # ── Collect Valid Correspondence Pixels ───────────────────────────────
         conf = cv2.resize(confs[i], (W, H), interpolation=cv2.INTER_NEAREST)

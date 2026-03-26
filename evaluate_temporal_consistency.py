@@ -16,7 +16,6 @@ from mast3r.utils.temporal_metrics import (
 def main():
     import argparse
     parser = argparse.ArgumentParser()
-    parser.add_argument("--mask_mode", type=str, choices=["none", "masked", "inverse_masked"], default="none")
     parser.add_argument("--input_dir", type=str, default=None, help="Custom directory containing frame_*.npz files")
     args = parser.parse_args()
 
@@ -28,18 +27,8 @@ def main():
         # Derived out_plot_dir from input_dir
         out_plot_dir = in_dir.replace("aligned_outputs", "plots")
     else:
-        prefix = "aligned_outputs_temporal" if args.use_temporal_ba else "aligned_outputs"
-        plot_prefix = "plots_temporal" if args.use_temporal_ba else "plots"
-
-        if args.mask_mode == "masked":
-            in_dir = f"{prefix}_masked"
-            out_plot_dir = f"{plot_prefix}_masked"
-        elif args.mask_mode == "inverse_masked":
-            in_dir = f"{prefix}_inverse"
-            out_plot_dir = f"{plot_prefix}_inverse"
-        else:
-            in_dir = prefix
-            out_plot_dir = plot_prefix
+        in_dir = "aligned_outputs"
+        out_plot_dir = "plots"
 
     files = sorted(glob.glob(f"{in_dir}/frame_*.npz"))
     if not files:
