@@ -1,9 +1,7 @@
-import argparse
 import os
 import tempfile
 import numpy as np
 import torch
-import cv2
 import rerun as rr
 import glob
 from collections import defaultdict
@@ -21,7 +19,7 @@ from mast3r.utils.umeyama_alignment import (
     estimate_similarity_transform,
     apply_similarity_transform,
 )
-from mast3r.utils.optical_flow import stabilise_static_points, compute_static_mask
+from mast3r.utils.optical_flow import compute_static_mask
 
 # Building Ground Truth
 from mast3r.utils.gt import (
@@ -45,23 +43,8 @@ CLEAN_DEPTH = True
 
 
 # ── helpers ───────────────────────────────────────────────────────────────────
-def get_masked_image(t, vname, rgb_path, mask_mode, cache_dir, dataset_root):
-    if mask_mode == "none":
-        return rgb_path
-    view_dir = os.path.join(dataset_root, vname)
-    mask_path = os.path.join(view_dir, "mask", f"{t:05d}.png")
-    if not os.path.exists(mask_path):
-        mask_path = os.path.join(view_dir, "mask", f"{t:06d}.png")
-    img = cv2.imread(rgb_path)
-    if os.path.exists(mask_path):
-        mask = cv2.imread(mask_path, cv2.IMREAD_GRAYSCALE)
-        if mask.shape[:2] != img.shape[:2]:
-            mask = cv2.resize(mask, (img.shape[1], img.shape[0]), interpolation=cv2.INTER_NEAREST)
-        valid = (mask > 0) if mask_mode == "masked" else (mask == 0)
-        img[~valid] = 0
-    out_path = os.path.join(cache_dir, f"{vname}_{t:05d}_masked.jpg")
-    cv2.imwrite(out_path, img)
-    return out_path
+def get_masked_image(t, vname, rgb_path, cache_dir, dataset_root):
+    return rgb_path
 
 
 def build_views(dataset_root, target_views=None):
@@ -110,13 +93,7 @@ def compute_all_static_masks(views, view_names, flow_threshold, verbose=True):
 
 
 def main():
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--mask_mode", choices=["none", "masked", "inverse_masked"], default="none")
-    parser.add_argument("--stabilise", action="store_true",
-                        help="Static regions → temporal median  → aligned_outputs_stabilised/")
-    parser.add_argument("--flow_threshold", type=float, default=1.0,
-                        help="Max flow magnitude (px) for a pixel to be classified static")
-    args = parser.parse_args()
+    flow_threshold = 1.0
 
     torch.backends.cuda.matmul.allow_tf32 = True
     try:
@@ -137,13 +114,12 @@ def main():
 
     cache_root = os.path.join(tempfile.gettempdir(), "mast3r_alignment_cache")
     os.makedirs(cache_root, exist_ok=True)
-    all_scenes = []
 
     for t in range(n_frames):
         print(f"── t={t:02d} / {n_frames - 1} ──────────────────────────────────────")
 
         masked_current_files = [
-            get_masked_image(t, v, views[v][t], args.mask_mode, cache_root, DATASET_ROOT)
+            get_masked_image(t, v, views[v][t], cache_root, DATASET_ROOT)
             for v in view_names
         ]
 
@@ -158,28 +134,25 @@ def main():
             matching_conf_thr=0.0
         )
 
-        if args.stabilise:
-            all_scenes.append(scene)
-
         pts3d_list, depthmaps, confs = to_numpy(scene.get_dense_pts3d(clean_depth=CLEAN_DEPTH))
 
-        # ── Build full GT (used for evaluation and logging) ────────────────────
-        gt_pts = build_gt_pointcloud(t, view_names, DATASET_ROOT,
-                                     mask_mode=args.mask_mode)
+        # ── Full GT ─────────────────────────────────────────────────────────
+        gt_pts = build_gt_pointcloud(
+            t, view_names, DATASET_ROOT
+        )
         if gt_pts is None:
             continue
 
-        # ── Build static-only GT (used for alignment only) ────────────────────
+        # ── Static-only GT ──────────────────────────────────────────────────
         static_gt_pts = build_static_gt_pointcloud(
             t, view_names, DATASET_ROOT,
-            flow_threshold=args.flow_threshold,
-            mask_mode=args.mask_mode,
+            flow_threshold=flow_threshold
         )
 
-        # ── Point-based Umeyama: align via correspondences ────────────────────
+        # ── Correspondences ─────────────────────────────────────────────────
         src_corr, dst_corr = get_static_correspondences(
             t, view_names, scene, DATASET_ROOT,
-            flow_threshold=args.flow_threshold,
+            flow_threshold=flow_threshold,
             min_conf_thr=MIN_CONF_THR
         )
 
@@ -187,67 +160,92 @@ def main():
             s, R, tr = estimate_similarity_transform(src_corr, dst_corr)
             print(f"  ✓ t={t:02d}  scale={s:.4f}  corr={len(src_corr):,}")
         else:
-            # Fallback: camera-based Umeyama if correspondences are too few
-            print(f"  [WARN] t={t:02d}: too few correspondences ({len(src_corr) if src_corr is not None else 0}), falling back to camera-based")
-            est_cam, gt_cam = get_camera_correspondences(t, view_names, scene, DATASET_ROOT)
+            print(f"  [WARN] t={t:02d}: too few correspondences "
+                  f"({len(src_corr) if src_corr is not None else 0}), falling back to camera-based")
+
+            est_cam, gt_cam = get_camera_correspondences(
+                t, view_names, scene, DATASET_ROOT
+            )
             s, R, tr = estimate_similarity_transform(est_cam, gt_cam)
             print(f"  ✓ t={t:02d}  scale={s:.4f} (camera fallback)")
 
-        # ── Build filtered estimated points (now aware of scale s) ─────────────────
+        # ── Filter estimated points ─────────────────────────────────────────
         max_depth_est = DEPTH_MAX_M / s
         est_pts = np.concatenate([
             pts3d_list[i].reshape(-1, 3)[
                 (confs[i].ravel() > MIN_CONF_THR) &
                 (depthmaps[i].ravel() < max_depth_est)
-            ]
+                ]
             for i in range(len(view_names))
         ], axis=0)
 
-        # ── Apply transform to full estimated points ───────────────────────────
+        # ── Apply alignment ─────────────────────────────────────────────────
         aligned_pts = apply_similarity_transform(est_pts, s, R, tr)
 
-        # ── Log full GT + full estimated + full aligned + static GT ────────────
-        log_alignment_rerun(t, gt_pts, est_pts, aligned_pts, static_gt_pts=static_gt_pts)
+        # ── Logging ─────────────────────────────────────────────────────────
+        log_alignment_rerun(
+            t, gt_pts, est_pts, aligned_pts,
+            static_gt_pts=static_gt_pts
+        )
 
-        out_dir = {"masked": "aligned_outputs_masked",
-                   "inverse_masked": "aligned_outputs_inverse"}.get(
-            args.mask_mode, "aligned_outputs")
+        # ── Collect Masks and Camera Params for Split-Accuracy Metrics (All Views) ──
+        valid_masks = []
+        valid_Ks = []
+        valid_R_ts = []
 
+        from mast3r.utils.gt import load_gt_params
+        from mast3r.utils.optical_flow import compute_static_mask
+        import cv2
+
+        for vname in view_names:
+            view_dir = os.path.join(DATASET_ROOT, vname)
+            K, cam2world = load_gt_params(view_dir)
+            R_t = np.linalg.inv(cam2world)
+
+            rgb_dir = os.path.join(view_dir, "rgb") if os.path.isdir(os.path.join(view_dir, "rgb")) else view_dir
+
+            def _rgb_path(frame_t):
+                for ext in (".png", ".jpg", ".jpeg"):
+                    p = os.path.join(rgb_dir, f"{frame_t:05d}{ext}")
+                    if os.path.exists(p): return p
+                return None
+
+            rgb_t = _rgb_path(t)
+            rgb_adj = _rgb_path(t + 1) or _rgb_path(t - 1)
+            rgb_paths = [p for p in [rgb_t, rgb_adj] if p is not None]
+            flow_mask = compute_static_mask(rgb_paths)
+
+            if flow_mask is not None:
+                depth_path = os.path.join(view_dir, "depth", f"{t:05d}.png")
+                if os.path.exists(depth_path):
+                    depth_raw = cv2.imread(depth_path, cv2.IMREAD_UNCHANGED)
+                    if flow_mask.shape != depth_raw.shape[:2]:
+                        flow_mask = cv2.resize(flow_mask.astype(np.uint8), (depth_raw.shape[1], depth_raw.shape[0]),
+                                               interpolation=cv2.INTER_NEAREST).astype(bool)
+                valid_masks.append(flow_mask)
+                valid_Ks.append(K)
+                valid_R_ts.append(R_t)
+
+        out_dir = "aligned_outputs"
         os.makedirs(out_dir, exist_ok=True)
 
-        np.savez(os.path.join(out_dir, f"frame_{t:02d}.npz"),
-                 gt_pts=gt_pts,
-                 aligned_pts=aligned_pts,
-                 scale=float(s),
-                 frame_idx=int(t))
+        save_dict = {
+            'gt_pts': gt_pts,
+            'aligned_pts': aligned_pts,
+            'scale': float(s),
+            'frame_idx': int(t),
+            'Ks': np.array(valid_Ks),
+            'R_ts': np.array(valid_R_ts)
+        }
+        if valid_masks:
+            save_dict['masks_2d'] = np.stack(valid_masks)
 
-    # ── Post-processing passes ─────────────────────────────────────────────────
-    if args.stabilise and all_scenes:
-        base_dir = {"masked": "aligned_outputs_masked",
-                    "inverse_masked": "aligned_outputs_inverse"}.get(args.mask_mode,
-                                                                     "aligned_outputs")
-
-        # Compute flow masks once — shared by all passes
-        static_masks = compute_all_static_masks(views, view_names, args.flow_threshold)
-
-        if args.stabilise:
-            # Static regions only → aligned_outputs_stabilised/
-            stabilise_static_points(
-                views, view_names, all_scenes,
-                get_cam_corr_fn=get_camera_correspondences,
-                estimate_transform_fn=estimate_similarity_transform,
-                log_rerun_fn=log_alignment_rerun,
-                dataset_root=DATASET_ROOT,
-                static_masks=static_masks,
-                out_dir_in=base_dir,
-                out_dir_out="aligned_outputs_stabilised",
-                flow_threshold=args.flow_threshold)
+        np.savez(os.path.join(out_dir, f"frame_{t:02d}.npz"), **save_dict)
 
     print("[done]")
     print("\nRun metrics with:")
-    print(f"  python evaluate_temporal_consistency.py")
-    if args.stabilise:
-        print(f"  python evaluate_temporal_consistency.py --input_dir aligned_outputs_stabilised")
+    print("  python evaluate_temporal_consistency.py")
+
 
 if __name__ == "__main__":
     main()
