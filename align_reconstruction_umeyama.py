@@ -4,6 +4,7 @@ import numpy as np
 import torch
 import rerun as rr
 import glob
+import cv2
 from collections import defaultdict
 
 # MASt3R imports
@@ -23,10 +24,12 @@ from mast3r.utils.optical_flow import compute_static_mask
 
 # Building Ground Truth
 from mast3r.utils.gt import (
+    load_gt_params,
     build_gt_pointcloud,
     build_static_gt_pointcloud,
     get_static_correspondences,
     get_camera_correspondences,
+    build_gt_validity_masks,
     DEPTH_MAX_M,
 )
 
@@ -170,14 +173,39 @@ def main():
             print(f"  ✓ t={t:02d}  scale={s:.4f} (camera fallback)")
 
         # ── Filter estimated points ─────────────────────────────────────────
-        max_depth_est = DEPTH_MAX_M / s
-        est_pts = np.concatenate([
-            pts3d_list[i].reshape(-1, 3)[
-                (confs[i].ravel() > MIN_CONF_THR) &
-                (depthmaps[i].ravel() < max_depth_est)
-                ]
-            for i in range(len(view_names))
-        ], axis=0)
+
+
+        gt_validity_masks = build_gt_validity_masks(
+            t, view_names, DATASET_ROOT,
+            depth_max_m=DEPTH_MAX_M,
+            target_hw=None,  # handled per-view below
+        )
+
+        est_pts_parts = []
+        for i, vname in enumerate(view_names):
+            pts_i = pts3d_list[i].reshape(-1, 3)
+            conf_i = confs[i].ravel()
+            conf_ok = conf_i > MIN_CONF_THR
+
+            gt_mask = gt_validity_masks[i]
+            if gt_mask is None:
+                print(f"  [WARN] no GT depth for {vname} at t={t}, skipping view")
+                continue
+
+            # Use confs[i].shape — NOT pts3d_list[i].shape[:2] —
+            # because pts3d_list may be at native resolution while
+            # confs is at MASt3R output resolution (e.g. 384×512)
+            H, W = confs[i].shape[:2]  # <-- fix is here
+            if gt_mask.shape != (H, W):
+                gt_mask = cv2.resize(
+                    gt_mask.astype(np.uint8), (W, H),
+                    interpolation=cv2.INTER_NEAREST,
+                ).astype(bool)
+
+            valid = conf_ok & gt_mask.ravel()  # now both (196608,)
+            est_pts_parts.append(pts_i[valid])
+
+        est_pts = np.concatenate(est_pts_parts, axis=0)
 
         # ── Apply alignment ─────────────────────────────────────────────────
         aligned_pts = apply_similarity_transform(est_pts, s, R, tr)
@@ -193,9 +221,7 @@ def main():
         valid_Ks = []
         valid_R_ts = []
 
-        from mast3r.utils.gt import load_gt_params
-        from mast3r.utils.optical_flow import compute_static_mask
-        import cv2
+
 
         for vname in view_names:
             view_dir = os.path.join(DATASET_ROOT, vname)

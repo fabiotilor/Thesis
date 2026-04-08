@@ -40,7 +40,7 @@ def main():
     static_accuracies = []
     dynamic_accuracies = []
 
-    taus = [0.005, 0.01, 0.02, 0.03, 0.05]
+    taus = [0.01] #0.005, 0.01, 0.02, 0.03, 0.05
     static_accuracies_taus = {tau: [] for tau in taus}
     dynamic_accuracies_taus = {tau: [] for tau in taus}
 
@@ -137,21 +137,22 @@ def main():
     plt.close()
 
     # Plot 6: Accuracy-Threshold Curve
-    mean_static_taus = [np.nanmean(static_accuracies_taus[t]) for t in taus]
-    mean_dynamic_taus = [np.nanmean(dynamic_accuracies_taus[t]) for t in taus]
+    if len(taus) > 1:
+        mean_static_taus = [np.nanmean(static_accuracies_taus[t]) for t in taus]
+        mean_dynamic_taus = [np.nanmean(dynamic_accuracies_taus[t]) for t in taus]
 
-    plt.figure()
-    plt.plot(taus, [m * 100 for m in mean_static_taus], marker='o', color='blue', label='Static')
-    plt.plot(taus, [m * 100 for m in mean_dynamic_taus], marker='x', color='red', label='Dynamic')
-    plt.title('Accuracy-Threshold Curve')
-    plt.xlabel('Distance Threshold (m)')
-    plt.ylabel('Mean Accuracy (%)')
-    plt.legend()
-    plt.grid(True)
-    plt.savefig(os.path.join(out_plot_dir, 'accuracy_threshold_curve.png'))
-    plt.close()
+        plt.figure()
+        plt.plot(taus, [m * 100 for m in mean_static_taus], marker='o', color='blue', label='Static')
+        plt.plot(taus, [m * 100 for m in mean_dynamic_taus], marker='x', color='red', label='Dynamic')
+        plt.title('Accuracy-Threshold Curve')
+        plt.xlabel('Distance Threshold (m)')
+        plt.ylabel('Mean Accuracy (%)')
+        plt.legend()
+        plt.grid(True)
+        plt.savefig(os.path.join(out_plot_dir, 'accuracy_threshold_curve.png'))
+        plt.close()
 
-    print(f"\nPlots saved in {out_plot_dir}/ directory.")
+        print(f"\nPlots saved in {out_plot_dir}/ directory.")
 
 
 if __name__ == '__main__':

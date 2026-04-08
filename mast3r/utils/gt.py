@@ -246,3 +246,34 @@ def get_static_correspondences(t, view_names, scene, dataset_root,
         return None, None
 
     return np.concatenate(all_est, axis=0), np.concatenate(all_gt, axis=0)
+
+def build_gt_validity_masks(t, view_names, dataset_root, depth_max_m=1.5, target_hw=None):
+    """
+    Returns a list of boolean 2D masks (one per view), True where the GT depth
+    is valid (> 0) and within depth_max_m.  Optionally resized to target_hw=(H,W)
+    to match the MASt3R output pointmap resolution.
+    """
+    masks = []
+    for vname in view_names:
+        view_dir = os.path.join(dataset_root, vname)
+        depth_path = os.path.join(view_dir, "depth", f"{t:05d}.png")
+
+        if not os.path.exists(depth_path):
+            masks.append(None)
+            continue
+
+        # DexYCB depths are uint16, stored in millimetres
+        depth_raw = cv2.imread(depth_path, cv2.IMREAD_UNCHANGED)
+        depth_m   = depth_raw.astype(np.float32) / 1000.0  # mm → m
+
+        mask = (depth_m > 0) & (depth_m <= depth_max_m)   # (H, W) bool
+
+        if target_hw is not None and mask.shape != tuple(target_hw):
+            mask = cv2.resize(
+                mask.astype(np.uint8),
+                (target_hw[1], target_hw[0]),          # cv2 wants (W, H)
+                interpolation=cv2.INTER_NEAREST,
+            ).astype(bool)
+
+        masks.append(mask)
+    return masks
