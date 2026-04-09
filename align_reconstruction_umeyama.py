@@ -43,6 +43,13 @@ RERUN_ADDR = "rerun+http://127.0.0.1:9876/proxy"
 MIN_CONF_THR = 2.0
 SCENEGRAPH = "complete"
 CLEAN_DEPTH = True
+RUN_MULTI_VIEW_EVAL = False
+VIEW_CONFIGS = {
+    2: ["00", "06"],
+    3: ["00", "06", "05"],
+    4: None,
+}
+DEFAULT_TARGET_VIEWS = ["00", "06", "05", "04"]
 
 
 # ── helpers ───────────────────────────────────────────────────────────────────
@@ -68,19 +75,72 @@ def build_views(dataset_root, target_views=None):
     return dict(views)
 
 
-def log_alignment_rerun(t, gt_pts, est_pts, aligned_pts, refined_pts=None, static_gt_pts=None):
+def log_alignment_rerun(
+    t,
+    gt_pts,
+    est_pts,
+    aligned_pts,
+    refined_pts=None,
+    static_gt_pts=None,
+    log_root="world",
+):
     rr.set_time("timestep", sequence=t)
     if gt_pts is not None:
-        rr.log("world/gt", rr.Points3D(positions=gt_pts, colors=[0, 255, 0], radii=0.002))
+        rr.log(f"{log_root}/gt", rr.Points3D(positions=gt_pts, colors=[0, 255, 0], radii=0.002))
     if static_gt_pts is not None:
-        rr.log("world/gt_static", rr.Points3D(positions=static_gt_pts, colors=[255, 165, 0], radii=0.002))
+        rr.log(
+            f"{log_root}/gt_static",
+            rr.Points3D(positions=static_gt_pts, colors=[255, 165, 0], radii=0.002),
+        )
     if est_pts is not None:
-        rr.log("world/estimated/raw", rr.Points3D(positions=est_pts, colors=[255, 0, 0], radii=0.002))
+        rr.log(
+            f"{log_root}/estimated/raw",
+            rr.Points3D(positions=est_pts, colors=[255, 0, 0], radii=0.002),
+        )
     if aligned_pts is not None:
-        rr.log("world/estimated/aligned", rr.Points3D(positions=aligned_pts, colors=[0, 0, 255], radii=0.002))
+        rr.log(
+            f"{log_root}/estimated/aligned",
+            rr.Points3D(positions=aligned_pts, colors=[0, 0, 255], radii=0.002),
+        )
     if refined_pts is not None:
-        rr.log("world/estimated/stabilised",
-               rr.Points3D(positions=refined_pts, colors=[255, 0, 255], radii=0.002))
+        rr.log(
+            f"{log_root}/estimated/stabilised",
+            rr.Points3D(positions=refined_pts, colors=[255, 0, 255], radii=0.002),
+        )
+
+
+def log_cameras_rerun(t, view_names, views, dataset_root, log_root):
+    rr.set_time("timestep", sequence=t)
+    for vname in view_names:
+        view_dir = os.path.join(dataset_root, vname)
+        K, c2w = load_gt_params(view_dir)
+
+        rgb_path = views[vname][t]
+        img_bgr = cv2.imread(rgb_path)
+        if img_bgr is None:
+            print(f"  [WARN] Could not read RGB image for camera {vname} at t={t}")
+            continue
+        img_rgb = cv2.cvtColor(img_bgr, cv2.COLOR_BGR2RGB)
+        H, W = img_rgb.shape[:2]
+
+        entity = f"{log_root}/cameras/{vname}"
+        rr.log(
+            entity,
+            rr.Pinhole(
+                focal_length=float(K[0, 0]),
+                width=W,
+                height=H,
+                image_plane_distance=0.2,
+            ),
+        )
+        rr.log(
+            entity,
+            rr.Transform3D(
+                translation=c2w[:3, 3],
+                mat3x3=c2w[:3, :3],
+            ),
+        )
+        rr.log(f"{entity}/rgb", rr.Image(img_rgb))
 
 
 def compute_all_static_masks(views, view_names, flow_threshold, verbose=True):
@@ -95,31 +155,32 @@ def compute_all_static_masks(views, view_names, flow_threshold, verbose=True):
     return static_masks
 
 
-def main():
-    flow_threshold = 1.0
-
-    torch.backends.cuda.matmul.allow_tf32 = True
+def run_reconstruction(model, target_views, out_dir, cache_root, flow_threshold=1.0, run_tag="default"):
+    rerun_stream = f"mast3r_stabilisation_{run_tag}"
     try:
-        rr.init("mast3r_stabilisation", spawn=False)
+        rr.init(rerun_stream, spawn=False)
         rr.connect_grpc(RERUN_ADDR)
     except Exception as e:
-        print(f"[WARN] Rerun init failed: {e}")
-    rr.log("world", rr.ViewCoordinates.RIGHT_HAND_Y_UP, static=True)
+        print(f"[WARN] Rerun init failed for {run_tag}: {e}")
+    log_root = f"world/{run_tag}"
+    rr.log(log_root, rr.ViewCoordinates.RIGHT_HAND_Y_UP, static=True)
 
-    target_views = ["05", "04", "00", "02"]
     views = build_views(DATASET_ROOT, target_views=target_views)
     view_names = sorted(views.keys())
+    if not view_names:
+        print(f"[WARN] No valid views found for target_views={target_views}; skipping run.")
+        return
     print(f"[INFO] Using views: {view_names}")
 
     n_frames = len(views[view_names[0]])
-    print(f"[INFO] loading model '{MODEL_NAME}' …")
-    model = AsymmetricMASt3R.from_pretrained(MODEL_NAME).to(DEVICE)
-
-    cache_root = os.path.join(tempfile.gettempdir(), "mast3r_alignment_cache")
-    os.makedirs(cache_root, exist_ok=True)
+    run_cache_root = os.path.join(cache_root, run_tag)
+    os.makedirs(run_cache_root, exist_ok=True)
+    os.makedirs(out_dir, exist_ok=True)
 
     for t in range(n_frames):
         print(f"── t={t:02d} / {n_frames - 1} ──────────────────────────────────────")
+
+        log_cameras_rerun(t, view_names, views, DATASET_ROOT, log_root)
 
         masked_current_files = [
             get_masked_image(t, v, views[v][t], cache_root, DATASET_ROOT)
@@ -131,7 +192,7 @@ def main():
         scene = sparse_global_alignment(
             masked_current_files,
             pairs,
-            os.path.join(cache_root, f"t{t:02d}"),
+            os.path.join(run_cache_root, f"t{t:02d}"),
             model,
             device=DEVICE,
             matching_conf_thr=0.0
@@ -213,7 +274,8 @@ def main():
         # ── Logging ─────────────────────────────────────────────────────────
         log_alignment_rerun(
             t, gt_pts, est_pts, aligned_pts,
-            static_gt_pts=static_gt_pts
+            static_gt_pts=static_gt_pts,
+            log_root=log_root,
         )
 
         # ── Collect Masks and Camera Params for Split-Accuracy Metrics (All Views) ──
@@ -252,9 +314,6 @@ def main():
                 valid_Ks.append(K)
                 valid_R_ts.append(R_t)
 
-        out_dir = "aligned_outputs"
-        os.makedirs(out_dir, exist_ok=True)
-
         save_dict = {
             'gt_pts': gt_pts,
             'aligned_pts': aligned_pts,
@@ -267,6 +326,41 @@ def main():
             save_dict['masks_2d'] = np.stack(valid_masks)
 
         np.savez(os.path.join(out_dir, f"frame_{t:02d}.npz"), **save_dict)
+
+
+def main():
+    flow_threshold = 1.0
+
+    torch.backends.cuda.matmul.allow_tf32 = True
+
+    print(f"[INFO] loading model '{MODEL_NAME}' …")
+    model = AsymmetricMASt3R.from_pretrained(MODEL_NAME).to(DEVICE)
+    cache_root = os.path.join(tempfile.gettempdir(), "mast3r_alignment_cache")
+    os.makedirs(cache_root, exist_ok=True)
+
+    if not RUN_MULTI_VIEW_EVAL:
+        run_reconstruction(
+            model=model,
+            target_views=DEFAULT_TARGET_VIEWS,
+            out_dir="aligned_outputs",
+            cache_root=cache_root,
+            flow_threshold=flow_threshold,
+            run_tag="default_4views",
+        )
+    else:
+        for num_views in [2, 3, 4]:
+            target_views = VIEW_CONFIGS[num_views]
+            if target_views is None:
+                target_views = DEFAULT_TARGET_VIEWS
+            out_dir = os.path.join("aligned_outputs", f"{num_views}views")
+            run_reconstruction(
+                model=model,
+                target_views=target_views,
+                out_dir=out_dir,
+                cache_root=cache_root,
+                flow_threshold=flow_threshold,
+                run_tag=f"{num_views}views",
+            )
 
     print("[done]")
     print("\nRun metrics with:")
