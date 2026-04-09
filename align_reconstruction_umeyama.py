@@ -34,7 +34,19 @@ from mast3r.utils.gt import (
 )
 
 # ── configuration ─────────────────────────────────────────────────────────────
-DATASET_ROOT = "/home/fabio/datasets/dex-ycb-multiview/20200709-subject-01__20200709_141754"
+DATASET_BASE_ROOT = "/home/fabio/datasets/dex-ycb-multiview"
+SUBJECT_NAMES = [
+    "20200709-subject-01__20200709_141754",
+    "20200813-subject-02__20200813_145653",
+    "20200820-subject-03__20200820_135841",
+    "20200903-subject-04__20200903_104428",
+    "20200908-subject-05__20200908_144409",
+    "20200918-subject-06__20200918_114117",
+    "20200928-subject-07__20200928_144906",
+    "20201002-subject-08__20201002_110227",
+    "20201015-subject-09__20201015_144721",
+    "20201022-subject-10__20201022_112651",
+]
 MODEL_NAME = "naver/MASt3R_ViTLarge_BaseDecoder_512_catmlpdpt_metric"
 IMAGE_SIZE = 512
 DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
@@ -50,6 +62,7 @@ VIEW_CONFIGS = {
     4: None,
 }
 DEFAULT_TARGET_VIEWS = ["00", "06", "05", "04"]
+RERUN_EYE_UP = [-0.04418, -0.6565, -0.7531]
 
 
 # ── helpers ───────────────────────────────────────────────────────────────────
@@ -155,7 +168,37 @@ def compute_all_static_masks(views, view_names, flow_threshold, verbose=True):
     return static_masks
 
 
-def run_reconstruction(model, target_views, out_dir, cache_root, flow_threshold=1.0, run_tag="default"):
+def configure_rerun_view_defaults(log_root):
+    # Best-effort default 3D view orientation across Rerun versions.
+    # Some SDK versions expose `eye_up`, others `up`, and older ones may not support either.
+    try:
+        import rerun.blueprint as rrb
+    except Exception:
+        return
+
+    kwargs_variants = [
+        {"origin": log_root, "name": f"{log_root}_3d", "eye_up": RERUN_EYE_UP},
+        {"origin": log_root, "name": f"{log_root}_3d", "up": RERUN_EYE_UP},
+        {"origin": log_root, "name": f"{log_root}_3d"},
+    ]
+    for kwargs in kwargs_variants:
+        try:
+            view = rrb.Spatial3DView(**kwargs)
+            rr.send_blueprint(rrb.Blueprint(view))
+            return
+        except Exception:
+            continue
+
+
+def run_reconstruction(
+    model,
+    dataset_root,
+    target_views,
+    out_dir,
+    cache_root,
+    flow_threshold=1.0,
+    run_tag="default",
+):
     rerun_stream = f"mast3r_stabilisation_{run_tag}"
     try:
         rr.init(rerun_stream, spawn=False)
@@ -164,8 +207,9 @@ def run_reconstruction(model, target_views, out_dir, cache_root, flow_threshold=
         print(f"[WARN] Rerun init failed for {run_tag}: {e}")
     log_root = f"world/{run_tag}"
     rr.log(log_root, rr.ViewCoordinates.RIGHT_HAND_Y_UP, static=True)
+    configure_rerun_view_defaults(log_root)
 
-    views = build_views(DATASET_ROOT, target_views=target_views)
+    views = build_views(dataset_root, target_views=target_views)
     view_names = sorted(views.keys())
     if not view_names:
         print(f"[WARN] No valid views found for target_views={target_views}; skipping run.")
@@ -180,10 +224,10 @@ def run_reconstruction(model, target_views, out_dir, cache_root, flow_threshold=
     for t in range(n_frames):
         print(f"── t={t:02d} / {n_frames - 1} ──────────────────────────────────────")
 
-        log_cameras_rerun(t, view_names, views, DATASET_ROOT, log_root)
+        log_cameras_rerun(t, view_names, views, dataset_root, log_root)
 
         masked_current_files = [
-            get_masked_image(t, v, views[v][t], cache_root, DATASET_ROOT)
+            get_masked_image(t, v, views[v][t], cache_root, dataset_root)
             for v in view_names
         ]
 
@@ -202,20 +246,20 @@ def run_reconstruction(model, target_views, out_dir, cache_root, flow_threshold=
 
         # ── Full GT ─────────────────────────────────────────────────────────
         gt_pts = build_gt_pointcloud(
-            t, view_names, DATASET_ROOT
+            t, view_names, dataset_root
         )
         if gt_pts is None:
             continue
 
         # ── Static-only GT ──────────────────────────────────────────────────
         static_gt_pts = build_static_gt_pointcloud(
-            t, view_names, DATASET_ROOT,
+            t, view_names, dataset_root,
             flow_threshold=flow_threshold
         )
 
         # ── Correspondences ─────────────────────────────────────────────────
         src_corr, dst_corr = get_static_correspondences(
-            t, view_names, scene, DATASET_ROOT,
+            t, view_names, scene, dataset_root,
             flow_threshold=flow_threshold,
             min_conf_thr=MIN_CONF_THR
         )
@@ -228,7 +272,7 @@ def run_reconstruction(model, target_views, out_dir, cache_root, flow_threshold=
                   f"({len(src_corr) if src_corr is not None else 0}), falling back to camera-based")
 
             est_cam, gt_cam = get_camera_correspondences(
-                t, view_names, scene, DATASET_ROOT
+                t, view_names, scene, dataset_root
             )
             s, R, tr = estimate_similarity_transform(est_cam, gt_cam)
             print(f"  ✓ t={t:02d}  scale={s:.4f} (camera fallback)")
@@ -237,7 +281,7 @@ def run_reconstruction(model, target_views, out_dir, cache_root, flow_threshold=
 
 
         gt_validity_masks = build_gt_validity_masks(
-            t, view_names, DATASET_ROOT,
+            t, view_names, dataset_root,
             depth_max_m=DEPTH_MAX_M,
             target_hw=None,  # handled per-view below
         )
@@ -286,7 +330,7 @@ def run_reconstruction(model, target_views, out_dir, cache_root, flow_threshold=
 
 
         for vname in view_names:
-            view_dir = os.path.join(DATASET_ROOT, vname)
+            view_dir = os.path.join(dataset_root, vname)
             K, cam2world = load_gt_params(view_dir)
             R_t = np.linalg.inv(cam2world)
 
@@ -338,28 +382,28 @@ def main():
     cache_root = os.path.join(tempfile.gettempdir(), "mast3r_alignment_cache")
     os.makedirs(cache_root, exist_ok=True)
 
-    if not RUN_MULTI_VIEW_EVAL:
-        run_reconstruction(
-            model=model,
-            target_views=DEFAULT_TARGET_VIEWS,
-            out_dir="aligned_outputs",
-            cache_root=cache_root,
-            flow_threshold=flow_threshold,
-            run_tag="default_4views",
-        )
-    else:
-        for num_views in [2, 3, 4]:
-            target_views = VIEW_CONFIGS[num_views]
+    for subject_name in SUBJECT_NAMES:
+        dataset_root = os.path.join(DATASET_BASE_ROOT, subject_name)
+        if not os.path.isdir(dataset_root):
+            print(f"[WARN] Subject directory not found, skipping: {dataset_root}")
+            continue
+
+        print(f"\n[INFO] Processing subject: {subject_name}")
+        camera_counts = [2, 3, 4] if RUN_MULTI_VIEW_EVAL else [4]
+
+        for num_views in camera_counts:
+            target_views = VIEW_CONFIGS.get(num_views)
             if target_views is None:
                 target_views = DEFAULT_TARGET_VIEWS
-            out_dir = os.path.join("aligned_outputs", f"{num_views}views")
+            out_dir = os.path.join("aligned_outputs", subject_name, f"{num_views}views")
             run_reconstruction(
                 model=model,
+                dataset_root=dataset_root,
                 target_views=target_views,
                 out_dir=out_dir,
                 cache_root=cache_root,
                 flow_threshold=flow_threshold,
-                run_tag=f"{num_views}views",
+                run_tag=f"{subject_name}_{num_views}views",
             )
 
     print("[done]")

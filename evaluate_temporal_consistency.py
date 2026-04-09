@@ -24,7 +24,7 @@ def evaluate_configuration(in_dir, out_plot_dir, plot_prefix=""):
     static_accuracies = []
     dynamic_accuracies = []
 
-    taus = [0.01]#0.005, 0.01, 0.02, 0.03, 0.05
+    taus = [0.01] #0.005, 0.01, 0.02, 0.03, 0.05
     static_accuracies_taus = {tau: [] for tau in taus}
     dynamic_accuracies_taus = {tau: [] for tau in taus}
 
@@ -131,6 +131,42 @@ def evaluate_configuration(in_dir, out_plot_dir, plot_prefix=""):
     }
 
 
+def plot_accuracy_vs_cameras(out_plot_dir, camera_counts, static_means, dynamic_means, filename):
+    plt.figure()
+    plt.plot(camera_counts, static_means, marker='o', color='blue', label='Static Accuracy')
+    plt.plot(camera_counts, dynamic_means, marker='x', color='red', label='Dynamic Accuracy')
+    plt.title('Static vs Dynamic Accuracy vs Number of Cameras')
+    plt.xlabel('Number of Cameras')
+    plt.ylabel('Accuracy (% < 1cm)')
+    plt.legend()
+    plt.grid(True)
+    plt.savefig(os.path.join(out_plot_dir, filename))
+    plt.close()
+
+
+def evaluate_camera_configs(base_in_dir, out_plot_dir, camera_counts, plot_prefix=""):
+    results = {}
+    available_counts = []
+    for cam_count in camera_counts:
+        in_dir = os.path.join(base_in_dir, f"{cam_count}views")
+        if not os.path.isdir(in_dir):
+            print(f"[INFO] Missing directory: {in_dir}, skipping.")
+            continue
+        metrics = evaluate_configuration(
+            in_dir=in_dir,
+            out_plot_dir=out_plot_dir,
+            plot_prefix=f"{plot_prefix}{cam_count}views_",
+        )
+        if metrics is None:
+            continue
+        available_counts.append(cam_count)
+        results[cam_count] = {
+            "static": metrics["mean_static_accuracy"],
+            "dynamic": metrics["mean_dynamic_accuracy"],
+        }
+    return available_counts, results
+
+
 def main():
     import argparse
     parser = argparse.ArgumentParser()
@@ -139,7 +175,6 @@ def main():
 
     np.random.seed(42)  # For reproducibility
 
-    results = {}
     os.makedirs("plots", exist_ok=True)
 
     if args.input_dir:
@@ -149,38 +184,89 @@ def main():
         if metrics is None:
             print(f"No aligned output files found in {in_dir}. Please run align_reconstruction_umeyama.py first.")
             return
-        results["custom"] = {
-            "static": metrics["mean_static_accuracy"],
-            "dynamic": metrics["mean_dynamic_accuracy"],
-        }
         print(f"\nPlots saved in {out_plot_dir}/ directory.")
         return
 
     base_in_dir = "aligned_outputs"
-    out_plot_dir = "plots"
     camera_counts = [2, 3, 4]
-    available_counts = []
+    subject_dirs = [
+        d for d in sorted(glob.glob(os.path.join(base_in_dir, "*")))
+        if os.path.isdir(d)
+    ]
+    subject_dirs = [
+        d for d in subject_dirs
+        if any(os.path.isdir(os.path.join(d, f"{cam}views")) for cam in camera_counts)
+    ]
 
-    for cam_count in camera_counts:
-        in_dir = os.path.join(base_in_dir, f"{cam_count}views")
-        if not os.path.isdir(in_dir):
-            print(f"[INFO] Missing directory: {in_dir}, skipping.")
-            continue
+    if subject_dirs:
+        all_subject_results = {}
+        for subject_dir in subject_dirs:
+            subject_name = os.path.basename(subject_dir)
+            subject_plot_dir = os.path.join("plots", subject_name)
+            print(f"\n=== Evaluating subject: {subject_name} ===")
+            available_counts, results = evaluate_camera_configs(
+                base_in_dir=subject_dir,
+                out_plot_dir=subject_plot_dir,
+                camera_counts=camera_counts,
+            )
+            if not available_counts:
+                print(f"[WARN] No valid camera configuration outputs for {subject_name}, skipping.")
+                continue
 
-        metrics = evaluate_configuration(
-            in_dir=in_dir,
-            out_plot_dir=out_plot_dir,
-            plot_prefix=f"{cam_count}views_",
-        )
-        if metrics is None:
-            continue
+            static_means = [results[c]["static"] for c in available_counts]
+            dynamic_means = [results[c]["dynamic"] for c in available_counts]
+            plot_accuracy_vs_cameras(
+                out_plot_dir=subject_plot_dir,
+                camera_counts=available_counts,
+                static_means=static_means,
+                dynamic_means=dynamic_means,
+                filename="accuracy_vs_cameras.png",
+            )
 
-        available_counts.append(cam_count)
-        results[cam_count] = {
-            "static": metrics["mean_static_accuracy"],
-            "dynamic": metrics["mean_dynamic_accuracy"],
-        }
+            all_subject_results[subject_name] = results
+            print("Per-configuration results:")
+            for cam_count in available_counts:
+                print(
+                    f"  {cam_count} views -> "
+                    f"static={results[cam_count]['static']:.5f}, "
+                    f"dynamic={results[cam_count]['dynamic']:.5f}"
+                )
+            print(f"Plots saved in {subject_plot_dir}/ directory.")
 
+        if not all_subject_results:
+            print("No valid aligned outputs found. Please run align_reconstruction_umeyama.py first.")
+            return
+
+        print("\n=== Cross-subject average metrics per view count ===")
+        for cam_count in camera_counts:
+            static_vals = []
+            dynamic_vals = []
+            for subject_name, subject_results in all_subject_results.items():
+                if cam_count not in subject_results:
+                    continue
+                s_val = subject_results[cam_count]["static"]
+                d_val = subject_results[cam_count]["dynamic"]
+                if not np.isnan(s_val):
+                    static_vals.append(s_val)
+                if not np.isnan(d_val):
+                    dynamic_vals.append(d_val)
+
+            mean_static = float(np.mean(static_vals)) if static_vals else np.nan
+            mean_dynamic = float(np.mean(dynamic_vals)) if dynamic_vals else np.nan
+            print(
+                f"{cam_count} views -> "
+                f"mean static={mean_static:.5f}, "
+                f"mean dynamic={mean_dynamic:.5f}, "
+                f"subjects={len(static_vals)}/{len(subject_dirs)}"
+            )
+        return
+
+    out_plot_dir = "plots"
+    available_counts, results = evaluate_camera_configs(
+        base_in_dir=base_in_dir,
+        out_plot_dir=out_plot_dir,
+        camera_counts=camera_counts,
+    )
     if not available_counts:
         fallback_metrics = evaluate_configuration(base_in_dir, out_plot_dir)
         if fallback_metrics is None:
@@ -191,17 +277,13 @@ def main():
 
     static_means = [results[c]["static"] for c in available_counts]
     dynamic_means = [results[c]["dynamic"] for c in available_counts]
-
-    plt.figure()
-    plt.plot(available_counts, static_means, marker='o', color='blue', label='Static Accuracy')
-    plt.plot(available_counts, dynamic_means, marker='x', color='red', label='Dynamic Accuracy')
-    plt.title('Static vs Dynamic Accuracy vs Number of Cameras')
-    plt.xlabel('Number of Cameras')
-    plt.ylabel('Accuracy (% < 1cm)')
-    plt.legend()
-    plt.grid(True)
-    plt.savefig(os.path.join(out_plot_dir, 'accuracy_vs_cameras.png'))
-    plt.close()
+    plot_accuracy_vs_cameras(
+        out_plot_dir=out_plot_dir,
+        camera_counts=available_counts,
+        static_means=static_means,
+        dynamic_means=dynamic_means,
+        filename="accuracy_vs_cameras.png",
+    )
 
     print("\nPer-configuration results:")
     for cam_count in available_counts:
