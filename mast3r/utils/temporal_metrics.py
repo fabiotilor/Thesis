@@ -91,3 +91,71 @@ def split_points_by_mask(est_points, masks_2d, Ks, R_ts):
     dynamic_pts = est_points[is_dynamic]
 
     return static_pts, dynamic_pts
+
+
+def compute_static_jitter(
+        pointmaps: list[np.ndarray],
+        static_masks: list[np.ndarray],
+        n_anchors: int = 5000,
+        seed: int = 42,
+) -> dict:
+    """
+    Measures frame-to-frame instability of the static reconstruction using
+    pointmap-based correspondences.
+
+    CALLER NOTE: pointmaps (H, W, 3) must be saved during reconstruction in
+    align_reconstruction_umeyama.py by adding 'pointmap': pts3d_list[i] to
+    save_dict for each view, or as a stacked array 'pointmaps': np.stack(pts3d_list).
+    The static_masks can be reconstructed from the saved 'masks_2d' arrays.
+    Umeyama alignment must be applied to the pointmap before passing it here:
+      aligned_pointmap = apply_similarity_transform(
+          pts3d_list[i].reshape(-1, 3), s, R, tr
+      ).reshape(H, W, 3)
+    """
+    import cv2
+
+    if len(pointmaps) < 2:
+        return {'jitter_mean': np.nan, 'jitter_std': np.nan, 'n_anchors': 0, 'n_frames': 0}
+
+    H, W = pointmaps[0].shape[:2]
+
+    # Resize all masks to match the pointmap resolution (H, W) and compute intersection
+    intersection_mask = np.ones((H, W), dtype=bool)
+    for mask in static_masks:
+        if mask.shape != (H, W):
+            mask = cv2.resize(mask.astype(np.uint8), (W, H), interpolation=cv2.INTER_NEAREST).astype(bool)
+        intersection_mask &= mask
+
+    flat_indices = np.where(intersection_mask.flatten())[0]
+    print(f"[jitter] Found {len(flat_indices):,} potential static anchors in intersection mask.")
+
+    if len(flat_indices) < 2:
+        print("[jitter] [WARN] Fewer than 2 anchors found; skipping jitter computation.")
+        return {'jitter_mean': np.nan, 'jitter_std': np.nan, 'n_anchors': 0, 'n_frames': 0}
+
+    rng = np.random.default_rng(seed)
+    sampled_indices = rng.choice(flat_indices, size=min(n_anchors, len(flat_indices)), replace=False)
+    print(f"[jitter] Sampled {len(sampled_indices):,} anchors for measurement.")
+
+    # Convert flat indices to (u, v) pairs
+    v, u = np.unravel_index(sampled_indices, (H, W))
+
+    # Stack pointmaps for vectorized extraction: (T, H, W, 3)
+    stacked_pointmaps = np.stack(pointmaps)
+
+    # Extract trajectories: shape (T, N, 3)
+    trajectories = stacked_pointmaps[:, v, u]
+
+    # Compute frame-to-frame displacement: shape (T-1, N)
+    displacements = np.linalg.norm(trajectories[1:] - trajectories[:-1], axis=-1)
+
+    jitter_mean = np.mean(displacements)
+    per_anchor_mean = np.mean(displacements, axis=0)
+    jitter_std = np.std(per_anchor_mean)
+
+    return {
+        'jitter_mean': float(jitter_mean),
+        'jitter_std': float(jitter_std),
+        'n_anchors': int(len(sampled_indices)),
+        'n_frames': int(len(pointmaps))
+    }

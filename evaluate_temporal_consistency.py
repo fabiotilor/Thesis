@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 import os
+import csv
 import glob
+import argparse
 import numpy as np
 import matplotlib.pyplot as plt
 from scipy.spatial import cKDTree
@@ -9,8 +11,24 @@ from mast3r.utils.temporal_metrics import (
     compute_chamfer_distance,
     compute_accuracy,
     compute_completeness,
-    split_points_by_mask
+    split_points_by_mask,
+    compute_static_jitter
 )
+from mast3r.utils.umeyama_alignment import apply_similarity_transform
+
+SUBJECT_NAMES = [
+    "20200709-subject-01__20200709_141754",
+    "20200813-subject-02__20200813_145653",
+    "20200820-subject-03__20200820_135841",
+    "20200903-subject-04__20200903_104428",
+    "20200908-subject-05__20200908_144409",
+    "20200918-subject-06__20200918_114117",
+    "20200928-subject-07__20200928_144906",
+    "20201002-subject-08__20201002_110227",
+    "20201015-subject-09__20201015_144721",
+    "20201022-subject-10__20201022_112651",
+]
+SUBJECT_BY_CODE = {name.split("subject-")[1][:2]: name for name in SUBJECT_NAMES}
 
 
 def evaluate_configuration(in_dir, out_plot_dir, plot_prefix=""):
@@ -24,11 +42,13 @@ def evaluate_configuration(in_dir, out_plot_dir, plot_prefix=""):
     static_accuracies = []
     dynamic_accuracies = []
 
-    taus = [0.01] #0.005, 0.01, 0.02, 0.03, 0.05
+    taus = [0.01]  # 0.005, 0.01, 0.02, 0.03, 0.05
     static_accuracies_taus = {tau: [] for tau in taus}
     dynamic_accuracies_taus = {tau: [] for tau in taus}
 
     point_sequence = []
+    pointmaps_ref = []
+    masks_ref = []
     print(f"Loading {len(files)} frames for temporal evaluation from {in_dir}...")
 
     for i, f in enumerate(files):
@@ -62,6 +82,26 @@ def evaluate_configuration(in_dir, out_plot_dir, plot_prefix=""):
             static_accuracies.append(np.nan)
             dynamic_accuracies.append(np.nan)
 
+        # Collect data for temporal jitter (View 0)
+        if 'pointmaps' in data and 'R' in data and 'tr' in data:
+            pmaps = data['pointmaps']
+            s, R, tr = data['scale'], data['R'], data['tr']
+
+            if 'masks_2d' in data and len(data['masks_2d']) > 0:
+                H_mask, W_mask = data['masks_2d'][0].shape[:2]
+                masks_ref.append(data['masks_2d'][0])
+            else:
+                H_mask, W_mask = 480, 640
+                masks_ref.append(np.ones((H_mask, W_mask), dtype=bool))
+
+            N = pmaps[0].shape[0] if len(pmaps[0].shape) > 1 else pmaps[0].shape[0] // 3
+            # Infer MASt3R native spatial dimensions using aspect ratio
+            H_pm = int(np.round(np.sqrt(N * H_mask / float(W_mask))))
+            W_pm = N // H_pm
+
+            aligned_pmap = apply_similarity_transform(pmaps[0].reshape(-1, 3), s, R, tr).reshape(H_pm, W_pm, 3)
+            pointmaps_ref.append(aligned_pmap)
+
         if i == 0:
             point_sequence.append(est_pts)
             base_points = est_pts
@@ -85,6 +125,14 @@ def evaluate_configuration(in_dir, out_plot_dir, plot_prefix=""):
     print(f"Mean Static Accuracy:    {mean_static:.5f}")
     print(f"Mean Dynamic Accuracy:   {mean_dynamic:.5f}")
     print(f"Motion Gap (Static-Dyn): {motion_gap:.5f}")
+
+    jitter_results = compute_static_jitter(pointmaps_ref, masks_ref)
+    jitter_mean = jitter_results['jitter_mean']
+    jitter_std = jitter_results['jitter_std']
+    if not np.isnan(jitter_mean):
+        print(f"Mean Static Jitter:     {jitter_mean:.6f} m")
+        print(f"Jitter Std (spatial):   {jitter_std:.6f} m")
+        print(f"Jitter Anchors:         {jitter_results['n_anchors']}")
 
     os.makedirs(out_plot_dir, exist_ok=True)
     frames = np.arange(len(files))
@@ -126,8 +174,12 @@ def evaluate_configuration(in_dir, out_plot_dir, plot_prefix=""):
     return {
         "mean_static_accuracy": mean_static,
         "mean_dynamic_accuracy": mean_dynamic,
+        "mean_chamfer": np.mean(chamfer_distances),
+        "mean_completeness": np.nanmean(completeness_scores),
         "static_accuracies": static_accuracies,
         "dynamic_accuracies": dynamic_accuracies,
+        "jitter_mean": jitter_mean,
+        "jitter_std": jitter_std,
     }
 
 
@@ -163,14 +215,32 @@ def evaluate_camera_configs(base_in_dir, out_plot_dir, camera_counts, plot_prefi
         results[cam_count] = {
             "static": metrics["mean_static_accuracy"],
             "dynamic": metrics["mean_dynamic_accuracy"],
+            "chamfer": metrics["mean_chamfer"],
+            "completeness": metrics["mean_completeness"],
+            "jitter": metrics["jitter_mean"]
         }
     return available_counts, results
 
 
+def get_selected_subject_names(args):
+    if args.all:
+        return SUBJECT_NAMES
+
+    selected_codes = [
+        code for code in sorted(SUBJECT_BY_CODE.keys())
+        if getattr(args, f"subject_{code}")
+    ]
+    if not selected_codes:
+        selected_codes = ["01"]  # default selection
+    return [SUBJECT_BY_CODE[code] for code in selected_codes]
+
+
 def main():
-    import argparse
     parser = argparse.ArgumentParser()
     parser.add_argument("--input_dir", type=str, default=None, help="Custom directory containing frame_*.npz files")
+    parser.add_argument("--all", action="store_true", help="Evaluate all subjects (01..10).")
+    for code in sorted(SUBJECT_BY_CODE.keys()):
+        parser.add_argument(f"--{code}", dest=f"subject_{code}", action="store_true", help=f"Evaluate subject {code}.")
     args = parser.parse_args()
 
     np.random.seed(42)  # For reproducibility
@@ -189,16 +259,21 @@ def main():
 
     base_in_dir = "aligned_outputs"
     camera_counts = [2, 3, 4]
+    selected_subjects = set(get_selected_subject_names(args))
     subject_dirs = [
         d for d in sorted(glob.glob(os.path.join(base_in_dir, "*")))
         if os.path.isdir(d)
     ]
+    subject_dirs = [d for d in subject_dirs if os.path.basename(d) in selected_subjects]
     subject_dirs = [
         d for d in subject_dirs
         if any(os.path.isdir(os.path.join(d, f"{cam}views")) for cam in camera_counts)
     ]
+    selected_codes_str = ", ".join(name.split("subject-")[1][:2] for name in sorted(selected_subjects))
+    print(f"[INFO] Selected subjects: {selected_codes_str}")
 
     if subject_dirs:
+        csv_rows = []
         all_subject_results = {}
         for subject_dir in subject_dirs:
             subject_name = os.path.basename(subject_dir)
@@ -224,13 +299,22 @@ def main():
             )
 
             all_subject_results[subject_name] = results
-            print("Per-configuration results:")
             for cam_count in available_counts:
+                res = results[cam_count]
                 print(
                     f"  {cam_count} views -> "
-                    f"static={results[cam_count]['static']:.5f}, "
-                    f"dynamic={results[cam_count]['dynamic']:.5f}"
+                    f"static={res['static']:.5f}, "
+                    f"dynamic={res['dynamic']:.5f}"
                 )
+                csv_rows.append({
+                    "subject": subject_name,
+                    "views": cam_count,
+                    "chamfer": res["chamfer"],
+                    "completeness": res["completeness"],
+                    "static_acc": res["static"],
+                    "dynamic_acc": res["dynamic"],
+                    "jitter": res["jitter"]
+                })
             print(f"Plots saved in {subject_plot_dir}/ directory.")
 
         if not all_subject_results:
@@ -259,6 +343,15 @@ def main():
                 f"mean dynamic={mean_dynamic:.5f}, "
                 f"subjects={len(static_vals)}/{len(subject_dirs)}"
             )
+
+        # Write to CSV
+        csv_file = "evaluation_metrics.csv"
+        with open(csv_file, "w", newline="") as f:
+            writer = csv.DictWriter(f, fieldnames=["subject", "views", "chamfer", "completeness", "static_acc",
+                                                   "dynamic_acc", "jitter"])
+            writer.writeheader()
+            writer.writerows(csv_rows)
+        print(f"\n[INFO] All metrics saved to {csv_file}")
         return
 
     out_plot_dir = "plots"

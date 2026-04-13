@@ -1,5 +1,6 @@
 import os
 import tempfile
+import argparse
 import numpy as np
 import torch
 import rerun as rr
@@ -47,6 +48,7 @@ SUBJECT_NAMES = [
     "20201015-subject-09__20201015_144721",
     "20201022-subject-10__20201022_112651",
 ]
+SUBJECT_BY_CODE = {name.split("subject-")[1][:2]: name for name in SUBJECT_NAMES}
 MODEL_NAME = "naver/MASt3R_ViTLarge_BaseDecoder_512_catmlpdpt_metric"
 IMAGE_SIZE = 512
 DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
@@ -55,13 +57,13 @@ RERUN_ADDR = "rerun+http://127.0.0.1:9876/proxy"
 MIN_CONF_THR = 2.0
 SCENEGRAPH = "complete"
 CLEAN_DEPTH = True
-RUN_MULTI_VIEW_EVAL = False
+RUN_MULTI_VIEW_EVAL = True
 VIEW_CONFIGS = {
-    2: ["00", "06"],
-    3: ["00", "06", "05"],
+    2: ["01", "06"],
+    3: ["04", "06", "07"],
     4: None,
 }
-DEFAULT_TARGET_VIEWS = ["00", "06", "05", "04"]
+DEFAULT_TARGET_VIEWS = ["02", "03", "06", "07"]
 RERUN_EYE_UP = [-0.04418, -0.6565, -0.7531]
 
 
@@ -91,25 +93,13 @@ def build_views(dataset_root, target_views=None):
 def log_alignment_rerun(
     t,
     gt_pts,
-    est_pts,
     aligned_pts,
     refined_pts=None,
-    static_gt_pts=None,
     log_root="world",
 ):
     rr.set_time("timestep", sequence=t)
     if gt_pts is not None:
         rr.log(f"{log_root}/gt", rr.Points3D(positions=gt_pts, colors=[0, 255, 0], radii=0.002))
-    if static_gt_pts is not None:
-        rr.log(
-            f"{log_root}/gt_static",
-            rr.Points3D(positions=static_gt_pts, colors=[255, 165, 0], radii=0.002),
-        )
-    if est_pts is not None:
-        rr.log(
-            f"{log_root}/estimated/raw",
-            rr.Points3D(positions=est_pts, colors=[255, 0, 0], radii=0.002),
-        )
     if aligned_pts is not None:
         rr.log(
             f"{log_root}/estimated/aligned",
@@ -176,18 +166,48 @@ def configure_rerun_view_defaults(log_root):
     except Exception:
         return
 
-    kwargs_variants = [
+    # Prefer explicit EyeControls3D, because "Eye Controls 3D" in the viewer
+    # is distinct from world coordinate conventions.
+    blueprint_variants = []
+
+    # Variant 1: EyeControls3D as direct symbol.
+    try:
+        eye_controls = rrb.EyeControls3D(eye_up=RERUN_EYE_UP)
+        blueprint_variants.append(
+            rrb.Blueprint(rrb.Spatial3DView(origin=log_root, name=f"{log_root}_3d", eye_controls=eye_controls))
+        )
+    except Exception:
+        pass
+
+    # Variant 2: EyeControls3D under archetypes namespace.
+    try:
+        eye_controls = rrb.archetypes.EyeControls3D(eye_up=RERUN_EYE_UP)
+        blueprint_variants.append(
+            rrb.Blueprint(rrb.Spatial3DView(origin=log_root, name=f"{log_root}_3d", eye_controls=eye_controls))
+        )
+    except Exception:
+        pass
+
+    # Fallback variants for older/newer API differences.
+    for kwargs in (
         {"origin": log_root, "name": f"{log_root}_3d", "eye_up": RERUN_EYE_UP},
         {"origin": log_root, "name": f"{log_root}_3d", "up": RERUN_EYE_UP},
         {"origin": log_root, "name": f"{log_root}_3d"},
-    ]
-    for kwargs in kwargs_variants:
+    ):
         try:
-            view = rrb.Spatial3DView(**kwargs)
-            rr.send_blueprint(rrb.Blueprint(view))
+            blueprint_variants.append(rrb.Blueprint(rrb.Spatial3DView(**kwargs)))
+        except Exception:
+            continue
+
+    for blueprint in blueprint_variants:
+        try:
+            rr.send_blueprint(blueprint)
+            print(f"[INFO] Applied Rerun eye-up default {RERUN_EYE_UP} for {log_root}")
             return
         except Exception:
             continue
+
+    print(f"[WARN] Could not apply Rerun eye-up default for {log_root} (SDK API mismatch)")
 
 
 def run_reconstruction(
@@ -251,12 +271,6 @@ def run_reconstruction(
         if gt_pts is None:
             continue
 
-        # ── Static-only GT ──────────────────────────────────────────────────
-        static_gt_pts = build_static_gt_pointcloud(
-            t, view_names, dataset_root,
-            flow_threshold=flow_threshold
-        )
-
         # ── Correspondences ─────────────────────────────────────────────────
         src_corr, dst_corr = get_static_correspondences(
             t, view_names, scene, dataset_root,
@@ -317,8 +331,7 @@ def run_reconstruction(
 
         # ── Logging ─────────────────────────────────────────────────────────
         log_alignment_rerun(
-            t, gt_pts, est_pts, aligned_pts,
-            static_gt_pts=static_gt_pts,
+            t, gt_pts, aligned_pts,
             log_root=log_root,
         )
 
@@ -362,6 +375,9 @@ def run_reconstruction(
             'gt_pts': gt_pts,
             'aligned_pts': aligned_pts,
             'scale': float(s),
+            'R': R,
+            'tr': tr,
+            'pointmaps': np.stack(pts3d_list),
             'frame_idx': int(t),
             'Ks': np.array(valid_Ks),
             'R_ts': np.array(valid_R_ts)
@@ -372,7 +388,30 @@ def run_reconstruction(
         np.savez(os.path.join(out_dir, f"frame_{t:02d}.npz"), **save_dict)
 
 
+def parse_subject_selection_args():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--all", action="store_true", help="Run all subjects (01..10).")
+    for code in sorted(SUBJECT_BY_CODE.keys()):
+        parser.add_argument(f"--{code}", dest=f"subject_{code}", action="store_true", help=f"Run subject {code}.")
+    return parser.parse_args()
+
+
+def get_selected_subject_names(args):
+    if args.all:
+        return SUBJECT_NAMES
+
+    selected_codes = [
+        code for code in sorted(SUBJECT_BY_CODE.keys())
+        if getattr(args, f"subject_{code}")
+    ]
+    if not selected_codes:
+        selected_codes = ["01"]  # default selection
+    return [SUBJECT_BY_CODE[code] for code in selected_codes]
+
+
 def main():
+    args = parse_subject_selection_args()
+    selected_subjects = get_selected_subject_names(args)
     flow_threshold = 1.0
 
     torch.backends.cuda.matmul.allow_tf32 = True
@@ -382,7 +421,10 @@ def main():
     cache_root = os.path.join(tempfile.gettempdir(), "mast3r_alignment_cache")
     os.makedirs(cache_root, exist_ok=True)
 
-    for subject_name in SUBJECT_NAMES:
+    selected_codes_str = ", ".join(name.split("subject-")[1][:2] for name in selected_subjects)
+    print(f"[INFO] Selected subjects: {selected_codes_str}")
+
+    for subject_name in selected_subjects:
         dataset_root = os.path.join(DATASET_BASE_ROOT, subject_name)
         if not os.path.isdir(dataset_root):
             print(f"[WARN] Subject directory not found, skipping: {dataset_root}")
