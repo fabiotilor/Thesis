@@ -31,6 +31,38 @@ SUBJECT_NAMES = [
 SUBJECT_BY_CODE = {name.split("subject-")[1][:2]: name for name in SUBJECT_NAMES}
 
 
+def _plot_scatter_with_regression(x, y, xlabel, ylabel, title, save_path):
+    """Plot a scatter with linear regression line and Pearson r annotation."""
+    x = np.asarray(x, dtype=float)
+    y = np.asarray(y, dtype=float)
+    valid = np.isfinite(x) & np.isfinite(y)
+    x_v, y_v = x[valid], y[valid]
+    if len(x_v) < 3:
+        return
+
+    fig, ax = plt.subplots(figsize=(6, 5))
+    ax.scatter(x_v, y_v, s=30, alpha=0.7)
+
+    # Linear regression
+    coeffs = np.polyfit(x_v, y_v, 1)
+    x_fit = np.linspace(x_v.min(), x_v.max(), 100)
+    ax.plot(x_fit, np.polyval(coeffs, x_fit), 'r--', linewidth=1.5)
+
+    # Pearson r
+    r = np.corrcoef(x_v, y_v)[0, 1]
+    ax.annotate(f"r = {r:.3f}", xy=(0.95, 0.95), xycoords='axes fraction',
+                ha='right', va='top', fontsize=11,
+                bbox=dict(boxstyle='round,pad=0.3', fc='white', alpha=0.8))
+
+    ax.set_xlabel(xlabel)
+    ax.set_ylabel(ylabel)
+    ax.set_title(title)
+    ax.grid(True, alpha=0.3)
+    os.makedirs(os.path.dirname(save_path), exist_ok=True)
+    fig.savefig(save_path, dpi=150, bbox_inches='tight')
+    plt.close(fig)
+
+
 def evaluate_configuration(in_dir, out_plot_dir, plot_prefix=""):
     files = sorted(glob.glob(os.path.join(in_dir, "frame_*.npz")))
     if not files:
@@ -47,8 +79,13 @@ def evaluate_configuration(in_dir, out_plot_dir, plot_prefix=""):
     dynamic_accuracies_taus = {tau: [] for tau in taus}
 
     point_sequence = []
-    pointmaps_ref = []
-    masks_ref = []
+
+    # Multi-view data for jitter
+    all_pointmaps_mv = []   # list of (V, H, W, 3)
+    all_masks_mv = []       # list of (V, H, W)
+    all_Ks_mv = []          # list of (V, 3, 3)
+    all_R_ts_mv = []        # list of (V, 4, 4)
+
     print(f"Loading {len(files)} frames for temporal evaluation from {in_dir}...")
 
     for i, f in enumerate(files):
@@ -82,25 +119,39 @@ def evaluate_configuration(in_dir, out_plot_dir, plot_prefix=""):
             static_accuracies.append(np.nan)
             dynamic_accuracies.append(np.nan)
 
-        # Collect data for temporal jitter (View 0)
-        if 'pointmaps' in data and 'R' in data and 'tr' in data:
-            pmaps = data['pointmaps']
-            s, R, tr = data['scale'], data['R'], data['tr']
+        # Collect multi-view data for temporal jitter
+        if 'pointmaps' in data and 'masks_2d' in data:
+            pmaps = data['pointmaps']  # (V, H, W, 3) or (V, N, 3) flattened
+            masks_2d_raw = data['masks_2d']  # (V, H', W')
 
-            if 'masks_2d' in data and len(data['masks_2d']) > 0:
-                H_mask, W_mask = data['masks_2d'][0].shape[:2]
-                masks_ref.append(data['masks_2d'][0])
+            # Ensure pointmaps have spatial dims: if (V, N, 3), reshape
+            if pmaps.ndim == 3:
+                # Flattened: (V, N, 3) — infer H, W from masks
+                H_mask, W_mask = masks_2d_raw.shape[1], masks_2d_raw.shape[2]
+                N = pmaps.shape[1]
+                H_pm = int(np.round(np.sqrt(N * H_mask / float(W_mask))))
+                W_pm = N // H_pm
+                pmaps = pmaps.reshape(pmaps.shape[0], H_pm, W_pm, 3)
+
+            # Apply Umeyama alignment to each view's pointmap
+            if 'R' in data and 'tr' in data:
+                s_val, R_val, tr_val = data['scale'], data['R'], data['tr']
+                V_views = pmaps.shape[0]
+                aligned_pmaps = np.empty_like(pmaps)
+                for vi in range(V_views):
+                    aligned_pmaps[vi] = apply_similarity_transform(
+                        pmaps[vi].reshape(-1, 3), s_val, R_val, tr_val
+                    ).reshape(pmaps[vi].shape)
+                all_pointmaps_mv.append(aligned_pmaps)
             else:
-                H_mask, W_mask = 480, 640
-                masks_ref.append(np.ones((H_mask, W_mask), dtype=bool))
+                all_pointmaps_mv.append(pmaps)
 
-            N = pmaps[0].shape[0] if len(pmaps[0].shape) > 1 else pmaps[0].shape[0] // 3
-            # Infer MASt3R native spatial dimensions using aspect ratio
-            H_pm = int(np.round(np.sqrt(N * H_mask / float(W_mask))))
-            W_pm = N // H_pm
+            all_masks_mv.append(masks_2d_raw.astype(bool))
 
-            aligned_pmap = apply_similarity_transform(pmaps[0].reshape(-1, 3), s, R, tr).reshape(H_pm, W_pm, 3)
-            pointmaps_ref.append(aligned_pmap)
+            if 'Ks' in data:
+                all_Ks_mv.append(data['Ks'])
+            if 'R_ts' in data:
+                all_R_ts_mv.append(data['R_ts'])
 
         if i == 0:
             point_sequence.append(est_pts)
@@ -126,13 +177,39 @@ def evaluate_configuration(in_dir, out_plot_dir, plot_prefix=""):
     print(f"Mean Dynamic Accuracy:   {mean_dynamic:.5f}")
     print(f"Motion Gap (Static-Dyn): {motion_gap:.5f}")
 
-    jitter_results = compute_static_jitter(pointmaps_ref, masks_ref)
+    # Compute jitter with multi-view fusion
+    if len(all_pointmaps_mv) >= 2:
+        jitter_results = compute_static_jitter(
+            pointmaps_per_frame=all_pointmaps_mv,
+            masks_per_frame=all_masks_mv,
+            Ks_per_frame=all_Ks_mv if all_Ks_mv else None,
+            R_ts_per_frame=all_R_ts_mv if all_R_ts_mv else None,
+            n_anchors=5000,
+        )
+    else:
+        jitter_results = {
+            'jitter_mean': np.nan, 'jitter_std': np.nan, 'jitter_p95': np.nan,
+            'jitter_max': np.nan, 'drift_mean': np.nan, 'hf_jitter': np.nan,
+            'per_frame_jitter': np.array([]), 'n_anchors': 0, 'n_frames': 0,
+        }
+
     jitter_mean = jitter_results['jitter_mean']
     jitter_std = jitter_results['jitter_std']
+    jitter_p95 = jitter_results.get('jitter_p95', np.nan)
+    jitter_max = jitter_results.get('jitter_max', np.nan)
+    drift_mean = jitter_results.get('drift_mean', np.nan)
+    hf_jitter = jitter_results.get('hf_jitter', np.nan)
+    per_frame_jitter = jitter_results.get('per_frame_jitter', np.array([]))
+
     if not np.isnan(jitter_mean):
-        print(f"Mean Static Jitter:     {jitter_mean:.6f} m")
-        print(f"Jitter Std (spatial):   {jitter_std:.6f} m")
-        print(f"Jitter Anchors:         {jitter_results['n_anchors']}")
+        print(f"Mean Static Jitter:      {jitter_mean:.6f} m")
+        print(f"Jitter Std (spatial):    {jitter_std:.6f} m")
+        print(f"Jitter P95:              {jitter_p95:.6f} m")
+        print(f"Jitter Max:              {jitter_max:.6f} m")
+        print(f"Drift Mean:              {drift_mean:.6f} m")
+        if not np.isnan(hf_jitter):
+            print(f"HF Jitter (accel):       {hf_jitter:.6f} m")
+        print(f"Jitter Anchors:          {jitter_results['n_anchors']}")
 
     os.makedirs(out_plot_dir, exist_ok=True)
     frames = np.arange(len(files))
@@ -171,6 +248,43 @@ def evaluate_configuration(in_dir, out_plot_dir, plot_prefix=""):
     plt.savefig(os.path.join(out_plot_dir, f'{plot_prefix}accuracy_threshold_curve.png'))
     plt.close()
 
+    # ── Scatter plots: per-frame metrics vs per-frame jitter ─────────────
+    if len(per_frame_jitter) > 0:
+        # per_frame_jitter has shape (T-1,); align with frame indices [1..T-1]
+        # use the "destination" frame's accuracy/chamfer for each transition
+        n_transitions = len(per_frame_jitter)
+        pf_chamfer = np.array(chamfer_distances[1:n_transitions + 1])
+        pf_static_acc = np.array(static_accuracies[1:n_transitions + 1])
+        pf_dynamic_acc = np.array(dynamic_accuracies[1:n_transitions + 1])
+        pf_motion_gap = pf_static_acc - pf_dynamic_acc
+
+        title_tag = plot_prefix.rstrip('_') if plot_prefix else "config"
+
+        _plot_scatter_with_regression(
+            pf_chamfer, per_frame_jitter,
+            xlabel="Chamfer Distance", ylabel="Jitter (m)",
+            title=f"Chamfer vs Jitter — {title_tag}",
+            save_path=os.path.join(out_plot_dir, f'{plot_prefix}scatter_chamfer_vs_jitter.png'),
+        )
+        _plot_scatter_with_regression(
+            pf_static_acc, per_frame_jitter,
+            xlabel="Static Accuracy", ylabel="Jitter (m)",
+            title=f"Static Accuracy vs Jitter — {title_tag}",
+            save_path=os.path.join(out_plot_dir, f'{plot_prefix}scatter_static_acc_vs_jitter.png'),
+        )
+        _plot_scatter_with_regression(
+            pf_dynamic_acc, per_frame_jitter,
+            xlabel="Dynamic Accuracy", ylabel="Jitter (m)",
+            title=f"Dynamic Accuracy vs Jitter — {title_tag}",
+            save_path=os.path.join(out_plot_dir, f'{plot_prefix}scatter_dynamic_acc_vs_jitter.png'),
+        )
+        _plot_scatter_with_regression(
+            pf_motion_gap, per_frame_jitter,
+            xlabel="Motion Gap (Static - Dynamic)", ylabel="Jitter (m)",
+            title=f"Motion Gap vs Jitter — {title_tag}",
+            save_path=os.path.join(out_plot_dir, f'{plot_prefix}scatter_motion_gap_vs_jitter.png'),
+        )
+
     return {
         "mean_static_accuracy": mean_static,
         "mean_dynamic_accuracy": mean_dynamic,
@@ -180,6 +294,10 @@ def evaluate_configuration(in_dir, out_plot_dir, plot_prefix=""):
         "dynamic_accuracies": dynamic_accuracies,
         "jitter_mean": jitter_mean,
         "jitter_std": jitter_std,
+        "jitter_p95": jitter_p95,
+        "jitter_max": jitter_max,
+        "drift_mean": drift_mean,
+        "hf_jitter": hf_jitter,
     }
 
 
@@ -217,7 +335,12 @@ def evaluate_camera_configs(base_in_dir, out_plot_dir, camera_counts, plot_prefi
             "dynamic": metrics["mean_dynamic_accuracy"],
             "chamfer": metrics["mean_chamfer"],
             "completeness": metrics["mean_completeness"],
-            "jitter": metrics["jitter_mean"]
+            "jitter_mean": metrics["jitter_mean"],
+            "jitter_std": metrics["jitter_std"],
+            "jitter_p95": metrics["jitter_p95"],
+            "jitter_max": metrics["jitter_max"],
+            "drift_mean": metrics["drift_mean"],
+            "hf_jitter": metrics["hf_jitter"],
         }
     return available_counts, results
 
@@ -304,7 +427,8 @@ def main():
                 print(
                     f"  {cam_count} views -> "
                     f"static={res['static']:.5f}, "
-                    f"dynamic={res['dynamic']:.5f}"
+                    f"dynamic={res['dynamic']:.5f}, "
+                    f"jitter={res['jitter_mean']:.6f}"
                 )
                 csv_rows.append({
                     "subject": subject_name,
@@ -313,7 +437,12 @@ def main():
                     "completeness": res["completeness"],
                     "static_acc": res["static"],
                     "dynamic_acc": res["dynamic"],
-                    "jitter": res["jitter"]
+                    "jitter_mean": res["jitter_mean"],
+                    "jitter_std": res["jitter_std"],
+                    "jitter_p95": res["jitter_p95"],
+                    "jitter_max": res["jitter_max"],
+                    "drift_mean": res["drift_mean"],
+                    "hf_jitter": res["hf_jitter"],
                 })
             print(f"Plots saved in {subject_plot_dir}/ directory.")
 
@@ -346,9 +475,12 @@ def main():
 
         # Write to CSV
         csv_file = "evaluation_metrics.csv"
+        csv_fieldnames = [
+            "subject", "views", "chamfer", "completeness", "static_acc", "dynamic_acc",
+            "jitter_mean", "jitter_std", "jitter_p95", "jitter_max", "drift_mean", "hf_jitter",
+        ]
         with open(csv_file, "w", newline="") as f:
-            writer = csv.DictWriter(f, fieldnames=["subject", "views", "chamfer", "completeness", "static_acc",
-                                                   "dynamic_acc", "jitter"])
+            writer = csv.DictWriter(f, fieldnames=csv_fieldnames)
             writer.writeheader()
             writer.writerows(csv_rows)
         print(f"\n[INFO] All metrics saved to {csv_file}")

@@ -95,6 +95,7 @@ def log_alignment_rerun(
     gt_pts,
     aligned_pts,
     refined_pts=None,
+    masked_est_pts=None,
     log_root="world",
 ):
     rr.set_time("timestep", sequence=t)
@@ -110,6 +111,12 @@ def log_alignment_rerun(
             f"{log_root}/estimated/stabilised",
             rr.Points3D(positions=refined_pts, colors=[255, 0, 255], radii=0.002),
         )
+    if masked_est_pts is not None:
+        rr.log(
+            f"{log_root}/estimated/masked_input",
+            rr.Points3D(positions=masked_est_pts, colors=[255, 0, 255], radii=0.002),
+        )
+
 
 
 def log_cameras_rerun(t, view_names, views, dataset_root, log_root):
@@ -332,6 +339,7 @@ def run_reconstruction(
         # ── Logging ─────────────────────────────────────────────────────────
         log_alignment_rerun(
             t, gt_pts, aligned_pts,
+            masked_est_pts=est_pts,
             log_root=log_root,
         )
 
