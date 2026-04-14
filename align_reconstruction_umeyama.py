@@ -111,13 +111,6 @@ def log_alignment_rerun(
             f"{log_root}/estimated/stabilised",
             rr.Points3D(positions=refined_pts, colors=[255, 0, 255], radii=0.002),
         )
-    if masked_est_pts is not None:
-        rr.log(
-            f"{log_root}/estimated/masked_input",
-            rr.Points3D(positions=masked_est_pts, colors=[255, 0, 255], radii=0.002),
-        )
-
-
 
 def log_cameras_rerun(t, view_names, views, dataset_root, log_root):
     rr.set_time("timestep", sequence=t)
@@ -347,10 +340,17 @@ def run_reconstruction(
         valid_masks = []
         valid_Ks = []
         valid_R_ts = []
+        valid_est_poses = []
+        valid_est_intrinsics = []
 
+        try:
+            im_poses = scene.get_im_poses()
+        except AttributeError:
+            im_poses = scene.get_poses()
+        est_poses_all = to_numpy(im_poses)
+        est_intrinsics_all = to_numpy(scene.intrinsics)
 
-
-        for vname in view_names:
+        for i, vname in enumerate(view_names):
             view_dir = os.path.join(dataset_root, vname)
             K, cam2world = load_gt_params(view_dir)
             R_t = np.linalg.inv(cam2world)
@@ -378,6 +378,8 @@ def run_reconstruction(
                 valid_masks.append(flow_mask)
                 valid_Ks.append(K)
                 valid_R_ts.append(R_t)
+                valid_est_poses.append(est_poses_all[i])
+                valid_est_intrinsics.append(est_intrinsics_all[i])
 
         save_dict = {
             'gt_pts': gt_pts,
@@ -388,7 +390,9 @@ def run_reconstruction(
             'pointmaps': np.stack(pts3d_list),
             'frame_idx': int(t),
             'Ks': np.array(valid_Ks),
-            'R_ts': np.array(valid_R_ts)
+            'R_ts': np.array(valid_R_ts),
+            'est_poses': np.array(valid_est_poses),
+            'est_intrinsics': np.array(valid_est_intrinsics)
         }
         if valid_masks:
             save_dict['masks_2d'] = np.stack(valid_masks)

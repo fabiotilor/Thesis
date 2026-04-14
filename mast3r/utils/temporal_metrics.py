@@ -164,11 +164,11 @@ def compute_static_jitter(
 
     # ── Fuse views per frame ─────────────────────────────────────────────
     fused_pointmaps = []  # T x (H, W, 3)
-    fused_masks = []      # T x (H, W) bool
+    fused_masks = []  # T x (H, W) bool
 
     for t in range(T):
-        pm_t = pointmaps_per_frame[t]   # (V, H, W, 3)
-        mk_t = masks_per_frame[t]       # (V, H', W') — may need resize
+        pm_t = pointmaps_per_frame[t]  # (V, H, W, 3)
+        mk_t = masks_per_frame[t]  # (V, H', W') — may need resize
 
         # Resize masks to (V, H, W) if needed
         resized_masks = np.empty((V, H, W), dtype=bool)
@@ -183,7 +183,7 @@ def compute_static_jitter(
 
         # Majority-vote static mask: static in more than half of views
         static_count = resized_masks.sum(axis=0)  # (H, W)
-        fused_mask_t = static_count > (V / 2.0)   # (H, W) bool
+        fused_mask_t = static_count > (V / 2.0)  # (H, W) bool
 
         # Mean of 3D positions from views where pixel is static
         # Use masked operations: set non-static entries to NaN, then nanmean
@@ -266,4 +266,103 @@ def compute_static_jitter(
         'per_frame_jitter': per_frame_jitter,
         'n_anchors': int(n_sample),
         'n_frames': int(T),
+    }
+
+
+def rotation_error_deg(R_est, R_gt):
+    """
+    Geodesic distance in degrees: arccos((tr(R_est^T R_gt) - 1) / 2)
+    """
+    R_diff = R_est.T @ R_gt
+    tr = np.trace(R_diff)
+    cos_theta = (tr - 1.0) / 2.0
+    cos_theta = np.clip(cos_theta, -1.0 + 1e-6, 1.0 - 1e-6)
+    return float(np.degrees(np.arccos(cos_theta)))
+
+
+def translation_error(t_est, t_gt):
+    return float(np.linalg.norm(t_est - t_gt))
+
+
+def intrinsic_errors(K_est, K_gt):
+    """
+    returns focal_err, pp_err
+    """
+    f_est = (K_est[0, 0] + K_est[1, 1]) / 2.0
+    f_gt = (K_gt[0, 0] + K_gt[1, 1]) / 2.0
+    focal_err = float(np.abs(f_est - f_gt) / f_gt) if f_gt != 0 else np.nan
+
+    pp_est = K_est[:2, 2]
+    pp_gt = K_gt[:2, 2]
+    pp_err = float(np.linalg.norm(pp_est - pp_gt))
+
+    return focal_err, pp_err
+
+
+def ate_rms(centers_est, centers_gt):
+    errs = np.linalg.norm(centers_est - centers_gt, axis=1)
+    return float(np.sqrt(np.mean(errs ** 2)))
+
+
+def compute_camera_metrics(poses_est, poses_gt, intrinsics_est, intrinsics_gt, s, R, t):
+    """
+    poses_est: (V, 4, 4) estimated cam2world transforms
+    poses_gt: (V, 4, 4) ground truth cam2world transforms
+    intrinsics_est: (V, 3, 3)
+    intrinsics_gt: (V, 3, 3)
+    s, R, t: Umeyama alignment parameters
+    """
+    if len(poses_est) == 0:
+        return {
+            'ate': np.nan,
+            'rpe': np.nan,
+            'rot_error': np.nan,
+            'focal_error': np.nan,
+            'pp_error': np.nan
+        }
+
+    V = poses_est.shape[0]
+
+    C_est = poses_est[:, :3, 3]
+    R_est = poses_est[:, :3, :3]
+
+    C_gt = poses_gt[:, :3, 3]
+    R_gt = poses_gt[:, :3, :3]
+
+    # C_world = s * (R_align * C_est + t_align)
+    C_est_aligned = s * ((R @ C_est.T).T + t)
+
+    R_est_aligned = np.zeros_like(R_est)
+    for i in range(V):
+        R_est_aligned[i] = R @ R_est[i]
+
+    ate = ate_rms(C_est_aligned, C_gt)
+
+    rpe_errors = []
+    if V >= 2:
+        for i in range(V):
+            for j in range(i + 1, V):
+                rel_t_est = C_est_aligned[i] - C_est_aligned[j]
+                rel_t_gt = C_gt[i] - C_gt[j]
+                rpe_errors.append(np.linalg.norm(rel_t_est - rel_t_gt))
+        rpe = float(np.sqrt(np.mean(np.array(rpe_errors) ** 2)))
+    else:
+        rpe = np.nan
+
+    rot_errs = []
+    focal_errs = []
+    pp_errs = []
+
+    for i in range(V):
+        rot_errs.append(rotation_error_deg(R_est_aligned[i], R_gt[i]))
+        ferr, pperr = intrinsic_errors(intrinsics_est[i], intrinsics_gt[i])
+        focal_errs.append(ferr)
+        pp_errs.append(pperr)
+
+    return {
+        'ate': ate,
+        'rpe': rpe,
+        'rot_error': float(np.nanmean(rot_errs)),
+        'focal_error': float(np.nanmean(focal_errs)),
+        'pp_error': float(np.nanmean(pp_errs))
     }

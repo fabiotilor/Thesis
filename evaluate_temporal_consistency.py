@@ -12,7 +12,8 @@ from mast3r.utils.temporal_metrics import (
     compute_accuracy,
     compute_completeness,
     split_points_by_mask,
-    compute_static_jitter
+    compute_static_jitter,
+    compute_camera_metrics
 )
 from mast3r.utils.umeyama_alignment import apply_similarity_transform
 
@@ -80,11 +81,17 @@ def evaluate_configuration(in_dir, out_plot_dir, plot_prefix=""):
 
     point_sequence = []
 
+    ate_list = []
+    rpe_list = []
+    rot_err_list = []
+    focal_err_list = []
+    pp_err_list = []
+
     # Multi-view data for jitter
-    all_pointmaps_mv = []   # list of (V, H, W, 3)
-    all_masks_mv = []       # list of (V, H, W)
-    all_Ks_mv = []          # list of (V, 3, 3)
-    all_R_ts_mv = []        # list of (V, 4, 4)
+    all_pointmaps_mv = []  # list of (V, H, W, 3)
+    all_masks_mv = []  # list of (V, H, W)
+    all_Ks_mv = []  # list of (V, 3, 3)
+    all_R_ts_mv = []  # list of (V, 4, 4)
 
     print(f"Loading {len(files)} frames for temporal evaluation from {in_dir}...")
 
@@ -102,6 +109,22 @@ def evaluate_configuration(in_dir, out_plot_dir, plot_prefix=""):
             masks_2d = data['masks_2d']
             Ks = data['Ks']
             R_ts = data['R_ts']
+
+            if 'est_poses' in data and 'est_intrinsics' in data and 'scale' in data and 'R' in data and 'tr' in data:
+                est_poses = data['est_poses']
+                est_intrinsics = data['est_intrinsics']
+                gt_poses = np.array([np.linalg.inv(rt) for rt in R_ts])
+                s_val = data['scale']
+                R_val = data['R']
+                tr_val = data['tr']
+                cam_mets = compute_camera_metrics(est_poses, gt_poses, est_intrinsics, Ks, s_val, R_val, tr_val)
+                if not np.isnan(cam_mets['ate']):
+                    ate_list.append(cam_mets['ate'])
+                    rpe_list.append(cam_mets['rpe'])
+                    rot_err_list.append(cam_mets['rot_error'])
+                    focal_err_list.append(cam_mets['focal_error'])
+                    pp_err_list.append(cam_mets['pp_error'])
+
             static_pts, dynamic_pts = split_points_by_mask(est_pts, masks_2d, Ks, R_ts)
 
             for tau in taus:
@@ -176,6 +199,12 @@ def evaluate_configuration(in_dir, out_plot_dir, plot_prefix=""):
     print(f"Mean Static Accuracy:    {mean_static:.5f}")
     print(f"Mean Dynamic Accuracy:   {mean_dynamic:.5f}")
     print(f"Motion Gap (Static-Dyn): {motion_gap:.5f}")
+    if ate_list:
+        print(f"Mean ATE:                {np.nanmean(ate_list):.5f} m")
+        print(f"Mean RPE:                {np.nanmean(rpe_list):.5f} m")
+        print(f"Mean Rotation Error:     {np.nanmean(rot_err_list):.4f} deg")
+        print(f"Mean Focal Error:        {np.nanmean(focal_err_list):.5f} (rel)")
+        print(f"Mean PP Error:           {np.nanmean(pp_err_list):.3f} px")
 
     # Compute jitter with multi-view fusion
     if len(all_pointmaps_mv) >= 2:
@@ -298,6 +327,11 @@ def evaluate_configuration(in_dir, out_plot_dir, plot_prefix=""):
         "jitter_max": jitter_max,
         "drift_mean": drift_mean,
         "hf_jitter": hf_jitter,
+        "ate": np.nanmean(ate_list) if ate_list else np.nan,
+        "rpe": np.nanmean(rpe_list) if rpe_list else np.nan,
+        "rot_err": np.nanmean(rot_err_list) if rot_err_list else np.nan,
+        "focal_err": np.nanmean(focal_err_list) if focal_err_list else np.nan,
+        "pp_err": np.nanmean(pp_err_list) if pp_err_list else np.nan,
     }
 
 
@@ -341,6 +375,11 @@ def evaluate_camera_configs(base_in_dir, out_plot_dir, camera_counts, plot_prefi
             "jitter_max": metrics["jitter_max"],
             "drift_mean": metrics["drift_mean"],
             "hf_jitter": metrics["hf_jitter"],
+            "ate": metrics["ate"],
+            "rpe": metrics["rpe"],
+            "rot_err": metrics["rot_err"],
+            "focal_err": metrics["focal_err"],
+            "pp_err": metrics["pp_err"],
         }
     return available_counts, results
 
@@ -428,7 +467,12 @@ def main():
                     f"  {cam_count} views -> "
                     f"static={res['static']:.5f}, "
                     f"dynamic={res['dynamic']:.5f}, "
-                    f"jitter={res['jitter_mean']:.6f}"
+                    f"jitter={res['jitter_mean']:.6f}, "
+                    f"ate={res['ate']:.4f}, "
+                    f"rpe={res['rpe']:.4f}, "
+                    f"rot_err={res['rot_err']:.4f}, "
+                    f"focal_err={res['focal_err']:.5f}, "
+                    f"pp_err={res['pp_err']:.3f}"
                 )
                 csv_rows.append({
                     "subject": subject_name,
@@ -443,6 +487,11 @@ def main():
                     "jitter_max": res["jitter_max"],
                     "drift_mean": res["drift_mean"],
                     "hf_jitter": res["hf_jitter"],
+                    "ate": res["ate"],
+                    "rpe": res["rpe"],
+                    "rot_err": res["rot_err"],
+                    "focal_err": res["focal_err"],
+                    "pp_err": res["pp_err"],
                 })
             print(f"Plots saved in {subject_plot_dir}/ directory.")
 
@@ -454,22 +503,28 @@ def main():
         for cam_count in camera_counts:
             static_vals = []
             dynamic_vals = []
+            ate_vals = []
+            rot_vals = []
             for subject_name, subject_results in all_subject_results.items():
                 if cam_count not in subject_results:
                     continue
-                s_val = subject_results[cam_count]["static"]
-                d_val = subject_results[cam_count]["dynamic"]
-                if not np.isnan(s_val):
-                    static_vals.append(s_val)
-                if not np.isnan(d_val):
-                    dynamic_vals.append(d_val)
+                res = subject_results[cam_count]
+                if not np.isnan(res["static"]): static_vals.append(res["static"])
+                if not np.isnan(res["dynamic"]): dynamic_vals.append(res["dynamic"])
+                if not np.isnan(res["ate"]): ate_vals.append(res["ate"])
+                if not np.isnan(res["rot_err"]): rot_vals.append(res["rot_err"])
 
             mean_static = float(np.mean(static_vals)) if static_vals else np.nan
             mean_dynamic = float(np.mean(dynamic_vals)) if dynamic_vals else np.nan
+            mean_ate = float(np.mean(ate_vals)) if ate_vals else np.nan
+            mean_rot = float(np.mean(rot_vals)) if rot_vals else np.nan
+
             print(
                 f"{cam_count} views -> "
                 f"mean static={mean_static:.5f}, "
                 f"mean dynamic={mean_dynamic:.5f}, "
+                f"mean ate={mean_ate:.4f}, "
+                f"mean rot={mean_rot:.4f}, "
                 f"subjects={len(static_vals)}/{len(subject_dirs)}"
             )
 
@@ -478,6 +533,7 @@ def main():
         csv_fieldnames = [
             "subject", "views", "chamfer", "completeness", "static_acc", "dynamic_acc",
             "jitter_mean", "jitter_std", "jitter_p95", "jitter_max", "drift_mean", "hf_jitter",
+            "ate", "rpe", "rot_err", "focal_err", "pp_err"
         ]
         with open(csv_file, "w", newline="") as f:
             writer = csv.DictWriter(f, fieldnames=csv_fieldnames)
