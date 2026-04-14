@@ -35,37 +35,13 @@ from mast3r.utils.gt import (
 )
 
 # ── configuration ─────────────────────────────────────────────────────────────
-DATASET_BASE_ROOT = "/home/fabio/datasets/dex-ycb-multiview"
-SUBJECT_NAMES = [
-    "20200709-subject-01__20200709_141754",
-    "20200813-subject-02__20200813_145653",
-    "20200820-subject-03__20200820_135841",
-    "20200903-subject-04__20200903_104428",
-    "20200908-subject-05__20200908_144409",
-    "20200918-subject-06__20200918_114117",
-    "20200928-subject-07__20200928_144906",
-    "20201002-subject-08__20201002_110227",
-    "20201015-subject-09__20201015_144721",
-    "20201022-subject-10__20201022_112651",
-]
-SUBJECT_BY_CODE = {name.split("subject-")[1][:2]: name for name in SUBJECT_NAMES}
-MODEL_NAME = "naver/MASt3R_ViTLarge_BaseDecoder_512_catmlpdpt_metric"
-IMAGE_SIZE = 512
-DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
-RERUN_ADDR = "rerun+http://127.0.0.1:9876/proxy"
-
-MIN_CONF_THR = 2.0
-SCENEGRAPH = "complete"
+from eval_config import (
+    DATASET_BASE_ROOT, SUBJECT_NAMES, SUBJECT_BY_CODE,
+    MODEL_NAME, IMAGE_SIZE, DEVICE, RERUN_ADDR,
+    MIN_CONF_THR, VIEW_CONFIGS, DEFAULT_TARGET_VIEWS, SCENE_GRAPH, RERUN_EYE_UP
+)
 CLEAN_DEPTH = True
 RUN_MULTI_VIEW_EVAL = True
-VIEW_CONFIGS = {
-    2: ["01", "06"],
-    3: ["04", "06", "07"],
-    4: None,
-}
-DEFAULT_TARGET_VIEWS = ["02", "03", "06", "07"]
-RERUN_EYE_UP = [-0.04418, -0.6565, -0.7531]
-
 
 # ── helpers ───────────────────────────────────────────────────────────────────
 def get_masked_image(t, vname, rgb_path, cache_dir, dataset_root):
@@ -252,7 +228,7 @@ def run_reconstruction(
         ]
 
         imgs = load_images(masked_current_files, size=IMAGE_SIZE)
-        pairs = make_pairs(imgs, scene_graph=SCENEGRAPH, symmetrize=True)
+        pairs = make_pairs(imgs, scene_graph=SCENE_GRAPH, symmetrize=True)
         scene = sparse_global_alignment(
             masked_current_files,
             pairs,
@@ -388,6 +364,7 @@ def run_reconstruction(
             'R': R,
             'tr': tr,
             'pointmaps': np.stack(pts3d_list),
+            'pointmaps_confs': np.stack(confs),
             'frame_idx': int(t),
             'Ks': np.array(valid_Ks),
             'R_ts': np.array(valid_R_ts),
