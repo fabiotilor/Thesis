@@ -14,9 +14,12 @@ def build_camera_intrinsics_cache(dataset_root):
         return _CAMERA_CACHE[subject_name]
 
     cache = {}
-    view_dirs = sorted(glob.glob(os.path.join(dataset_root, "view_*")))
+    view_dirs = sorted([os.path.join(dataset_root, d) for d in os.listdir(dataset_root)
+                        if os.path.isdir(os.path.join(dataset_root, d))])
     for subdir in view_dirs:
-        if not os.path.isdir(subdir): continue
+        # Check if the folder contains the necessary GT metadata
+        if not os.path.exists(os.path.join(subdir, "intrinsics_extrinsics.npz")):
+            continue
         # Try to find any frame NPZ to get the K
         vname = os.path.basename(subdir)
         # In DexYCB, we can usually find one NPZ in the aligned_outputs if they were saved

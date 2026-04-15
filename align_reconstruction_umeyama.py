@@ -40,6 +40,11 @@ from eval_config import (
     MODEL_NAME, IMAGE_SIZE, DEVICE, RERUN_ADDR,
     MIN_CONF_THR, VIEW_CONFIGS, DEFAULT_TARGET_VIEWS, SCENE_GRAPH, RERUN_EYE_UP
 )
+from mast3r.utils.rerun_logging import (
+    configure_rerun_view_defaults,
+    log_cameras_rerun,
+    log_alignment_results
+)
 CLEAN_DEPTH = True
 RUN_MULTI_VIEW_EVAL = True
 
@@ -66,62 +71,6 @@ def build_views(dataset_root, target_views=None):
     return dict(views)
 
 
-def log_alignment_rerun(
-    t,
-    gt_pts,
-    aligned_pts,
-    refined_pts=None,
-    masked_est_pts=None,
-    log_root="world",
-):
-    rr.set_time("timestep", sequence=t)
-    if gt_pts is not None:
-        rr.log(f"{log_root}/gt", rr.Points3D(positions=gt_pts, colors=[0, 255, 0], radii=0.002))
-    if aligned_pts is not None:
-        rr.log(
-            f"{log_root}/estimated/aligned",
-            rr.Points3D(positions=aligned_pts, colors=[0, 0, 255], radii=0.002),
-        )
-    if refined_pts is not None:
-        rr.log(
-            f"{log_root}/estimated/stabilised",
-            rr.Points3D(positions=refined_pts, colors=[255, 0, 255], radii=0.002),
-        )
-
-def log_cameras_rerun(t, view_names, views, dataset_root, log_root):
-    rr.set_time("timestep", sequence=t)
-    for vname in view_names:
-        view_dir = os.path.join(dataset_root, vname)
-        K, c2w = load_gt_params(view_dir)
-
-        rgb_path = views[vname][t]
-        img_bgr = cv2.imread(rgb_path)
-        if img_bgr is None:
-            print(f"  [WARN] Could not read RGB image for camera {vname} at t={t}")
-            continue
-        img_rgb = cv2.cvtColor(img_bgr, cv2.COLOR_BGR2RGB)
-        H, W = img_rgb.shape[:2]
-
-        entity = f"{log_root}/cameras/{vname}"
-        rr.log(
-            entity,
-            rr.Pinhole(
-                focal_length=float(K[0, 0]),
-                width=W,
-                height=H,
-                image_plane_distance=0.2,
-            ),
-        )
-        rr.log(
-            entity,
-            rr.Transform3D(
-                translation=c2w[:3, 3],
-                mat3x3=c2w[:3, :3],
-            ),
-        )
-        rr.log(f"{entity}/rgb", rr.Image(img_rgb))
-
-
 def compute_all_static_masks(views, view_names, flow_threshold, verbose=True):
     print(f"\n[flow] Computing static masks (flow_threshold={flow_threshold}px)...")
     static_masks = {}
@@ -132,58 +81,6 @@ def compute_all_static_masks(views, view_names, flow_threshold, verbose=True):
             pct = 100 * mask.mean()
             print(f"  cam {vname}: {pct:.1f}% pixels static")
     return static_masks
-
-
-def configure_rerun_view_defaults(log_root):
-    # Best-effort default 3D view orientation across Rerun versions.
-    # Some SDK versions expose `eye_up`, others `up`, and older ones may not support either.
-    try:
-        import rerun.blueprint as rrb
-    except Exception:
-        return
-
-    # Prefer explicit EyeControls3D, because "Eye Controls 3D" in the viewer
-    # is distinct from world coordinate conventions.
-    blueprint_variants = []
-
-    # Variant 1: EyeControls3D as direct symbol.
-    try:
-        eye_controls = rrb.EyeControls3D(eye_up=RERUN_EYE_UP)
-        blueprint_variants.append(
-            rrb.Blueprint(rrb.Spatial3DView(origin=log_root, name=f"{log_root}_3d", eye_controls=eye_controls))
-        )
-    except Exception:
-        pass
-
-    # Variant 2: EyeControls3D under archetypes namespace.
-    try:
-        eye_controls = rrb.archetypes.EyeControls3D(eye_up=RERUN_EYE_UP)
-        blueprint_variants.append(
-            rrb.Blueprint(rrb.Spatial3DView(origin=log_root, name=f"{log_root}_3d", eye_controls=eye_controls))
-        )
-    except Exception:
-        pass
-
-    # Fallback variants for older/newer API differences.
-    for kwargs in (
-        {"origin": log_root, "name": f"{log_root}_3d", "eye_up": RERUN_EYE_UP},
-        {"origin": log_root, "name": f"{log_root}_3d", "up": RERUN_EYE_UP},
-        {"origin": log_root, "name": f"{log_root}_3d"},
-    ):
-        try:
-            blueprint_variants.append(rrb.Blueprint(rrb.Spatial3DView(**kwargs)))
-        except Exception:
-            continue
-
-    for blueprint in blueprint_variants:
-        try:
-            rr.send_blueprint(blueprint)
-            print(f"[INFO] Applied Rerun eye-up default {RERUN_EYE_UP} for {log_root}")
-            return
-        except Exception:
-            continue
-
-    print(f"[WARN] Could not apply Rerun eye-up default for {log_root} (SDK API mismatch)")
 
 
 def run_reconstruction(
@@ -203,7 +100,7 @@ def run_reconstruction(
         print(f"[WARN] Rerun init failed for {run_tag}: {e}")
     log_root = f"world/{run_tag}"
     rr.log(log_root, rr.ViewCoordinates.RIGHT_HAND_Y_UP, static=True)
-    configure_rerun_view_defaults(log_root)
+    configure_rerun_view_defaults(log_root, RERUN_EYE_UP)
 
     views = build_views(dataset_root, target_views=target_views)
     view_names = sorted(views.keys())
@@ -220,7 +117,7 @@ def run_reconstruction(
     for t in range(n_frames):
         print(f"── t={t:02d} / {n_frames - 1} ──────────────────────────────────────")
 
-        log_cameras_rerun(t, view_names, views, dataset_root, log_root)
+        log_cameras_rerun(t, view_names, dataset_root, log_root)
 
         masked_current_files = [
             get_masked_image(t, v, views[v][t], cache_root, dataset_root)
@@ -306,9 +203,8 @@ def run_reconstruction(
         aligned_pts = apply_similarity_transform(est_pts, s, R, tr)
 
         # ── Logging ─────────────────────────────────────────────────────────
-        log_alignment_rerun(
+        log_alignment_results(
             t, gt_pts, aligned_pts,
-            masked_est_pts=est_pts,
             log_root=log_root,
         )
 

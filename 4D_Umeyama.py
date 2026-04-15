@@ -21,197 +21,142 @@ from mast3r.utils.alignment_4d import (
     normalize_spatial_dims,
     normalize_array
 )
-from mast3r.utils.temporal_metrics import (
-    compute_chamfer_distance,
-    compute_accuracy,
-    compute_completeness,
-    split_points_by_mask
+
+from eval_config import (
+    DATASET_BASE_ROOT, SUBJECT_NAMES, SUBJECT_BY_CODE,
+    MIN_CONF_THR, RERUN_ADDR, RERUN_EYE_UP
 )
-from eval_config import DATASET_BASE_ROOT, SUBJECT_NAMES, SUBJECT_BY_CODE, MIN_CONF_THR
-
-
 # ── camera discovery ───────────────────────────────────────────────────────────
 # Moved to utils.camera_utils
 
-# ── evaluation metrics ────────────────────────────────────────────────────────
-# Now using utils.temporal_metrics
+# ── rerun configuration ────────────────────────────────────────────────────────
 
-# ── correspondence extraction ─────────────────────────────────────────────────
-# Moved to utils.alignment_4d
+from mast3r.utils.rerun_logging import (
+    configure_rerun_view_defaults,
+    log_cameras_rerun,
+    log_gt_sequence,
+    log_aligned_sequence,
+    log_pointcloud
+)
 
-# ── alignment strategies ──────────────────────────────────────────────────────
-# Moved to utils.alignment_4d
 
-def evaluate_4d_sequence(frame_npz_paths, frame_transforms, s_glob, R_glob, tr_glob, dataset_root):
-    """
-    Evaluates the final 4D sequence against ground truth.
-    """
-    chamfer_list, static_acc_list, completeness_list = [], [], []
+def save_aligned_results(frame_paths, frame_transforms, s_glob, R_glob, tr_glob, subject_name, strategy_label,
+                         dataset_root):
+    """Saves evaluation-ready .npz files for each frame."""
+    out_dir = os.path.join("aligned_outputs", subject_name, strategy_label)
+    os.makedirs(out_dir, exist_ok=True)
 
-    for i, path in enumerate(frame_npz_paths):
+    print(f"  [SAVE] Exporting aligned frames to {out_dir}...")
+
+    for i, path in enumerate(frame_paths):
         data = np.load(path)
         V, H, W = normalize_spatial_dims(data)
         if H == 0: continue
 
-        # 1. Aligned Estimated Points
-        pm = normalize_array(data['pointmaps'], V, H, W).astype(np.float32)
-        s_i, R_i, tr_i = frame_transforms[i]
-        s_total, R_total, tr_total = s_glob * s_i, R_glob @ R_i, s_glob * (R_glob @ tr_i) + tr_glob
-
-        pts_final = apply_similarity_transform(pm.reshape(-1, 3), s_total, R_total, tr_total)
-
-        # 2. GT Points (Filtered by validity inside metrics helper)
+        # 1. Standardize GT Points to Meters
         gt_pts = data['gt_pts']
-        if np.mean(np.abs(gt_pts)) > 10.0: gt_pts /= 1000.0
-
-        t, ks, rts = int(data['frame_idx']), data['Ks'], data['R_ts']
-        view_names = [discover_view_name(dataset_root, k) for k in ks]
-        vmasks = build_gt_validity_masks(t, view_names, dataset_root, target_hw=(H, W))
-
-        # Stricter static+valid mask for evaluation
-        m_eval = normalize_array(data['masks_2d'], V, H, W, is_mask=True)
-        for v in range(V):
-            if vmasks[v] is not None: m_eval[v] &= vmasks[v]
-            if 'pointmaps_confs' in data:
-                conf = normalize_array(data['pointmaps_confs'], V, H, W)
-                m_eval[v] &= (conf[v] > MIN_CONF_THR)
-
-        # Split and calculate
-        s_p, _ = split_points_by_mask(pts_final, m_eval, ks, rts)
-        g_s, _ = split_points_by_mask(gt_pts, m_eval, ks, rts)
-
-        if len(g_s) > 0 and len(s_p) > 0:
-            chamfer_list.append(compute_chamfer_distance(s_p, g_s))
-            static_acc_list.append(compute_accuracy(s_p, g_s))
-            completeness_list.append(compute_completeness(s_p, g_s))
-        else:
-            print(f"  [WARN] Frame {i}: insufficient static points (est={len(s_p)}, gt={len(g_s)})")
-
-    return {
-        'chamfer': np.nanmean(chamfer_list),
-        'static_acc': np.nanmean(static_acc_list),
-        'completeness': np.nanmean(completeness_list),
-    }
-
-
-# ── visualization ─────────────────────────────────────────────────────────────
-
-def log_gt_sequence(paths):
-    entity = "4d_eval/GT"
-    for p in paths:
-        data = np.load(p)
-        t = int(data['frame_idx'])
-        rr.set_time("timestep", sequence=t)
-        gt_pts = data['gt_pts']
-        # Magnitude check: if any point's distance from origin is > 10m, it's millimeters
         if np.any(np.linalg.norm(gt_pts, axis=-1) > 10.0):
             gt_pts = gt_pts / 1000.0
-        rr.log(entity, rr.Points3D(positions=gt_pts, colors=[0, 255, 0], radii=0.002))
 
-
-def log_aligned_sequence(paths, frame_transforms, s_glob, R_glob, tr_glob, label, color, dataset_root):
-    entity = f"4d_eval/{label}"
-    for i, p in enumerate(paths):
-        data = np.load(p)
-        V, H, W = normalize_spatial_dims(data)
-        if H == 0: continue
-
+        # 2. Re-calculate Aligned Full Pointcloud
         pm = normalize_array(data['pointmaps'], V, H, W).astype(np.float32)
-        t, ks = int(data['frame_idx']), data['Ks']
-        rr.set_time("timestep", sequence=t)
+        s_i, R_i, tr_i = frame_transforms[i]
+        s_tot = s_glob * s_i
+        R_tot = R_glob @ R_i
+        tr_tot = s_glob * (R_glob @ tr_i) + tr_glob
 
+        # Merge views for the "aligned_pts" field
+        all_pts = []
+        conf = normalize_array(data['pointmaps_confs'], V, H, W) if 'pointmaps_confs' in data else None
+        t, ks = int(data['frame_idx']), data['Ks']
         view_names = [discover_view_name(dataset_root, k) for k in ks]
         vmasks = build_gt_validity_masks(t, view_names, dataset_root, target_hw=(H, W))
 
-        s_i, R_i, tr_i = frame_transforms[i]
-        s_total = s_glob * s_i
-        R_total = R_glob @ R_i
-        tr_total = s_glob * (R_glob @ tr_i) + tr_glob
-
-        m_base = normalize_array(data['masks_2d'], V, H, W, is_mask=True)
-        if 'pointmaps_confs' in data:
-            m_base &= (normalize_array(data['pointmaps_confs'], V, H, W) > MIN_CONF_THR)
-
         for v in range(V):
-            mask = m_base[v]
+            mask = np.ones((H, W), dtype=bool)
             if vmasks[v] is not None:
                 mask &= vmasks[v]
+            elif view_names[v] is not None:
+                print(f"    [WARN] Frame {t} view {v} ({view_names[v]}): Depth mask missing.")
+            else:
+                print(f"    [WARN] Frame {t} view {v}: Could not discover view name for K.")
 
-            pts = pm[v][mask]
-            if len(pts) == 0: continue
-            pts_final = apply_similarity_transform(pts, s_total, R_total, tr_total)
-            rr.log(f"{entity}/view_{v}", rr.Points3D(positions=pts_final, colors=color, radii=0.002))
+            if conf is not None: mask &= (conf[v] > MIN_CONF_THR)
+            p_v = pm[v][mask]
+            if len(p_v) > 0: all_pts.append(apply_similarity_transform(p_v, s_tot, R_tot, tr_tot))
+
+        n_pts = sum(len(p) for p in all_pts)
+        if n_pts == 0:
+            print(f"    [ERROR] Frame {t}: No points survived filtering (Conf > {MIN_CONF_THR} + GT Masks).")
+
+        aligned_pts = np.concatenate(all_pts, axis=0) if all_pts else np.zeros((0, 3))
+
+        # 3. Save bundled NPZ
+        save_dict = {
+            'gt_pts': gt_pts,
+            'aligned_pts': aligned_pts,
+            'frame_idx': int(t),
+            'Ks': ks,
+            'R_ts': data['R_ts'],
+            'masks_2d': data['masks_2d'],
+            'est_poses': data.get('est_poses'),
+            'est_intrinsics': data.get('est_intrinsics'),
+            'pointmaps': data['pointmaps'],
+            'pointmaps_confs': data.get('pointmaps_confs'),
+            'scale': float(s_tot),
+            'R': R_tot,
+            'tr': tr_tot
+        }
+        out_path = os.path.join(out_dir, f"frame_{t:04d}.npz")
+        np.savez_compressed(out_path, **save_dict)
 
 
 # ── main ──────────────────────────────────────────────────────────────────────
 
 def evaluate_subject(subject_name):
-    in_dir = os.path.join("aligned_outputs", subject_name, "2views")
-    if not os.path.exists(in_dir): return
-    paths = sorted(glob.glob(os.path.join(in_dir, "frame_*.npz")),
-                   key=lambda x: int(os.path.basename(x).split('_')[1].split('.')[0]))
-    if len(paths) < 2: return
+    base_dir = os.path.join("aligned_outputs", subject_name)
+    if not os.path.exists(base_dir): return
 
-    dataset_root = os.path.join(DATASET_BASE_ROOT, subject_name)
-    rr.init(f"MASt3R_4D_{subject_name}", spawn=True)
+    view_dirs = sorted(
+        [d for d in os.listdir(base_dir) if d.endswith("views") and os.path.isdir(os.path.join(base_dir, d))])
+    if not view_dirs: return
 
-    # 0. GT
-    print("  [RERUN] Logging GT...")
-    log_gt_sequence(paths)
+    for vdir in view_dirs:
+        in_dir = os.path.join(base_dir, vdir)
+        paths = sorted(glob.glob(os.path.join(in_dir, "frame_*.npz")),
+                       key=lambda x: int(os.path.basename(x).split('_')[1].split('.')[0]))
+        if len(paths) < 2: continue
 
-    results = []
+        dataset_root = os.path.join(DATASET_BASE_ROOT, subject_name)
+        rr.init(f"4d_eval_{subject_name}_{vdir}", spawn=False)
+        rr.connect_grpc(RERUN_ADDR)
+        log_root = f"4d_eval_{vdir}"
+        rr.log(log_root, rr.ViewCoordinates.RIGHT_HAND_Y_UP, static=True)
+        configure_rerun_view_defaults(log_root, RERUN_EYE_UP)
 
-    # 1. Strategy 1 (Reference Frame 0)
-    print("\n--- [Strategy 1] Reference Frame Alignment ---")
-    t1_start = time.time()
-    tf_s1 = strategy1_reference(paths, dataset_root)
-    s_g1, R_g1, tr_g1 = solve_final_gt_registration(paths, tf_s1, dataset_root)
+        # 0. GT
+        print(f"  [RERUN] Logging GT for {vdir}...")
+        log_gt_sequence(paths, log_root=log_root)
 
-    metrics_s1 = evaluate_4d_sequence(paths, tf_s1, s_g1, R_g1, tr_g1, dataset_root)
-    jitter_s1 = compute_4d_jitter_complete(paths, tf_s1, s_g1, R_g1, tr_g1, dataset_root)
-    t1_end = time.time()
+        # 1. Strategy 1 (Reference Frame 0)
+        print(f"\n--- [Strategy 1] Reference Frame Alignment ({vdir}) ---")
+        tf_s1 = strategy1_reference(paths, dataset_root)
+        s_g1, R_g1, tr_g1 = solve_final_gt_registration(paths, tf_s1, dataset_root)
 
-    print(f"  [4D-S1] Chamfer: {metrics_s1['chamfer']:.5f}")
-    print(f"  [4D-S1] Static Acc: {metrics_s1['static_acc']:.4f}")
-    print(f"  [4D-S1] Jitter Mean: {jitter_s1['jitter_mean']:.5f}")
+        save_aligned_results(paths, tf_s1, s_g1, R_g1, tr_g1, subject_name, f"Strategy_1_{vdir}", dataset_root)
+        log_aligned_sequence(paths, tf_s1, s_g1, R_g1, tr_g1, "Strategy_1", [0, 0, 255], dataset_root,
+                             log_root=log_root)
 
-    log_aligned_sequence(paths, tf_s1, s_g1, R_g1, tr_g1, "Strategy_1", [0, 0, 255], dataset_root)
+        # 2. Strategy 2 (Hierarchical)
+        print(f"\n--- [Strategy 2] Hierarchical Alignment ({vdir}) ---")
+        tf_s2 = strategy2_hierarchical(paths, dataset_root)
+        s_g2, R_g2, tr_g2 = solve_final_gt_registration(paths, tf_s2, dataset_root)
 
-    results.append({
-        'subject': subject_name, 'strategy': 'S1_Global',
-        'scale': s_g1, 'solve_time': t1_end - t1_start,
-        'chamfer': metrics_s1['chamfer'], 'static_acc': metrics_s1['static_acc'],
-        'jitter_mean': jitter_s1['jitter_mean']
-    })
+        save_aligned_results(paths, tf_s2, s_g2, R_g2, tr_g2, subject_name, f"Strategy_2_{vdir}", dataset_root)
+        log_aligned_sequence(paths, tf_s2, s_g2, R_g2, tr_g2, "Strategy_2", [255, 0, 0], dataset_root,
+                             log_root=log_root)
 
-    # 2. Strategy 2 (Hierarchical)
-    print("\n--- [Strategy 2] Hierarchical Alignment ---")
-    t2_start = time.time()
-    tf_s2 = strategy2_hierarchical(paths, dataset_root)
-    s_g2, R_g2, tr_g2 = solve_final_gt_registration(paths, tf_s2, dataset_root)
-
-    metrics_s2 = evaluate_4d_sequence(paths, tf_s2, s_g2, R_g2, tr_g2, dataset_root)
-    jitter_s2 = compute_4d_jitter_complete(paths, tf_s2, s_g2, R_g2, tr_g2, dataset_root)
-    t2_end = time.time()
-
-    print(f"  [4D-S2] Chamfer: {metrics_s2['chamfer']:.5f}")
-    print(f"  [4D-S2] Static Acc: {metrics_s2['static_acc']:.4f}")
-    print(f"  [4D-S2] Jitter Mean: {jitter_s2['jitter_mean']:.5f}")
-
-    log_aligned_sequence(paths, tf_s2, s_g2, R_g2, tr_g2, "Strategy_2", [255, 0, 255], dataset_root)
-
-    results.append({
-        'subject': subject_name, 'strategy': 'S2_Hierarchical',
-        'scale': s_g2, 'solve_time': t2_end - t2_start,
-        'chamfer': metrics_s2['chamfer'], 'static_acc': metrics_s2['static_acc'],
-        'jitter_mean': jitter_s2['jitter_mean']
-    })
-
-    # Save results to CSV
-    df = pd.DataFrame(results)
-    out_csv = f"eval_4d_{subject_name}.csv"
-    df.to_csv(out_csv, index=False)
-    print(f"\n[INFO] Saved results to {out_csv}")
+        print(f"\n[INFO] Aligned results saved for {subject_name} ({vdir}). Run evaluate_4D.py to see metrics.")
 
 
 if __name__ == "__main__":
