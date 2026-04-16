@@ -17,20 +17,26 @@ def run_command(cmd):
 
 
 def main():
-    # Pass along any arguments (like --01, --all, etc.)
     args = sys.argv[1:]
+    pgo_only = "--pgo" in args
 
     # Ensure that Python executes the scripts properly in the environment
     python_exec = "python"
 
-    # 1. Run Baseline Alignment (runs MASt3R + initial Umeyama per-frame alignments)
-    run_command([python_exec, "align_reconstruction_umeyama.py"] + args)
+    if pgo_only:
+        # Fast path: reuse existing aligned baseline outputs and evaluate only PGO for subject 01 on 2/3/4 views.
+        scoped_args = ["--01", "--views", "2", "3", "4", "--pgo"]
+        run_command([python_exec, "4D_Umeyama.py"] + scoped_args)
+        run_command([python_exec, "evaluate_4D.py"] + scoped_args)
+    else:
+        # 1. Run Baseline Alignment (runs MASt3R + initial Umeyama per-frame alignments)
+        run_command([python_exec, "align_reconstruction_umeyama.py"] + args)
 
-    # 2. Run 4D Strategies (computes Strategy 1 and Strategy 2 from the baseline)
-    run_command([python_exec, "4D_Umeyama.py"] + args)
+        # 2. Run 4D Strategies
+        run_command([python_exec, "4D_Umeyama.py"] + args)
 
-    # 3. Evaluate Framework (computes 4D metrics across strategies AND the baseline)
-    run_command([python_exec, "evaluate_4D.py"] + args)
+        # 3. Evaluate Framework
+        run_command([python_exec, "evaluate_4D.py"] + args)
 
     # 4. Aggregate Results Across Scripts
     csv_files = glob.glob("eval_summary_*.csv")

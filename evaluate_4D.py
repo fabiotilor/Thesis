@@ -158,6 +158,8 @@ def evaluate_strategy_dir(in_dir, out_plot_dir, strategy_label=""):
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--all", action="store_true")
+    parser.add_argument("--pgo", action="store_true", help="Evaluate only Strategy 3 outputs.")
+    parser.add_argument("--views", nargs="+", type=int, help="Optional view counts to evaluate (e.g. --views 2 3 4).")
     for code in SUBJECT_BY_CODE.keys(): parser.add_argument(f"--{code}", action="store_true")
     args = parser.parse_args()
 
@@ -176,6 +178,11 @@ def main():
 
         # Discover all strategies (S1, S2, 3D, etc.)
         strategies = sorted([d for d in os.listdir(base_dir) if os.path.isdir(os.path.join(base_dir, d))])
+        if args.views:
+            wanted_suffixes = tuple(f"_{v}views" for v in args.views)
+            strategies = [s for s in strategies if s.endswith(wanted_suffixes)]
+        if args.pgo:
+            strategies = [s for s in strategies if s.startswith("Strategy_3_")]
         if not strategies:
             print(f"[WARN] No strategies found in {base_dir}")
             continue

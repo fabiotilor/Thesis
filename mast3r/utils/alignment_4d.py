@@ -145,10 +145,18 @@ def get_pointmap_correspondences(path_a, path_b, dataset_root):
     return np.concatenate(src_list), np.concatenate(dst_list)
 
 
-def estimate_interframe_transform_pointmap(path_a, path_b, dataset_root):
+def estimate_interframe_transform_pointmap(path_a, path_b, dataset_root, return_error=False):
     res = get_pointmap_correspondences(path_a, path_b, dataset_root)
-    if res is None: return None
-    return estimate_similarity_transform(res[0], res[1])
+    if res is None:
+        return (None, None) if return_error else None
+
+    s, R, tr = estimate_similarity_transform(res[0], res[1])
+    if not return_error:
+        return s, R, tr
+
+    pred = apply_similarity_transform(res[0], s, R, tr)
+    err = np.linalg.norm(pred - res[1], axis=-1).mean()
+    return (s, R, tr), err
 
 
 def strategy1_reference(frame_npz_paths, dataset_root):
@@ -179,6 +187,134 @@ def strategy2_hierarchical(frame_npz_paths, dataset_root):
         if len(groups) % 2 != 0: new_groups.append(groups[-1])
         groups = new_groups
     return [t for _, t in sorted(groups[0], key=lambda x: x[0])]
+
+
+def rotation_average(R_list, weights, max_iters=50, tol=1e-6):
+    """Weiszfeld algorithm for geodesic L1 mean on SO(3)"""
+    R_mean = R_list[0].copy()
+    for _ in range(max_iters):
+        v_sum = np.zeros(3)
+        w_sum = 0.0
+        for R_k, w in zip(R_list, weights):
+            R_rel = R_mean.T @ R_k
+            # Log map
+            trace = np.clip((np.trace(R_rel) - 1.0) / 2.0, -1.0, 1.0)
+            theta = np.arccos(trace)
+            if theta < 1e-8:
+                continue
+
+            v = theta * np.array([R_rel[2, 1] - R_rel[1, 2], R_rel[0, 2] - R_rel[2, 0], R_rel[1, 0] - R_rel[0, 1]]) / (
+                        2 * np.sin(theta))
+
+            # Weiszfeld re-weighting
+            norm_v = np.linalg.norm(v)
+            w_eff = w / max(norm_v, 1e-8)
+            v_sum += w_eff * v
+            w_sum += w_eff
+
+        if w_sum == 0:
+            break
+
+        delta = v_sum / w_sum
+
+        if np.linalg.norm(delta) < tol:
+            break
+
+        # Exp map
+        theta_d = np.linalg.norm(delta)
+        if theta_d > 1e-8:
+            n = delta / theta_d
+            K = np.array([[0, -n[2], n[1]],
+                          [n[2], 0, -n[0]],
+                          [-n[1], n[0], 0]])
+            R_delta = np.eye(3) + np.sin(theta_d) * K + (1 - np.cos(theta_d)) * (K @ K)
+            R_mean = R_mean @ R_delta
+
+    # Cleanup to ensure exact SO(3)
+    U, _, Vt = np.linalg.svd(R_mean)
+    S = np.eye(3)
+    S[2, 2] = np.linalg.det(U) * np.linalg.det(Vt)
+    R_mean = U @ S @ Vt
+
+    return R_mean
+
+
+def strategy3_pgo(frame_npz_paths, dataset_root, num_iters=50):
+    n_frames = len(frame_npz_paths)
+    print("    [PGO] Computing T(T-1)/2 pairwise edges...")
+    edges = {}
+
+    for i in range(n_frames):
+        for j in range(i + 1, n_frames):
+            res = estimate_interframe_transform_pointmap(frame_npz_paths[i], frame_npz_paths[j], dataset_root,
+                                                         return_error=True)
+            if res[0] is not None:
+                (s, R, t), err = res
+                weight = 1.0 / (err + 1e-6)
+                edges[(i, j)] = ((s, R, t), weight)
+
+    print(f"    [PGO] Found {len(edges)} valid edges. Initializing loops...")
+
+    # Initialize with strategy 1
+    T_global = strategy1_reference(frame_npz_paths, dataset_root)
+    T_global = [list(val) for val in T_global]
+
+    print("    [PGO] Optimizing...")
+    for it in range(num_iters):
+        T_new = []
+        for i in range(n_frames):
+            if i == 0:
+                T_new.append(T_global[0])  # anchor at identity
+                continue
+
+            votes_s = []
+            votes_R = []
+            votes_t = []
+            weights = []
+
+            for j in range(n_frames):
+                if i == j: continue
+
+                s_j, R_j, t_j = T_global[j]
+
+                if (i, j) in edges:
+                    (s_ij, R_ij, t_ij), w = edges[(i, j)]
+                    # edge is i -> j (aligns i to j)
+                    pred_s = s_j * s_ij
+                    pred_R = R_j @ R_ij
+                    pred_t = s_j * (R_j @ t_ij) + t_j
+
+                    votes_s.append(pred_s)
+                    votes_R.append(pred_R)
+                    votes_t.append(pred_t)
+                    weights.append(w)
+
+                elif (j, i) in edges:
+                    (s_ji, R_ji, t_ji), w = edges[(j, i)]
+                    # edge is j -> i (aligns j to i)
+                    pred_s = s_j / s_ji
+                    pred_R = R_j @ R_ji.T
+                    pred_t = t_j - s_j * (R_j @ (R_ji.T @ t_ji)) / s_ji
+
+                    votes_s.append(pred_s)
+                    votes_R.append(pred_R)
+                    votes_t.append(pred_t)
+                    weights.append(w)
+
+            if len(weights) > 0:
+                weights = np.array(weights)
+                weights /= weights.sum()
+
+                new_s = np.sum(np.array(votes_s) * weights)
+                new_t = np.sum(np.array(votes_t) * weights[:, None], axis=0)
+                new_R = rotation_average(votes_R, weights)
+                T_new.append([new_s, new_R, new_t])
+            else:
+                T_new.append(T_global[i])
+
+        T_global = T_new
+
+    return [(val[0], val[1], val[2]) for val in T_global]
 
 
 def solve_final_gt_registration(frame_npz_paths, frame_transforms, dataset_root):

@@ -16,6 +16,7 @@ from mast3r.utils.camera_utils import discover_view_name
 from mast3r.utils.alignment_4d import (
     strategy1_reference,
     strategy2_hierarchical,
+    strategy3_pgo,
     solve_final_gt_registration,
     compute_4d_jitter_complete,
     normalize_spatial_dims,
@@ -38,6 +39,25 @@ from mast3r.utils.rerun_logging import (
     log_aligned_sequence,
     log_pointcloud
 )
+
+
+def initialize_rerun_session(app_id, rerun_addr, log_root):
+    """
+    Initialize rerun with robust fallback:
+    1) try external rerun server (grpc),
+    2) if unavailable, spawn local viewer.
+    """
+    try:
+        rr.init(app_id, spawn=False)
+        rr.connect_grpc(rerun_addr)
+        print(f"  [RERUN] Connected to existing viewer at {rerun_addr}")
+    except Exception as e:
+        print(f"  [RERUN][WARN] Could not connect to {rerun_addr}: {e}")
+        print("  [RERUN] Spawning local viewer instead...")
+        rr.init(app_id, spawn=True)
+
+    rr.log(log_root, rr.ViewCoordinates.RIGHT_HAND_Y_UP, static=True)
+    configure_rerun_view_defaults(log_root, RERUN_EYE_UP)
 
 
 def save_aligned_results(frame_paths, frame_transforms, s_glob, R_glob, tr_glob, subject_name, strategy_label,
@@ -113,13 +133,20 @@ def save_aligned_results(frame_paths, frame_transforms, s_glob, R_glob, tr_glob,
 
 # ── main ──────────────────────────────────────────────────────────────────────
 
-def evaluate_subject(subject_name):
+def evaluate_subject(subject_name, selected_views=None, pgo_only=False):
     base_dir = os.path.join("aligned_outputs", subject_name)
     if not os.path.exists(base_dir): return
 
     view_dirs = sorted(
         [d for d in os.listdir(base_dir) if d.endswith("views") and os.path.isdir(os.path.join(base_dir, d))])
     if not view_dirs: return
+
+    if selected_views:
+        selected_view_dirs = {f"{v}views" for v in selected_views}
+        view_dirs = [vdir for vdir in view_dirs if vdir in selected_view_dirs]
+        if not view_dirs:
+            print(f"[WARN] No matching view folders found for {subject_name} and views {selected_views}")
+            return
 
     for vdir in view_dirs:
         in_dir = os.path.join(base_dir, vdir)
@@ -128,32 +155,39 @@ def evaluate_subject(subject_name):
         if len(paths) < 2: continue
 
         dataset_root = os.path.join(DATASET_BASE_ROOT, subject_name)
-        rr.init(f"4d_eval_{subject_name}_{vdir}", spawn=False)
-        rr.connect_grpc(RERUN_ADDR)
         log_root = f"4d_eval_{vdir}"
-        rr.log(log_root, rr.ViewCoordinates.RIGHT_HAND_Y_UP, static=True)
-        configure_rerun_view_defaults(log_root, RERUN_EYE_UP)
+        initialize_rerun_session(f"4d_eval_{subject_name}_{vdir}", RERUN_ADDR, log_root)
 
         # 0. GT
         print(f"  [RERUN] Logging GT for {vdir}...")
         log_gt_sequence(paths, log_root=log_root)
 
-        # 1. Strategy 1 (Reference Frame 0)
-        print(f"\n--- [Strategy 1] Reference Frame Alignment ({vdir}) ---")
-        tf_s1 = strategy1_reference(paths, dataset_root)
-        s_g1, R_g1, tr_g1 = solve_final_gt_registration(paths, tf_s1, dataset_root)
+        if not pgo_only:
+            # 1. Strategy 1 (Reference Frame 0)
+            print(f"\n--- [Strategy 1] Reference Frame Alignment ({vdir}) ---")
+            tf_s1 = strategy1_reference(paths, dataset_root)
+            s_g1, R_g1, tr_g1 = solve_final_gt_registration(paths, tf_s1, dataset_root)
 
-        save_aligned_results(paths, tf_s1, s_g1, R_g1, tr_g1, subject_name, f"Strategy_1_{vdir}", dataset_root)
-        log_aligned_sequence(paths, tf_s1, s_g1, R_g1, tr_g1, "Strategy_1", [0, 0, 255], dataset_root,
-                             log_root=log_root)
+            save_aligned_results(paths, tf_s1, s_g1, R_g1, tr_g1, subject_name, f"Strategy_1_{vdir}", dataset_root)
+            log_aligned_sequence(paths, tf_s1, s_g1, R_g1, tr_g1, "Strategy_1", [0, 0, 255], dataset_root,
+                                 log_root=log_root)
 
-        # 2. Strategy 2 (Hierarchical)
-        print(f"\n--- [Strategy 2] Hierarchical Alignment ({vdir}) ---")
-        tf_s2 = strategy2_hierarchical(paths, dataset_root)
-        s_g2, R_g2, tr_g2 = solve_final_gt_registration(paths, tf_s2, dataset_root)
+            # 2. Strategy 2 (Hierarchical)
+            print(f"\n--- [Strategy 2] Hierarchical Alignment ({vdir}) ---")
+            tf_s2 = strategy2_hierarchical(paths, dataset_root)
+            s_g2, R_g2, tr_g2 = solve_final_gt_registration(paths, tf_s2, dataset_root)
 
-        save_aligned_results(paths, tf_s2, s_g2, R_g2, tr_g2, subject_name, f"Strategy_2_{vdir}", dataset_root)
-        log_aligned_sequence(paths, tf_s2, s_g2, R_g2, tr_g2, "Strategy_2", [255, 0, 0], dataset_root,
+            save_aligned_results(paths, tf_s2, s_g2, R_g2, tr_g2, subject_name, f"Strategy_2_{vdir}", dataset_root)
+            log_aligned_sequence(paths, tf_s2, s_g2, R_g2, tr_g2, "Strategy_2", [255, 0, 0], dataset_root,
+                                 log_root=log_root)
+
+        # 3. Strategy 3 (PGO)
+        print(f"\n--- [Strategy 3] Pose Graph Optimization ({vdir}) ---")
+        tf_s3 = strategy3_pgo(paths, dataset_root, num_iters=50)
+        s_g3, R_g3, tr_g3 = solve_final_gt_registration(paths, tf_s3, dataset_root)
+
+        save_aligned_results(paths, tf_s3, s_g3, R_g3, tr_g3, subject_name, f"Strategy_3_{vdir}", dataset_root)
+        log_aligned_sequence(paths, tf_s3, s_g3, R_g3, tr_g3, "Strategy_3", [0, 255, 0], dataset_root,
                              log_root=log_root)
 
         print(f"\n[INFO] Aligned results saved for {subject_name} ({vdir}). Run evaluate_4D.py to see metrics.")
@@ -162,9 +196,12 @@ def evaluate_subject(subject_name):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--all", action="store_true")
+    parser.add_argument("--pgo", action="store_true", help="Run only Strategy 3 (Pose Graph Optimization).")
+    parser.add_argument("--views", nargs="+", type=int, help="Optional view counts to process (e.g. --views 2 3 4).")
     for code in SUBJECT_BY_CODE.keys(): parser.add_argument(f"--{code}", action="store_true")
     args = parser.parse_args()
 
     selected = [v for k, v in SUBJECT_BY_CODE.items() if getattr(args, k)]
     if args.all: selected = SUBJECT_NAMES
-    for s in selected: evaluate_subject(s)
+    for s in selected:
+        evaluate_subject(s, selected_views=args.views, pgo_only=args.pgo)
