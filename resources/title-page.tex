@@ -1,0 +1,61 @@
+\begin{titlepage}
+
+    \setlength{\textwidth}{16cm}
+    \setlength{\oddsidemargin}{0cm}
+    \setlength{\evensidemargin}{0cm}
+    \setlength{\topmargin}{8mm}
+    \setlength{\headheight}{0cm}
+    \setlength{\headsep}{0cm}
+    \setlength{\topskip}{0cm}
+    \enlargethispage{5cm}
+
+    \noindent
+    \setlength{\unitlength}{1mm}
+
+    \begin{picture}(160,226)
+        \centering
+
+        \put(-10,203){\line(1,0){170}}
+        \put(104,43){\line(1,0){55}}
+        \put(104,155){\line(1,0){55}}
+        \put(104,178){\line(1,0){55}}
+        \put(102,1){\line(0,1){225}}
+
+        \put(-10,110){\parbox[b]{105mm}{
+                \begin{center}
+                    \huge {\sffamily{\textbf{\thesisTitle}}}
+                \end{center}}}
+
+
+        \put(104,92){\parbox[b]{60mm}{\fontsize{11}{12}
+        {\bfseries
+            {\sffamily{\studentName}}}\\
+        {\sffamily{University of Zurich\\\\
+            Student-ID: \studentNo\\
+            \studentEmail
+        }}
+        }}
+
+        \put(104,169){\makebox(54,9){{\sffamily{\thesisType}}}}
+        \put(104,161){\makebox(54,9){\fontsize{11}{12}{\sffamily{\textbf{Submission of the thesis}}}}}
+        \put(104,155){\makebox(54,9){\fontsize{11}{12}{\sffamily{\submissionDate}}}}
+
+
+        % Top Row: UZH and DAST
+        \put(-10,215){\makebox(80,10)[l]{\includegraphics[height=1.0cm]{uzh_logo.png}}}
+        \put(104,215){\makebox(60,10)[l]{\includegraphics[height=1.0cm]{dast-logo.png}}}
+
+        % Bottom Row: ETH and VLG
+        \put(-10,204){\makebox(80,10)[l]{\includegraphics[height=1.0cm]{ETHlogo.pdf}}}
+        \put(104,204){\makebox(60,10)[l]{\includegraphics[height=1.0cm]{logo-vlg-text.png}}}
+
+
+        \put(104,32){\parbox[b]{50mm}{\flushleft\fontsize{10}{12}
+        {\sffamily{Supervisor}} \\
+        {\bfseries {\sffamily{\advisorName}} }
+        }
+        }
+
+    \end{picture}
+\end{titlepage}
+

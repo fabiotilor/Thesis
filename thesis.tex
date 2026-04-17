@@ -1,0 +1,66 @@
+\documentclass{ddis-thesis}
+\usepackage{lipsum}
+
+%%% Declare all the necessary information here
+\newcommand{\studentName}{Fabio Di Meo}
+\newcommand{\studentEmail}{fabio.dimeo@uzh.ch}
+\newcommand{\studentNo}{22-929-798} % Matrikelnummer
+
+\newcommand{\thesisTitle}{Advancing (Sparse) Multi-View Depth Estimation}
+\newcommand{\thesisType}{Bachelor's Thesis} % or Bachelor's Thesis, Master's Project, etc.
+\newcommand{\submissionDate}{\today}
+
+\newcommand{\advisorName}{}
+
+\author{\studentName}
+\title{\thesisTitle}
+\begin{document}
+\pagenumbering{roman}
+
+% *************** Front matter ***************
+\ddistitlepage
+
+\begin{abstracten}
+    \input{chapters/0-abstract-en}
+\end{abstracten}
+\glsresetall
+\begin{abstractde}
+    \input{chapters/0-abstract-de}
+\end{abstractde}
+\glsresetall
+\begin{acknowledgements}
+    \input{chapters/0-acknowledgements}
+\end{acknowledgements}
+\glsresetall
+
+\tableofcontents
+\clearpage
+\pagenumbering{arabic}
+
+% *************** Main matter ***************
+\input{chapters/1-introduction}
+\input{chapters/2-background-knowledge}
+\input{chapters/3-related-work}
+\input{chapters/4-methodology}
+\input{chapters/5-experiments}
+\input{chapters/6-limitations}
+\input{chapters/7-future-work}
+\input{chapters/8-conclusion}
+
+% *************** Bibliography ***************
+\phantomsection
+\addcontentsline{toc}{chapter}{\bibname}
+\printbibliography
+
+\cleardoublepage
+\phantomsection
+\addcontentsline{toc}{chapter}{List of Acronyms}
+\chapter*{List of Acronyms} %Hack
+\printglossary[type=\acronymtype]
+
+% *************** Appendixes ***************
+\appendix
+\input{chapters/A-appendix}
+\declaration
+
+\end{document}

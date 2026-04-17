@@ -1,0 +1,87 @@
+\chapter{Introduction}\label{c:introduction}
+
+Recovering the three-dimensional structure of a scene from visual observations
+is a foundational problem in computer vision, with applications spanning robotics,
+autonomous navigation, and augmented reality~\cite{hartley2004multiple}. In
+particular, metric depth estimation enables downstream systems to reason about
+geometry and spatial relationships in real environments. While deep learning has
+substantially improved monocular depth estimation~\cite{eigen2014depth,
+bhat2023zoedepth}, extending these methods to sparse multi-view settings remains
+a challenging and practically important problem.
+
+When multiple synchronized cameras observe the same scene over time, the
+reconstruction problem extends naturally from static 3D geometry to modeling
+temporal scene evolution - commonly referred to as 4D reconstruction. Here the
+objective is not only to recover accurate per-frame geometry, but to ensure that
+the recovered structure is consistent across the sequence. Achieving both
+geometric accuracy and temporal stability under sparse camera configurations
+(typically two to four cameras, as encountered in robotic platforms) is the
+central problem of this thesis.
+
+\section{Background and Motivation}
+
+Classical approaches to multi-view reconstruction, such as Structure-from-Motion
+(SfM)~\cite{schoenberger2016sfm} and Multi-View Stereo
+(MVS)~\cite{schoenberger2016mvs}, rely on sparse feature correspondences and
+struggle in scenes with textureless regions, dynamic objects, or limited
+viewpoint overlap. Recent learning-based methods have largely superseded these
+pipelines by reformulating reconstruction as dense prediction.
+DUSt3R~\cite{dust3r} and MASt3R~\cite{mast3r} in particular demonstrate strong
+robustness in sparse-view settings by directly regressing pointmaps from image
+pairs, bypassing explicit camera calibration. MASt3R-SfM~\cite{mast3rsfm}
+extends this framework to full scene reconstruction through global pointmap alignment, whereas VGGT~\cite{vggt} employs a joint optimization of camera parameters and dense geometry across multi-view collections to ensure global consistency.
+
+\todo[inline]{Needs citation}These spatial methods are typically evaluated on a per-frame basis, and their
+behavior in the temporal domain is less well understood. Methods designed
+specifically for dynamic scenes - such as VGGT4D~\cite{vggt4d} and
+Mono4D~\cite{mono4d} - incorporate temporal information to encourage smoother
+reconstructions, but may trade off spatial precision in doing so. Whether methods
+that excel under standard per-frame benchmarks also produce temporally stable 4D
+reconstructions remains an open and underexplored question.
+
+\section{Problem Statement and Contributions}
+
+This thesis investigates metric 4D reconstruction from sparse multi-view video.
+Given synchronized video streams from two to four cameras, the goal is to produce
+scene reconstructions that are both geometrically accurate and temporally stable.
+A particular focus is placed on characterizing the trade-off between these two
+desiderata - a gap that is obscured by conventional per-frame evaluation
+protocols - and on understanding which design choices drive or reduce temporal
+inconsistency.
+
+The main contributions of this work are:
+
+\begin{itemize}
+    \item \textbf{Evaluation framework.} A benchmarking pipeline for sparse
+    multi-view video depth estimation that measures both per-frame spatial
+    accuracy and sequence-level temporal consistency across multiple datasets
+    \todo[inline]{Datasets require citation. Datasets subject to change}
+    (DexYCB, Hi4D, 4D-Dress, MultiCamRobolab).
+
+    \item \textbf{Consistency metric.} A quantitative measure of the spatial--
+    temporal error gap,
+    \[
+      \Delta_{\text{consistency}} = \text{Chamfer}_{4D} - \text{Chamfer}_{3D},
+    \]
+    which captures how much per-frame alignment masks underlying temporal
+    instability (formally introduced in \Cref{c:methodology}).
+
+    \item \textbf{Empirical analysis.} A systematic comparison of spatial methods
+    (MASt3R, VGGT) and temporal methods (VGGT4D, Mono4D) across two to
+    four camera configurations, exposing failure modes and trade-offs not visible
+    under standard benchmarks.
+
+    \item \textbf{Alignment and refinement study.} An investigation of temporal
+    alignment strategies and a global pose-graph refinement approach aimed at
+    improving reconstruction stability without sacrificing spatial fidelity.
+\end{itemize}
+
+\section{Thesis Outline}
+
+\Cref{c:related_work} reviews prior work on depth estimation, multi-view
+reconstruction, and dynamic scene modeling. \Cref{c:methodology} describes the
+datasets, metrics, and alignment strategies used in this study.
+\Cref{c:experiments} presents quantitative and qualitative results.
+\Cref{c:limitations} analyzes the key findings and limitations, and
+\Cref{c:conclusions} summarizes the contributions and outlines directions for
+future work.
