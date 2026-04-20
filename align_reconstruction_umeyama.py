@@ -42,10 +42,12 @@ from eval_config import (
     MODEL_NAME, IMAGE_SIZE, DEVICE, RERUN_ADDR,
     MIN_CONF_THR, VIEW_CONFIGS, DEFAULT_TARGET_VIEWS, SCENE_GRAPH, RERUN_EYE_UP
 )
+
 # NOTE: Import rerun logging lazily inside `run_reconstruction` to avoid
 # circular-import issues when other modules import this file.
 CLEAN_DEPTH = True
-RUN_MULTI_VIEW_EVAL = True
+RUN_MULTI_VIEW_EVAL = False
+
 
 # ── helpers ───────────────────────────────────────────────────────────────────
 def get_masked_image(t, vname, rgb_path, cache_dir, dataset_root):
@@ -83,21 +85,22 @@ def compute_all_static_masks(views, view_names, flow_threshold, verbose=True):
 
 
 def run_reconstruction(
-    model,
-    dataset_root,
-    target_views,
-    out_dir,
-    cache_root,
-    flow_threshold=1.0,
-    run_tag="default",
-    skip_rerun_init=False,
-    skip_existing_frames=True,
+        model,
+        dataset_root,
+        target_views,
+        out_dir,
+        cache_root,
+        flow_threshold=1.0,
+        run_tag="default",
+        skip_rerun_init=False,
+        skip_existing_frames=True,
+        use_sam2=False,
 ):
     rerun_stream = f"mast3r_stabilisation_{run_tag}"
     if not skip_rerun_init:
         try:
             rr.init(rerun_stream, spawn=False)
-            rr.connect_grpc(RERUN_ADDR)
+            rr.connect(RERUN_ADDR)
         except Exception as e:
             print(f"[WARN] Rerun init failed for {run_tag}: {e}")
 
@@ -128,6 +131,9 @@ def run_reconstruction(
     os.makedirs(out_dir, exist_ok=True)
     run_start = time.perf_counter()
     frame_times_sec = []
+    mask_base_dir = os.path.join(out_dir, "flow_masks")
+    fused_dir = os.path.join(mask_base_dir, "fused_static_masks")
+    os.makedirs(fused_dir, exist_ok=True)
 
     for t in range(n_frames):
         out_frame_path = os.path.join(out_dir, f"frame_{t:02d}.npz")
@@ -171,7 +177,8 @@ def run_reconstruction(
             src_corr, dst_corr = get_static_correspondences(
                 t, view_names, scene, dataset_root,
                 flow_threshold=flow_threshold,
-                min_conf_thr=MIN_CONF_THR
+                min_conf_thr=MIN_CONF_THR,
+                use_sam2=use_sam2
             )
 
             if src_corr is not None and len(src_corr) >= 3:
@@ -225,7 +232,7 @@ def run_reconstruction(
                 log_root=log_root,
             )
 
-            # ── Collect Masks and Camera Params for Split-Accuracy Metrics (All Views) ──
+            # ── Collect camera params and flow masks ───────────────────────────
             valid_masks = []
             valid_Ks = []
             valid_R_ts = []
@@ -237,42 +244,85 @@ def run_reconstruction(
             except AttributeError:
                 im_poses = scene.get_poses()
             est_poses_all = to_numpy(im_poses)
-            est_intrinsics_all = to_numpy(scene.intrinsics)
+
+            # FIX: intrinsics is a method call, not a plain attribute
+            try:
+                est_intrinsics_all = to_numpy(scene.get_intrinsics())
+            except AttributeError:
+                est_intrinsics_all = to_numpy(scene.intrinsics)
+
+            # ── Per-view flow masks ────────────────────────────────────────────
+            def _get_rgb_path(rgb_dir: str, frame_t: int):
+                """Closure-free helper: rgb_dir passed explicitly."""
+                for ext in (".png", ".jpg", ".jpeg"):
+                    p = os.path.join(rgb_dir, f"{frame_t:05d}{ext}")
+                    if os.path.exists(p):
+                        return p
+                return None
 
             for i, vname in enumerate(view_names):
                 view_dir = os.path.join(dataset_root, vname)
                 K, cam2world = load_gt_params(view_dir)
                 R_t = np.linalg.inv(cam2world)
 
-                rgb_dir = os.path.join(view_dir, "rgb") if os.path.isdir(os.path.join(view_dir, "rgb")) else view_dir
+                rgb_dir = (os.path.join(view_dir, "rgb")
+                           if os.path.isdir(os.path.join(view_dir, "rgb"))
+                           else view_dir)
 
-                def _rgb_path(frame_t):
-                    for ext in (".png", ".jpg", ".jpeg"):
-                        p = os.path.join(rgb_dir, f"{frame_t:05d}{ext}")
-                        if os.path.exists(p):
-                            return p
-                    return None
-
-                rgb_t = _rgb_path(t)
-                rgb_adj = _rgb_path(t + 1) or _rgb_path(t - 1)
+                rgb_t = _get_rgb_path(rgb_dir, t)
+                rgb_adj = (_get_rgb_path(rgb_dir, t + 1)
+                           or _get_rgb_path(rgb_dir, t - 1))
                 rgb_paths = [p for p in [rgb_t, rgb_adj] if p is not None]
-                flow_mask = compute_static_mask(rgb_paths)
 
-                if flow_mask is not None:
-                    depth_path = os.path.join(view_dir, "depth", f"{t:05d}.png")
-                    if os.path.exists(depth_path):
-                        depth_raw = cv2.imread(depth_path, cv2.IMREAD_UNCHANGED)
-                        if flow_mask.shape != depth_raw.shape[:2]:
-                            flow_mask = cv2.resize(
-                                flow_mask.astype(np.uint8),
-                                (depth_raw.shape[1], depth_raw.shape[0]),
-                                interpolation=cv2.INTER_NEAREST,
-                            ).astype(bool)
-                    valid_masks.append(flow_mask)
-                    valid_Ks.append(K)
-                    valid_R_ts.append(R_t)
-                    valid_est_poses.append(est_poses_all[i])
-                    valid_est_intrinsics.append(est_intrinsics_all[i])
+                if len(rgb_paths) < 2:
+                    print(f"  [WARN] {vname} t={t}: not enough frames for flow mask, skipping view")
+                    continue
+
+                flow_mask = compute_static_mask(rgb_paths, method="sam2" if use_sam2 else "farneback")
+                if flow_mask is None:
+                    continue
+
+                H_mod, W_mod = confs[i].shape[:2]
+                flow_mask_mod = (
+                    cv2.resize(flow_mask.astype(np.uint8), (W_mod, H_mod),
+                               interpolation=cv2.INTER_NEAREST).astype(bool)
+                    if flow_mask.shape != (H_mod, W_mod) else flow_mask
+                )
+
+                # Save per-view mask
+                view_mask_out = os.path.join(mask_base_dir, vname)
+                os.makedirs(view_mask_out, exist_ok=True)
+                cv2.imwrite(
+                    os.path.join(view_mask_out, f"static_mask_{t:02d}.png"),
+                    flow_mask_mod.astype(np.uint8) * 255,
+                )
+
+                gt_mask = gt_validity_masks[i]
+                if gt_mask is not None:
+                    if gt_mask.shape != (H_mod, W_mod):
+                        gt_mask = cv2.resize(
+                            gt_mask.astype(np.uint8), (W_mod, H_mod),
+                            interpolation=cv2.INTER_NEAREST,
+                        ).astype(bool)
+                    cv2.imwrite(
+                        os.path.join(view_mask_out, f"gt_mask_{t:02d}.png"),
+                        gt_mask.astype(np.uint8) * 255,
+                    )
+
+                valid_masks.append(flow_mask_mod)
+                valid_Ks.append(K)
+                valid_R_ts.append(R_t)
+                valid_est_poses.append(est_poses_all[i])
+                valid_est_intrinsics.append(est_intrinsics_all[i])
+
+            # Save fused mask (majority vote across views)
+            if valid_masks:
+                stacked = np.stack(valid_masks)
+                fused_mask = stacked.sum(axis=0) > (len(valid_masks) / 2.0)
+                cv2.imwrite(
+                    os.path.join(fused_dir, f"fused_static_mask_{t:02d}.png"),
+                    fused_mask.astype(np.uint8) * 255,
+                )
 
             save_dict = {
                 'gt_pts': gt_pts,
@@ -324,6 +374,7 @@ def parse_subject_selection_args():
         type=int,
         help="Optional view counts to run (e.g. --views 2 3 4). Defaults to [2,3,4] when multi-view eval is enabled.",
     )
+    parser.add_argument("--use_sam2", action="store_true", help="Use SAM2 for computing static masks instead of optical flow.")
     return parser.parse_args()
 
 
@@ -376,7 +427,8 @@ def main():
                 out_dir=out_dir,
                 cache_root=cache_root,
                 flow_threshold=flow_threshold,
-                run_tag=f"{subject_name}_{num_views}views",
+                run_tag=f"{subject_name}_{num_views}views" + ("_sam2" if args.use_sam2 else ""),
+                use_sam2=args.use_sam2,
             )
 
     print("[done]")

@@ -68,6 +68,11 @@ def _parse_args():
         action="store_true",
         help="Run only Strategy 3 (PGO) + evaluation. Baseline outputs must already exist.",
     )
+    parser.add_argument(
+        "--use_sam2",
+        action="store_true",
+        help="Use SAM2 for static mask computation instead of Farneback.",
+    )
     return parser.parse_args()
 
 
@@ -149,10 +154,11 @@ def main():
             init_recording(code, nviews)
             view_root = f"mast3r_{code}_{nviews}views"
 
-            baseline_dir = os.path.join("aligned_outputs", "baseline", subject_full, f"{nviews}views")
-            s1_dir = os.path.join("aligned_outputs", "strategy1", subject_full, f"{nviews}views")
-            s2_dir = os.path.join("aligned_outputs", "strategy2", subject_full, f"{nviews}views")
-            s3_dir = os.path.join("aligned_outputs", "strategy3", subject_full, f"{nviews}views")
+            suffix = "_sam2" if args.use_sam2 else ""
+            baseline_dir = os.path.join("aligned_outputs", "baseline" + suffix, subject_full, f"{nviews}views")
+            s1_dir = os.path.join("aligned_outputs", "strategy1" + suffix, subject_full, f"{nviews}views")
+            s2_dir = os.path.join("aligned_outputs", "strategy2" + suffix, subject_full, f"{nviews}views")
+            s3_dir = os.path.join("aligned_outputs", "strategy3" + suffix, subject_full, f"{nviews}views")
 
             for d in (baseline_dir, s1_dir, s2_dir, s3_dir):
                 os.makedirs(d, exist_ok=True)
@@ -174,6 +180,7 @@ def main():
                     flow_threshold=1.0,
                     run_tag=run_tag,
                     skip_rerun_init=True,
+                    use_sam2=args.use_sam2,
                 )
 
             frame_paths = _sorted_frame_paths(baseline_dir)
