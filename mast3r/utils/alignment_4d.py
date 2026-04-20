@@ -239,6 +239,29 @@ def rotation_average(R_list, weights, max_iters=50, tol=1e-6):
     return R_mean
 
 
+def invert_similarity_transform(s, R, t):
+    """Inverse of y = s * R * x + t."""
+    s_inv = 1.0 / max(float(s), 1e-12)
+    R_inv = R.T
+    t_inv = -s_inv * (R_inv @ t)
+    return s_inv, R_inv, t_inv
+
+
+def compose_similarity_transform(a, b):
+    """
+    Compose two similarity transforms:
+      A: x_a = s_a * R_a * x_b + t_a
+      B: x_b = s_b * R_b * x_c + t_b
+    Returns C so x_a = C(x_c) = A(B(x_c)).
+    """
+    s_a, R_a, t_a = a
+    s_b, R_b, t_b = b
+    s_c = s_a * s_b
+    R_c = R_a @ R_b
+    t_c = s_a * (R_a @ t_b) + t_a
+    return s_c, R_c, t_c
+
+
 def strategy3_pgo(frame_npz_paths, dataset_root, num_iters=50):
     n_frames = len(frame_npz_paths)
     print("    [PGO] Computing T(T-1)/2 pairwise edges...")
@@ -278,34 +301,35 @@ def strategy3_pgo(frame_npz_paths, dataset_root, num_iters=50):
                 s_j, R_j, t_j = T_global[j]
 
                 if (i, j) in edges:
-                    (s_ij, R_ij, t_ij), w = edges[(i, j)]
-                    # edge is i -> j (aligns i to j)
-                    pred_s = s_j * s_ij
-                    pred_R = R_j @ R_ij
-                    pred_t = s_j * (R_j @ t_ij) + t_j
-
-                    votes_s.append(pred_s)
-                    votes_R.append(pred_R)
-                    votes_t.append(pred_t)
+                    # estimate_interframe_transform_pointmap(path_i, path_j) returns edge j -> i
+                    (s_ji, R_ji, t_ji), w = edges[(i, j)]
+                    # T_i = T_j o inv(E_{j->i})
+                    pred = compose_similarity_transform(
+                        (s_j, R_j, t_j),
+                        invert_similarity_transform(s_ji, R_ji, t_ji)
+                    )
+                    votes_s.append(pred[0])
+                    votes_R.append(pred[1])
+                    votes_t.append(pred[2])
                     weights.append(w)
 
                 elif (j, i) in edges:
-                    (s_ji, R_ji, t_ji), w = edges[(j, i)]
-                    # edge is j -> i (aligns j to i)
-                    pred_s = s_j / s_ji
-                    pred_R = R_j @ R_ji.T
-                    pred_t = t_j - s_j * (R_j @ (R_ji.T @ t_ji)) / s_ji
-
-                    votes_s.append(pred_s)
-                    votes_R.append(pred_R)
-                    votes_t.append(pred_t)
+                    # estimate_interframe_transform_pointmap(path_j, path_i) returns edge i -> j
+                    (s_ij, R_ij, t_ij), w = edges[(j, i)]
+                    # T_i = T_j o E_{i->j}
+                    pred = compose_similarity_transform((s_j, R_j, t_j), (s_ij, R_ij, t_ij))
+                    votes_s.append(pred[0])
+                    votes_R.append(pred[1])
+                    votes_t.append(pred[2])
                     weights.append(w)
 
             if len(weights) > 0:
                 weights = np.array(weights)
                 weights /= weights.sum()
 
-                new_s = np.sum(np.array(votes_s) * weights)
+                # Scale is multiplicative; average in log-space for better stability.
+                safe_scales = np.clip(np.array(votes_s), 1e-8, None)
+                new_s = float(np.exp(np.sum(np.log(safe_scales) * weights)))
                 new_t = np.sum(np.array(votes_t) * weights[:, None], axis=0)
                 new_R = rotation_average(votes_R, weights)
                 T_new.append([new_s, new_R, new_t])

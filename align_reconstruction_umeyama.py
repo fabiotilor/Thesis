@@ -1,6 +1,8 @@
 import os
 import tempfile
 import argparse
+import json
+import time
 import numpy as np
 import torch
 import rerun as rr
@@ -40,11 +42,8 @@ from eval_config import (
     MODEL_NAME, IMAGE_SIZE, DEVICE, RERUN_ADDR,
     MIN_CONF_THR, VIEW_CONFIGS, DEFAULT_TARGET_VIEWS, SCENE_GRAPH, RERUN_EYE_UP
 )
-from mast3r.utils.rerun_logging import (
-    configure_rerun_view_defaults,
-    log_cameras_rerun,
-    log_alignment_results
-)
+# NOTE: Import rerun logging lazily inside `run_reconstruction` to avoid
+# circular-import issues when other modules import this file.
 CLEAN_DEPTH = True
 RUN_MULTI_VIEW_EVAL = True
 
@@ -91,16 +90,30 @@ def run_reconstruction(
     cache_root,
     flow_threshold=1.0,
     run_tag="default",
+    skip_rerun_init=False,
+    skip_existing_frames=True,
 ):
     rerun_stream = f"mast3r_stabilisation_{run_tag}"
-    try:
-        rr.init(rerun_stream, spawn=False)
-        rr.connect_grpc(RERUN_ADDR)
-    except Exception as e:
-        print(f"[WARN] Rerun init failed for {run_tag}: {e}")
-    log_root = f"world/{run_tag}"
-    rr.log(log_root, rr.ViewCoordinates.RIGHT_HAND_Y_UP, static=True)
-    configure_rerun_view_defaults(log_root, RERUN_EYE_UP)
+    if not skip_rerun_init:
+        try:
+            rr.init(rerun_stream, spawn=False)
+            rr.connect_grpc(RERUN_ADDR)
+        except Exception as e:
+            print(f"[WARN] Rerun init failed for {run_tag}: {e}")
+
+    # Lazy import to avoid circular imports.
+    from mast3r.utils.rerun_logging import (
+        configure_rerun_view_defaults,
+        log_cameras_rerun,
+        log_alignment_results,
+    )
+    # Log under the provided tag so run_full_pipeline can control the rerun hierarchy.
+    # When called from run_full_pipeline, rerun setup is already done there, so
+    # avoid re-sending blueprints to reduce "overwriting" behavior.
+    log_root = f"{run_tag}"
+    if not skip_rerun_init:
+        rr.log(log_root, rr.ViewCoordinates.RIGHT_HAND_Y_UP, static=True)
+        configure_rerun_view_defaults(log_root, RERUN_EYE_UP)
 
     views = build_views(dataset_root, target_views=target_views)
     view_names = sorted(views.keys())
@@ -113,164 +126,191 @@ def run_reconstruction(
     run_cache_root = os.path.join(cache_root, run_tag)
     os.makedirs(run_cache_root, exist_ok=True)
     os.makedirs(out_dir, exist_ok=True)
+    run_start = time.perf_counter()
+    frame_times_sec = []
 
     for t in range(n_frames):
-        print(f"── t={t:02d} / {n_frames - 1} ──────────────────────────────────────")
-
-        log_cameras_rerun(t, view_names, dataset_root, log_root)
-
-        masked_current_files = [
-            get_masked_image(t, v, views[v][t], cache_root, dataset_root)
-            for v in view_names
-        ]
-
-        imgs = load_images(masked_current_files, size=IMAGE_SIZE)
-        pairs = make_pairs(imgs, scene_graph=SCENE_GRAPH, symmetrize=True)
-        scene = sparse_global_alignment(
-            masked_current_files,
-            pairs,
-            os.path.join(run_cache_root, f"t{t:02d}"),
-            model,
-            device=DEVICE,
-            matching_conf_thr=0.0
-        )
-
-        pts3d_list, depthmaps, confs = to_numpy(scene.get_dense_pts3d(clean_depth=CLEAN_DEPTH))
-
-        # ── Full GT ─────────────────────────────────────────────────────────
-        gt_pts = build_gt_pointcloud(
-            t, view_names, dataset_root
-        )
-        if gt_pts is None:
+        out_frame_path = os.path.join(out_dir, f"frame_{t:02d}.npz")
+        if skip_existing_frames and os.path.exists(out_frame_path):
+            print(f"  [SKIP] {run_tag}: existing {os.path.basename(out_frame_path)} found.")
             continue
 
-        # ── Correspondences ─────────────────────────────────────────────────
-        src_corr, dst_corr = get_static_correspondences(
-            t, view_names, scene, dataset_root,
-            flow_threshold=flow_threshold,
-            min_conf_thr=MIN_CONF_THR
-        )
+        frame_start = time.perf_counter()
+        try:
+            print(f"── t={t:02d} / {n_frames - 1} ──────────────────────────────────────")
 
-        if src_corr is not None and len(src_corr) >= 3:
-            s, R, tr = estimate_similarity_transform(src_corr, dst_corr)
-            print(f"  ✓ t={t:02d}  scale={s:.4f}  corr={len(src_corr):,}")
-        else:
-            print(f"  [WARN] t={t:02d}: too few correspondences "
-                  f"({len(src_corr) if src_corr is not None else 0}), falling back to camera-based")
+            log_cameras_rerun(t, view_names, dataset_root, log_root)
 
-            est_cam, gt_cam = get_camera_correspondences(
-                t, view_names, scene, dataset_root
+            masked_current_files = [
+                get_masked_image(t, v, views[v][t], cache_root, dataset_root)
+                for v in view_names
+            ]
+
+            imgs = load_images(masked_current_files, size=IMAGE_SIZE)
+            pairs = make_pairs(imgs, scene_graph=SCENE_GRAPH, symmetrize=True)
+            scene = sparse_global_alignment(
+                masked_current_files,
+                pairs,
+                os.path.join(run_cache_root, f"t{t:02d}"),
+                model,
+                device=DEVICE,
+                matching_conf_thr=0.0
             )
-            s, R, tr = estimate_similarity_transform(est_cam, gt_cam)
-            print(f"  ✓ t={t:02d}  scale={s:.4f} (camera fallback)")
 
-        # ── Filter estimated points ─────────────────────────────────────────
+            pts3d_list, depthmaps, confs = to_numpy(scene.get_dense_pts3d(clean_depth=CLEAN_DEPTH))
 
-
-        gt_validity_masks = build_gt_validity_masks(
-            t, view_names, dataset_root,
-            depth_max_m=DEPTH_MAX_M,
-            target_hw=None,  # handled per-view below
-        )
-
-        est_pts_parts = []
-        for i, vname in enumerate(view_names):
-            pts_i = pts3d_list[i].reshape(-1, 3)
-            conf_i = confs[i].ravel()
-            conf_ok = conf_i > MIN_CONF_THR
-
-            gt_mask = gt_validity_masks[i]
-            if gt_mask is None:
-                print(f"  [WARN] no GT depth for {vname} at t={t}, skipping view")
+            # ── Full GT ─────────────────────────────────────────────────────────
+            gt_pts = build_gt_pointcloud(
+                t, view_names, dataset_root
+            )
+            if gt_pts is None:
+                print(f"  [WARN] No GT pointcloud at t={t}; skipping frame.")
                 continue
 
-            # Use confs[i].shape — NOT pts3d_list[i].shape[:2] —
-            # because pts3d_list may be at native resolution while
-            # confs is at MASt3R output resolution (e.g. 384×512)
-            H, W = confs[i].shape[:2]  # <-- fix is here
-            if gt_mask.shape != (H, W):
-                gt_mask = cv2.resize(
-                    gt_mask.astype(np.uint8), (W, H),
-                    interpolation=cv2.INTER_NEAREST,
-                ).astype(bool)
+            # ── Correspondences ─────────────────────────────────────────────────
+            src_corr, dst_corr = get_static_correspondences(
+                t, view_names, scene, dataset_root,
+                flow_threshold=flow_threshold,
+                min_conf_thr=MIN_CONF_THR
+            )
 
-            valid = conf_ok & gt_mask.ravel()  # now both (196608,)
-            est_pts_parts.append(pts_i[valid])
+            if src_corr is not None and len(src_corr) >= 3:
+                s, R, tr = estimate_similarity_transform(src_corr, dst_corr)
+                print(f"  ✓ t={t:02d}  scale={s:.4f}  corr={len(src_corr):,}")
+            else:
+                print(f"  [WARN] t={t:02d}: too few correspondences "
+                      f"({len(src_corr) if src_corr is not None else 0}), falling back to camera-based")
 
-        est_pts = np.concatenate(est_pts_parts, axis=0)
+                est_cam, gt_cam = get_camera_correspondences(
+                    t, view_names, scene, dataset_root
+                )
+                s, R, tr = estimate_similarity_transform(est_cam, gt_cam)
+                print(f"  ✓ t={t:02d}  scale={s:.4f} (camera fallback)")
 
-        # ── Apply alignment ─────────────────────────────────────────────────
-        aligned_pts = apply_similarity_transform(est_pts, s, R, tr)
+            # ── Filter estimated points ─────────────────────────────────────────
+            gt_validity_masks = build_gt_validity_masks(
+                t, view_names, dataset_root,
+                depth_max_m=DEPTH_MAX_M,
+                target_hw=None,  # handled per-view below
+            )
 
-        # ── Logging ─────────────────────────────────────────────────────────
-        log_alignment_results(
-            t, gt_pts, aligned_pts,
-            log_root=log_root,
-        )
+            est_pts_parts = []
+            for i, vname in enumerate(view_names):
+                pts_i = pts3d_list[i].reshape(-1, 3)
+                conf_i = confs[i].ravel()
+                conf_ok = conf_i > MIN_CONF_THR
 
-        # ── Collect Masks and Camera Params for Split-Accuracy Metrics (All Views) ──
-        valid_masks = []
-        valid_Ks = []
-        valid_R_ts = []
-        valid_est_poses = []
-        valid_est_intrinsics = []
+                gt_mask = gt_validity_masks[i]
+                if gt_mask is None:
+                    print(f"  [WARN] no GT depth for {vname} at t={t}, skipping view")
+                    continue
 
-        try:
-            im_poses = scene.get_im_poses()
-        except AttributeError:
-            im_poses = scene.get_poses()
-        est_poses_all = to_numpy(im_poses)
-        est_intrinsics_all = to_numpy(scene.intrinsics)
+                # Use confs[i].shape — NOT pts3d_list[i].shape[:2] —
+                H, W = confs[i].shape[:2]
+                if gt_mask.shape != (H, W):
+                    gt_mask = cv2.resize(
+                        gt_mask.astype(np.uint8), (W, H),
+                        interpolation=cv2.INTER_NEAREST,
+                    ).astype(bool)
 
-        for i, vname in enumerate(view_names):
-            view_dir = os.path.join(dataset_root, vname)
-            K, cam2world = load_gt_params(view_dir)
-            R_t = np.linalg.inv(cam2world)
+                valid = conf_ok & gt_mask.ravel()
+                est_pts_parts.append(pts_i[valid])
 
-            rgb_dir = os.path.join(view_dir, "rgb") if os.path.isdir(os.path.join(view_dir, "rgb")) else view_dir
+            est_pts = np.concatenate(est_pts_parts, axis=0)
+            aligned_pts = apply_similarity_transform(est_pts, s, R, tr)
 
-            def _rgb_path(frame_t):
-                for ext in (".png", ".jpg", ".jpeg"):
-                    p = os.path.join(rgb_dir, f"{frame_t:05d}{ext}")
-                    if os.path.exists(p): return p
-                return None
+            # ── Logging ─────────────────────────────────────────────────────────
+            log_alignment_results(
+                t, gt_pts, aligned_pts,
+                log_root=log_root,
+            )
 
-            rgb_t = _rgb_path(t)
-            rgb_adj = _rgb_path(t + 1) or _rgb_path(t - 1)
-            rgb_paths = [p for p in [rgb_t, rgb_adj] if p is not None]
-            flow_mask = compute_static_mask(rgb_paths)
+            # ── Collect Masks and Camera Params for Split-Accuracy Metrics (All Views) ──
+            valid_masks = []
+            valid_Ks = []
+            valid_R_ts = []
+            valid_est_poses = []
+            valid_est_intrinsics = []
 
-            if flow_mask is not None:
-                depth_path = os.path.join(view_dir, "depth", f"{t:05d}.png")
-                if os.path.exists(depth_path):
-                    depth_raw = cv2.imread(depth_path, cv2.IMREAD_UNCHANGED)
-                    if flow_mask.shape != depth_raw.shape[:2]:
-                        flow_mask = cv2.resize(flow_mask.astype(np.uint8), (depth_raw.shape[1], depth_raw.shape[0]),
-                                               interpolation=cv2.INTER_NEAREST).astype(bool)
-                valid_masks.append(flow_mask)
-                valid_Ks.append(K)
-                valid_R_ts.append(R_t)
-                valid_est_poses.append(est_poses_all[i])
-                valid_est_intrinsics.append(est_intrinsics_all[i])
+            try:
+                im_poses = scene.get_im_poses()
+            except AttributeError:
+                im_poses = scene.get_poses()
+            est_poses_all = to_numpy(im_poses)
+            est_intrinsics_all = to_numpy(scene.intrinsics)
 
-        save_dict = {
-            'gt_pts': gt_pts,
-            'aligned_pts': aligned_pts,
-            'scale': float(s),
-            'R': R,
-            'tr': tr,
-            'pointmaps': np.stack(pts3d_list),
-            'pointmaps_confs': np.stack(confs),
-            'frame_idx': int(t),
-            'Ks': np.array(valid_Ks),
-            'R_ts': np.array(valid_R_ts),
-            'est_poses': np.array(valid_est_poses),
-            'est_intrinsics': np.array(valid_est_intrinsics)
-        }
-        if valid_masks:
-            save_dict['masks_2d'] = np.stack(valid_masks)
+            for i, vname in enumerate(view_names):
+                view_dir = os.path.join(dataset_root, vname)
+                K, cam2world = load_gt_params(view_dir)
+                R_t = np.linalg.inv(cam2world)
 
-        np.savez(os.path.join(out_dir, f"frame_{t:02d}.npz"), **save_dict)
+                rgb_dir = os.path.join(view_dir, "rgb") if os.path.isdir(os.path.join(view_dir, "rgb")) else view_dir
+
+                def _rgb_path(frame_t):
+                    for ext in (".png", ".jpg", ".jpeg"):
+                        p = os.path.join(rgb_dir, f"{frame_t:05d}{ext}")
+                        if os.path.exists(p):
+                            return p
+                    return None
+
+                rgb_t = _rgb_path(t)
+                rgb_adj = _rgb_path(t + 1) or _rgb_path(t - 1)
+                rgb_paths = [p for p in [rgb_t, rgb_adj] if p is not None]
+                flow_mask = compute_static_mask(rgb_paths)
+
+                if flow_mask is not None:
+                    depth_path = os.path.join(view_dir, "depth", f"{t:05d}.png")
+                    if os.path.exists(depth_path):
+                        depth_raw = cv2.imread(depth_path, cv2.IMREAD_UNCHANGED)
+                        if flow_mask.shape != depth_raw.shape[:2]:
+                            flow_mask = cv2.resize(
+                                flow_mask.astype(np.uint8),
+                                (depth_raw.shape[1], depth_raw.shape[0]),
+                                interpolation=cv2.INTER_NEAREST,
+                            ).astype(bool)
+                    valid_masks.append(flow_mask)
+                    valid_Ks.append(K)
+                    valid_R_ts.append(R_t)
+                    valid_est_poses.append(est_poses_all[i])
+                    valid_est_intrinsics.append(est_intrinsics_all[i])
+
+            save_dict = {
+                'gt_pts': gt_pts,
+                'aligned_pts': aligned_pts,
+                'scale': float(s),
+                'R': R,
+                'tr': tr,
+                'pointmaps': np.stack(pts3d_list),
+                'pointmaps_confs': np.stack(confs),
+                'frame_idx': int(t),
+                'Ks': np.array(valid_Ks),
+                'R_ts': np.array(valid_R_ts),
+                'est_poses': np.array(valid_est_poses),
+                'est_intrinsics': np.array(valid_est_intrinsics)
+            }
+            if valid_masks:
+                save_dict['masks_2d'] = np.stack(valid_masks)
+
+            np.savez(out_frame_path, **save_dict)
+            frame_times_sec.append(time.perf_counter() - frame_start)
+        except Exception as e:
+            print(f"  [ERROR] Frame t={t} failed: {e}")
+            continue
+
+    total_sec = time.perf_counter() - run_start
+    timing_payload = {
+        "strategy": os.path.basename(out_dir),
+        "n_frames": int(n_frames),
+        "total_seconds": float(total_sec),
+        "seconds_per_frame": float(total_sec / max(len(frame_times_sec), 1)),
+        "frame_times_seconds": [float(v) for v in frame_times_sec],
+    }
+    with open(os.path.join(out_dir, "timing.json"), "w", encoding="utf-8") as f:
+        json.dump(timing_payload, f, indent=2)
+    print(
+        f"[TIME] {timing_payload['strategy']}: total={timing_payload['total_seconds']:.2f}s  "
+        f"per_frame={timing_payload['seconds_per_frame']:.3f}s"
+    )
 
 
 def parse_subject_selection_args():
@@ -278,6 +318,12 @@ def parse_subject_selection_args():
     parser.add_argument("--all", action="store_true", help="Run all subjects (01..10).")
     for code in sorted(SUBJECT_BY_CODE.keys()):
         parser.add_argument(f"--{code}", dest=f"subject_{code}", action="store_true", help=f"Run subject {code}.")
+    parser.add_argument(
+        "--views",
+        nargs="+",
+        type=int,
+        help="Optional view counts to run (e.g. --views 2 3 4). Defaults to [2,3,4] when multi-view eval is enabled.",
+    )
     return parser.parse_args()
 
 
@@ -316,7 +362,7 @@ def main():
             continue
 
         print(f"\n[INFO] Processing subject: {subject_name}")
-        camera_counts = [2, 3, 4] if RUN_MULTI_VIEW_EVAL else [4]
+        camera_counts = args.views if args.views else ([2, 3, 4] if RUN_MULTI_VIEW_EVAL else [4])
 
         for num_views in camera_counts:
             target_views = VIEW_CONFIGS.get(num_views)
