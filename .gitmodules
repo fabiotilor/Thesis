@@ -2,3 +2,6 @@
 	path = dust3r
 	url = https://github.com/naver/dust3r
 	branch = cvpr
+[submodule "sam2"]
+	path = sam2
+	url = https://github.com/facebookresearch/sam2.git
