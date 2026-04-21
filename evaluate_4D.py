@@ -10,7 +10,7 @@ import matplotlib.pyplot as plt
 import pandas as pd
 
 # Path setup for MASt3R/DUSt3R
-import mast3r.utils.path_to_dust3r  # noqa
+import mast3r.utils.path_to_dust3r # noqa
 
 from mast3r.utils.umeyama_alignment import apply_similarity_transform
 from mast3r.utils.temporal_metrics import (
@@ -24,14 +24,12 @@ from mast3r.utils.temporal_metrics import (
 from mast3r.utils.alignment_4d import normalize_spatial_dims, normalize_array
 from eval_config import SUBJECT_NAMES, SUBJECT_BY_CODE
 
-
 def print_metrics_summary(results_df, label):
     """Prints a comparison table for all strategies."""
     print(f"\n=== Performance Summary: {label} ===")
     pd.set_option('display.precision', 5)
     pd.set_option('display.width', 2000)
     pd.set_option('display.max_columns', None)
-
     cols_to_show = [
         'strategy', 'n_frames',
         'align_frames',
@@ -45,7 +43,6 @@ def print_metrics_summary(results_df, label):
     print(results_df[cols_to_show].to_string(index=False))
     print("=" * (len(label) + 25))
 
-
 def evaluate_strategy_dir(in_dir, out_plot_dir, strategy_label=""):
     files = sorted(glob.glob(os.path.join(in_dir, "frame_*.npz")))
     if not files:
@@ -56,7 +53,6 @@ def evaluate_strategy_dir(in_dir, out_plot_dir, strategy_label=""):
     cham_dist, comp_score, s_acc_list, d_acc_list = [], [], [], []
     all_est_poses, all_est_intrinsics = [], []
     all_gt_poses, all_gt_intrinsics = [], []
-
     # For Jitter
     # For Jitter & Camera Tracking
     all_pointmaps_mv = []
@@ -66,21 +62,16 @@ def evaluate_strategy_dir(in_dir, out_plot_dir, strategy_label=""):
     for f in files:
         data = np.load(f)
         gt_pts, est_pts = data['gt_pts'], data['aligned_pts']
-
         # Squeeze out nans if any (sanity check)
         valid_est = ~np.any(np.isnan(est_pts), axis=-1)
         est_pts = est_pts[valid_est]
-
         ks, rts = data['Ks'], data['R_ts']
         m_2d = data['masks_2d']
-
         if len(est_pts) > 0 and len(gt_pts) > 0:
             cham_dist.append(compute_chamfer_distance(est_pts, gt_pts))
             comp_score.append(compute_completeness(est_pts, gt_pts, tau=0.01))
-
             s_p, d_p = split_points_by_mask(est_pts, m_2d, ks, rts)
             g_s, g_d = split_points_by_mask(gt_pts, m_2d, ks, rts)
-
             s_acc_list.append(compute_accuracy(s_p, g_s, tau=0.01) if len(s_p) > 0 else np.nan)
             d_acc_list.append(compute_accuracy(d_p, g_d, tau=0.01) if len(d_p) > 0 else np.nan)
         else:
@@ -90,7 +81,6 @@ def evaluate_strategy_dir(in_dir, out_plot_dir, strategy_label=""):
             d_acc_list.append(np.nan)
 
         s_val, R_val, tr_val = data['scale'], data['R'], data['tr']
-
         if 'est_poses' in data and data['est_poses'] is not None and data['est_poses'].ndim >= 3:
             e_p = data['est_poses']
             g_p = np.array([np.linalg.inv(rt) for rt in rts])
@@ -118,7 +108,6 @@ def evaluate_strategy_dir(in_dir, out_plot_dir, strategy_label=""):
     # Calculate Aggregated Metrics
     m_static = np.nanmean(s_acc_list)
     m_dyn = np.nanmean(d_acc_list)
-
     metrics = {
         'strategy': strategy_label,
         'n_frames': len(files),
@@ -163,9 +152,7 @@ def evaluate_strategy_dir(in_dir, out_plot_dir, strategy_label=""):
     plt.title(f'Chamfer Distance - {strategy_label}')
     plt.savefig(os.path.join(out_plot_dir, f'chamfer_{strategy_label}.png'))
     plt.close()
-
     return metrics
-
 
 def add_delta_consistency(results_df):
     """
@@ -207,15 +194,12 @@ def add_delta_consistency(results_df):
         if baseline_chamfer is None or np.isnan(baseline_chamfer):
             continue
         df.at[idx, "delta_consistency"] = row["chamfer"] - baseline_chamfer
-
     return df
-
 
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--all", action="store_true")
     parser.add_argument("--pgo", action="store_true", help="Evaluate only Strategy 3 outputs.")
-    parser.add_argument("--use_sam2", action="store_true", help="Evaluate SAM2 specific outputs.")
     parser.add_argument("--views", nargs="+", type=int, help="Optional view counts to evaluate (e.g. --views 2 3 4).")
     for code in SUBJECT_BY_CODE.keys(): parser.add_argument(f"--{code}", action="store_true")
     args = parser.parse_args()
@@ -225,11 +209,8 @@ def main():
     if not subjects: subjects = ["01"]  # Default
 
     method_roots = ["baseline", "strategy1", "strategy2", "strategy3"]
-    if args.use_sam2:
-        method_roots = [m + "_sam2" for m in method_roots]
-
     if args.pgo:
-        method_roots = ["strategy3_sam2" if args.use_sam2 else "strategy3"]
+        method_roots = ["strategy3"]
 
     view_set = set(args.views) if args.views else None
 
@@ -241,7 +222,6 @@ def main():
         if not subject_full: continue
 
         subject_results = []
-
         # New layout: aligned_outputs/{method}/{subject_full}/{Nviews}/
         any_new_found = False
         for method in method_roots:
@@ -314,7 +294,6 @@ def main():
             out_csv = f"eval_summary_{scode}.csv"
             df.to_csv(out_csv, index=False)
             print(f"[INFO] Saved combined report to {out_csv}")
-
 
 if __name__ == "__main__":
     main()

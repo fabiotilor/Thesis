@@ -23,6 +23,7 @@ from mast3r.utils.umeyama_alignment import (
     estimate_similarity_transform,
     apply_similarity_transform,
 )
+from mast3r.utils.camera_utils import get_rgb_path
 from mast3r.utils.optical_flow import compute_static_mask
 
 # Building Ground Truth
@@ -90,11 +91,9 @@ def run_reconstruction(
         target_views,
         out_dir,
         cache_root,
-        flow_threshold=1.0,
         run_tag="default",
         skip_rerun_init=False,
         skip_existing_frames=True,
-        use_sam2=False,
         no_rerun=False,
 ):
     rerun_stream = f"mast3r_stabilisation_{run_tag}"
@@ -165,6 +164,18 @@ def run_reconstruction(
 
             pts3d_list, depthmaps, confs = to_numpy(scene.get_dense_pts3d(clean_depth=CLEAN_DEPTH))
 
+            # ── Precompute Flow Masks ──────────────────────────────────────────
+            precomputed_masks = {}
+            for i, vname in enumerate(view_names):
+                view_dir_v = os.path.join(dataset_root, vname)
+                rgb_t_v = get_rgb_path(view_dir_v, t)
+                rgb_adj_v = get_rgb_path(view_dir_v, t + 1) or get_rgb_path(view_dir_v, t - 1)
+                rgb_paths_v = [p for p in [rgb_t_v, rgb_adj_v] if p is not None]
+                if len(rgb_paths_v) >= 2:
+                    precomputed_masks[vname] = compute_static_mask(rgb_paths_v)
+                else:
+                    precomputed_masks[vname] = None
+
             # ── Full GT ─────────────────────────────────────────────────────────
             gt_pts = build_gt_pointcloud(
                 t, view_names, dataset_root
@@ -173,8 +184,7 @@ def run_reconstruction(
             # ── Static GT ───────────────────────────────────────────────────────
             gt_static_pts = build_static_gt_pointcloud(
                 t, view_names, dataset_root,
-                flow_threshold=flow_threshold,
-                use_sam2=use_sam2
+                precomputed_masks=precomputed_masks
             )
             if gt_pts is None:
                 print(f"  [WARN] No GT pointcloud at t={t}; skipping frame.")
@@ -183,9 +193,8 @@ def run_reconstruction(
             # ── Correspondences ─────────────────────────────────────────────────
             src_corr, dst_corr = get_static_correspondences(
                 t, view_names, scene, dataset_root,
-                flow_threshold=flow_threshold,
                 min_conf_thr=MIN_CONF_THR,
-                use_sam2=use_sam2
+                precomputed_masks=precomputed_masks
             )
 
             if src_corr is not None and len(src_corr) >= 3:
@@ -261,34 +270,14 @@ def run_reconstruction(
                 est_intrinsics_all = to_numpy(scene.intrinsics)
 
             # ── Per-view flow masks ────────────────────────────────────────────
-            def _get_rgb_path(rgb_dir: str, frame_t: int):
-                """Closure-free helper: rgb_dir passed explicitly."""
-                for ext in (".png", ".jpg", ".jpeg"):
-                    p = os.path.join(rgb_dir, f"{frame_t:05d}{ext}")
-                    if os.path.exists(p):
-                        return p
-                return None
-
             for i, vname in enumerate(view_names):
                 view_dir = os.path.join(dataset_root, vname)
                 K, cam2world = load_gt_params(view_dir)
                 R_t = np.linalg.inv(cam2world)
 
-                rgb_dir = (os.path.join(view_dir, "rgb")
-                           if os.path.isdir(os.path.join(view_dir, "rgb"))
-                           else view_dir)
-
-                rgb_t = _get_rgb_path(rgb_dir, t)
-                rgb_adj = (_get_rgb_path(rgb_dir, t + 1)
-                           or _get_rgb_path(rgb_dir, t - 1))
-                rgb_paths = [p for p in [rgb_t, rgb_adj] if p is not None]
-
-                if len(rgb_paths) < 2:
-                    print(f"  [WARN] {vname} t={t}: not enough frames for flow mask, skipping view")
-                    continue
-
-                flow_mask = compute_static_mask(rgb_paths, method="sam2" if use_sam2 else "farneback")
+                flow_mask = precomputed_masks.get(vname)
                 if flow_mask is None:
+                    print(f"  [WARN] {vname} t={t}: not enough frames or flow mask failed, skipping view")
                     continue
 
                 H_mod, W_mod = confs[i].shape[:2]
@@ -374,7 +363,6 @@ def parse_subject_selection_args():
         type=int,
         help="Optional view counts to run (e.g. --views 2 3 4). Defaults to [2,3,4] when multi-view eval is enabled.",
     )
-    parser.add_argument("--use_sam2", action="store_true", help="Use SAM2 for computing static masks instead of optical flow.")
     return parser.parse_args()
 
 
@@ -394,7 +382,6 @@ def get_selected_subject_names(args):
 def main():
     args = parse_subject_selection_args()
     selected_subjects = get_selected_subject_names(args)
-    flow_threshold = 1.0
 
     torch.backends.cuda.matmul.allow_tf32 = True
 
@@ -427,9 +414,7 @@ def main():
                 target_views=target_views,
                 out_dir=out_dir,
                 cache_root=cache_root,
-                flow_threshold=flow_threshold,
-                run_tag=f"{subject_name}_{num_views}views" + ("_sam2" if args.use_sam2 else ""),
-                use_sam2=args.use_sam2,
+                run_tag=f"{subject_name}_{num_views}views",
             )
 
     print("[done]")

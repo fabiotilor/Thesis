@@ -5,7 +5,7 @@ import rerun as rr
 import rerun.blueprint as rrb
 
 from .gt import load_gt_params, build_gt_validity_masks
-from .camera_utils import discover_view_name
+from .camera_utils import discover_view_name, get_rgb_path
 from .umeyama_alignment import apply_similarity_transform
 from eval_config import MIN_CONF_THR, RERUN_ADDR, RERUN_EYE_UP
 
@@ -86,17 +86,7 @@ def log_cameras_rerun(t, view_names, dataset_root, log_root):
         view_dir = os.path.join(dataset_root, vname)
         K, c2w = load_gt_params(view_dir)
 
-        rgb_dir = os.path.join(view_dir, "rgb")
-        if not os.path.isdir(rgb_dir):
-            rgb_dir = view_dir
-
-        rgb_path = None
-        for ext in (".png", ".jpg", ".jpeg"):
-            p = os.path.join(rgb_dir, f"{t:05d}{ext}")
-            if os.path.exists(p):
-                rgb_path = p
-                break
-
+        rgb_path = get_rgb_path(view_dir, t)
         if rgb_path:
             img_bgr = cv2.imread(rgb_path)
             if img_bgr is not None:
@@ -113,7 +103,7 @@ def log_cameras_rerun(t, view_names, dataset_root, log_root):
             print(f"  [WARN] Image not found for {vname} at t={t}")
 
 
-def log_pointcloud(t, entity, positions, color=None, radii=0.002, max_points=50000):
+def log_pointcloud(t, entity, positions, color=None, radii=0.002, max_points=25000):
     """Basic reusable pointcloud logger with optional random sampling."""
     rr.set_time("frame", sequence=t)
 

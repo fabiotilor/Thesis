@@ -69,11 +69,6 @@ def _parse_args():
         help="Run only Strategy 3 (PGO) + evaluation. Baseline outputs must already exist.",
     )
     parser.add_argument(
-        "--use_sam2",
-        action="store_true",
-        help="Use SAM2 for static mask computation instead of Farneback.",
-    )
-    parser.add_argument(
         "--no-rerun",
         action="store_true",
         help="Disable Rerun visualization to avoid blocking/latency.",
@@ -123,10 +118,8 @@ def _target_views_for_nviews(nviews: int):
     return target_views
 
 
-def _run_eval(code: str, view_counts: list[int], use_sam2: bool = False):
+def _run_eval(code: str, view_counts: list[int]):
     cmd = [sys.executable, "evaluate_4D.py", f"--{code}", "--views"] + [str(v) for v in view_counts]
-    if use_sam2:
-        cmd += ["--use_sam2"]
     print(f"\nRUNNING: {' '.join(cmd)}")
     subprocess.run(cmd, check=True)
 
@@ -162,11 +155,10 @@ def main():
                 init_recording(code, nviews)
             view_root = f"mast3r_{code}_{nviews}views"
 
-            suffix = "_sam2" if args.use_sam2 else ""
-            baseline_dir = os.path.join("aligned_outputs", "baseline" + suffix, subject_full, f"{nviews}views")
-            s1_dir = os.path.join("aligned_outputs", "strategy1" + suffix, subject_full, f"{nviews}views")
-            s2_dir = os.path.join("aligned_outputs", "strategy2" + suffix, subject_full, f"{nviews}views")
-            s3_dir = os.path.join("aligned_outputs", "strategy3" + suffix, subject_full, f"{nviews}views")
+            baseline_dir = os.path.join("aligned_outputs", "baseline", subject_full, f"{nviews}views")
+            s1_dir = os.path.join("aligned_outputs", "strategy1", subject_full, f"{nviews}views")
+            s2_dir = os.path.join("aligned_outputs", "strategy2", subject_full, f"{nviews}views")
+            s3_dir = os.path.join("aligned_outputs", "strategy3", subject_full, f"{nviews}views")
 
             for d in (baseline_dir, s1_dir, s2_dir, s3_dir):
                 os.makedirs(d, exist_ok=True)
@@ -186,10 +178,8 @@ def main():
                     target_views=target_views,
                     out_dir=baseline_dir,
                     cache_root=cache_root,
-                    flow_threshold=1.0,
                     run_tag=run_tag,
                     skip_rerun_init=True,
-                    use_sam2=args.use_sam2,
                     no_rerun=args.no_rerun,
                 )
 
@@ -299,7 +289,8 @@ def main():
                 )
 
         print(f"\n[INFO] Evaluating subject {code} across methods/views ...")
-        _run_eval(code, view_counts, use_sam2=args.use_sam2)
+        if not args.pgo:
+            _run_eval(code, view_counts)
 
     # Aggregate results across selected subjects only.
     csv_files = []

@@ -47,3 +47,16 @@ def discover_view_name(dataset_root, K):
     cache = build_camera_intrinsics_cache(dataset_root)
     key = tuple(np.round(K.flatten(), decimals=3))
     return cache.get(key)
+
+
+def get_rgb_path(view_dir: str, frame_t: int) -> str | None:
+    """
+    Robust RGB path discovery given a view directory (e.g., dataset/view_00/)
+    and a frame index. Checks both dataset/view_00/{t}.png and dataset/view_00/rgb/{t}.png.
+    """
+    rgb_dir = os.path.join(view_dir, "rgb") if os.path.isdir(os.path.join(view_dir, "rgb")) else view_dir
+    for ext in (".png", ".jpg", ".jpeg"):
+        p = os.path.join(rgb_dir, f"{frame_t:05d}{ext}")
+        if os.path.exists(p):
+            return p
+    return None

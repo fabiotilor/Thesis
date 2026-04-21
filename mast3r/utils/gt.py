@@ -1,6 +1,7 @@
 import numpy as np
 import os
 import cv2
+from .camera_utils import get_rgb_path
 from dust3r.utils.device import to_numpy
 
 DEPTH_MAX_M = 1.5
@@ -57,9 +58,7 @@ def get_camera_correspondences(t, view_names, scene, dataset_root):
     return np.array(est_positions), np.array(gt_positions)
 
 
-def build_static_gt_pointcloud(t, view_names, dataset_root,
-                               flow_threshold=2.0, use_sam2=False,
-                               precomputed_masks=None):
+def build_static_gt_pointcloud(t, view_names, dataset_root, precomputed_masks=None):
     all_pts = []
 
     for vname in view_names:
@@ -72,19 +71,8 @@ def build_static_gt_pointcloud(t, view_names, dataset_root,
         depth_m = depth_raw * DEPTH_SCALE
         H, W = depth_m.shape
 
-        rgb_dir = os.path.join(view_dir, "rgb")
-        if not os.path.isdir(rgb_dir):
-            rgb_dir = view_dir
-
-        def _rgb_path(frame_t):
-            for ext in (".png", ".jpg", ".jpeg"):
-                p = os.path.join(rgb_dir, f"{frame_t:05d}{ext}")
-                if os.path.exists(p):
-                    return p
-            return None
-
-        rgb_t   = _rgb_path(t)
-        rgb_adj = _rgb_path(t + 1) or _rgb_path(t - 1)
+        rgb_t   = get_rgb_path(view_dir, t)
+        rgb_adj = get_rgb_path(view_dir, t + 1) or get_rgb_path(view_dir, t - 1)
 
         if precomputed_masks is not None and vname in precomputed_masks and precomputed_masks[vname] is not None:
             static_mask = precomputed_masks[vname]
@@ -93,33 +81,17 @@ def build_static_gt_pointcloud(t, view_names, dataset_root,
         else:
             static_mask = np.ones((H, W), dtype=bool)
             if rgb_t is not None and rgb_adj is not None:
-                if use_sam2:
-                    from mast3r.utils.optical_flow import compute_flow_sam2
-                    f0 = cv2.imread(rgb_t)
-                    f1 = cv2.imread(rgb_adj)
-                    if f0 is not None and f1 is not None and f0.shape == f1.shape:
-                        flow_mask = compute_flow_sam2([f0, f1])
-                        if flow_mask.shape != (H, W):
-                            static_mask = cv2.resize(
-                                flow_mask.astype(np.uint8), (W, H),
-                                interpolation=cv2.INTER_NEAREST).astype(bool)
-                        else:
-                            static_mask = flow_mask
-                else:
-                    f0 = cv2.imread(rgb_t,   cv2.IMREAD_GRAYSCALE).astype(np.float32)
-                    f1 = cv2.imread(rgb_adj, cv2.IMREAD_GRAYSCALE).astype(np.float32)
-                    if f0.shape == f1.shape:
-                        flow = cv2.calcOpticalFlowFarneback(
-                            f0, f1, None,
-                            pyr_scale=0.5, levels=3, winsize=15,
-                            iterations=3, poly_n=5, poly_sigma=1.2, flags=0)
-                        flow_mask = np.linalg.norm(flow, axis=-1) < flow_threshold
-                        if flow_mask.shape != (H, W):
-                            static_mask = cv2.resize(
-                                flow_mask.astype(np.uint8), (W, H),
-                                interpolation=cv2.INTER_NEAREST).astype(bool)
-                        else:
-                            static_mask = flow_mask
+                from mast3r.utils.optical_flow import compute_flow_sam2
+                f0 = cv2.imread(rgb_t)
+                f1 = cv2.imread(rgb_adj)
+                if f0 is not None and f1 is not None and f0.shape == f1.shape:
+                    flow_mask = compute_flow_sam2([f0, f1])
+                    if flow_mask.shape != (H, W):
+                        static_mask = cv2.resize(
+                            flow_mask.astype(np.uint8), (W, H),
+                            interpolation=cv2.INTER_NEAREST).astype(bool)
+                    else:
+                        static_mask = flow_mask
 
         _dbg_out = os.path.join("flow_masks_output", vname)
         os.makedirs(_dbg_out, exist_ok=True)
@@ -141,9 +113,7 @@ def build_static_gt_pointcloud(t, view_names, dataset_root,
 
 
 def get_static_correspondences(t, view_names, scene, dataset_root,
-                               flow_threshold=2.0,
                                min_conf_thr=2.0,
-                               use_sam2=False,
                                precomputed_masks=None):
     """
     Build (estimated, GT) 3-D point correspondences for static regions.
@@ -211,46 +181,22 @@ def get_static_correspondences(t, view_names, scene, dataset_root,
                                  interpolation=cv2.INTER_NEAREST)
 
         # ── Farneback static mask, downsampled to model resolution ─────────────
-        rgb_dir = os.path.join(view_dir, "rgb")
-        if not os.path.isdir(rgb_dir):
-            rgb_dir = view_dir
-
-        def _rgb_path(frame_t):
-            for ext in (".png", ".jpg", ".jpeg"):
-                p = os.path.join(rgb_dir, f"{frame_t:05d}{ext}")
-                if os.path.exists(p):
-                    return p
-            return None
-
-        rgb_t   = _rgb_path(t)
-        rgb_adj = _rgb_path(t + 1) or _rgb_path(t - 1)
+        rgb_t   = get_rgb_path(view_dir, t)
+        rgb_adj = get_rgb_path(view_dir, t + 1) or get_rgb_path(view_dir, t - 1)
 
         if precomputed_masks is not None and vname in precomputed_masks and precomputed_masks[vname] is not None:
             static_small = cv2.resize(precomputed_masks[vname].astype(np.uint8), (w_mod, h_mod), interpolation=cv2.INTER_NEAREST).astype(bool)
         else:
             static_small = np.ones((h_mod, w_mod), dtype=bool)
             if rgb_t is not None and rgb_adj is not None:
-                if use_sam2:
-                    from mast3r.utils.optical_flow import compute_flow_sam2
-                    f0 = cv2.imread(rgb_t)
-                    f1 = cv2.imread(rgb_adj)
-                    if f0 is not None and f1 is not None and f0.shape == f1.shape:
-                        flow_mask = compute_flow_sam2([f0, f1])
-                        static_small = cv2.resize(
-                            flow_mask.astype(np.uint8), (w_mod, h_mod),
-                            interpolation=cv2.INTER_NEAREST).astype(bool)
-                else:
-                    f0 = cv2.imread(rgb_t,   cv2.IMREAD_GRAYSCALE).astype(np.float32)
-                    f1 = cv2.imread(rgb_adj, cv2.IMREAD_GRAYSCALE).astype(np.float32)
-                    if f0.shape == f1.shape:
-                        flow = cv2.calcOpticalFlowFarneback(
-                            f0, f1, None,
-                            pyr_scale=0.5, levels=3, winsize=15,
-                            iterations=3, poly_n=5, poly_sigma=1.2, flags=0)
-                        flow_mask = np.linalg.norm(flow, axis=-1) < flow_threshold
-                        static_small = cv2.resize(
-                            flow_mask.astype(np.uint8), (w_mod, h_mod),
-                            interpolation=cv2.INTER_NEAREST).astype(bool)
+                from mast3r.utils.optical_flow import compute_flow_sam2
+                f0 = cv2.imread(rgb_t)
+                f1 = cv2.imread(rgb_adj)
+                if f0 is not None and f1 is not None and f0.shape == f1.shape:
+                    flow_mask = compute_flow_sam2([f0, f1])
+                    static_small = cv2.resize(
+                        flow_mask.astype(np.uint8), (w_mod, h_mod),
+                        interpolation=cv2.INTER_NEAREST).astype(bool)
 
         # ── Valid pixel mask (all criteria at model resolution) ────────────────
         valid = (conf_mod   > min_conf_thr) \
@@ -281,12 +227,16 @@ def get_static_correspondences(t, view_names, scene, dataset_root,
 
     return np.concatenate(all_est, axis=0), np.concatenate(all_gt, axis=0)
 
-def build_gt_validity_masks(t, view_names, dataset_root, depth_max_m=1.5, target_hw=None):
+def build_gt_validity_masks(t, view_names, dataset_root, depth_max_m=1.5, target_hw=None, cache=None):
     """
     Returns a list of boolean 2D masks (one per view), True where the GT depth
     is valid (> 0) and within depth_max_m.  Optionally resized to target_hw=(H,W)
     to match the MASt3R output pointmap resolution.
     """
+    # Check cache for this specific frame
+    if cache is not None and t in cache:
+        return cache[t]
+
     masks = []
     for vname in view_names:
         view_dir = os.path.join(dataset_root, vname)
@@ -310,4 +260,6 @@ def build_gt_validity_masks(t, view_names, dataset_root, depth_max_m=1.5, target
             ).astype(bool)
 
         masks.append(mask)
+    if cache is not None:
+        cache[t] = masks
     return masks

@@ -150,37 +150,17 @@ def compute_flow_sam2(frames: list[np.ndarray]) -> np.ndarray:
     return static_mask
 
 
-def compute_static_mask(rgb_paths, flow_threshold=1.0, method="farneback"):
+def compute_static_mask(rgb_paths):
     """
     Returns a boolean mask (H, W) where True = static across all frame transitions.
-    Arguments:
-        rgb_paths: list of paths to images
-        flow_threshold: float, used only for farneback
-        method: "farneback" or "sam2"
+    SAM2 based high-fidelity segmentation.
     """
-    if method == "sam2":
-        # Load all frames
-        frames = []
-        for p in rgb_paths:
-            img = cv2.imread(p)
-            if img is not None:
-                frames.append(img)
-        if len(frames) < 2:
-            return None
-        return compute_flow_sam2(frames)
-
-    # Fallback to standard Farneback
-    H, W = cv2.imread(rgb_paths[0], cv2.IMREAD_GRAYSCALE).shape
-    static = np.ones((H, W), dtype=bool)
-
-    for i in range(len(rgb_paths) - 1):
-        f0 = cv2.imread(rgb_paths[i], cv2.IMREAD_GRAYSCALE).astype(np.float32)
-        f1 = cv2.imread(rgb_paths[i + 1], cv2.IMREAD_GRAYSCALE).astype(np.float32)
-        # Use Farneback for efficiency and strictness
-        flow = cv2.calcOpticalFlowFarneback(
-            f0, f1, None,
-            pyr_scale=0.5, levels=3, winsize=15,
-            iterations=3, poly_n=5, poly_sigma=1.2, flags=0)
-        magnitude = np.sqrt(flow[..., 0] ** 2 + flow[..., 1] ** 2)
-        static &= (magnitude < flow_threshold)
-    return static
+    # Load all frames
+    frames = []
+    for p in rgb_paths:
+        img = cv2.imread(p)
+        if img is not None:
+            frames.append(img)
+    if len(frames) < 2:
+        return None
+    return compute_flow_sam2(frames)
