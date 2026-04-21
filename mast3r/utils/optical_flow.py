@@ -111,6 +111,16 @@ def compute_flow_sam2(frames: list[np.ndarray]) -> np.ndarray:
             # Entire frame is static
             continue
 
+        # Add a union bounding box (person prompt) to capture the whole moving entity,
+        # in addition to the individual object/part prompts.
+        if len(boxes) > 1:
+            boxes_np_tmp = np.array(boxes)
+            ux1 = boxes_np_tmp[:, 0].min()
+            uy1 = boxes_np_tmp[:, 1].min()
+            ux2 = boxes_np_tmp[:, 2].max()
+            uy2 = boxes_np_tmp[:, 3].max()
+            boxes.append([ux1, uy1, ux2, uy2])
+
         boxes_np = np.array(boxes)
 
         # 3. Predict accurate segmentation via SAM2
