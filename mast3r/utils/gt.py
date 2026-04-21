@@ -58,7 +58,8 @@ def get_camera_correspondences(t, view_names, scene, dataset_root):
 
 
 def build_static_gt_pointcloud(t, view_names, dataset_root,
-                               flow_threshold=2.0, use_sam2=False):
+                               flow_threshold=2.0, use_sam2=False,
+                               precomputed_masks=None):
     all_pts = []
 
     for vname in view_names:
@@ -85,35 +86,40 @@ def build_static_gt_pointcloud(t, view_names, dataset_root,
         rgb_t   = _rgb_path(t)
         rgb_adj = _rgb_path(t + 1) or _rgb_path(t - 1)
 
-        static_mask = np.ones((H, W), dtype=bool)
-        if rgb_t is not None and rgb_adj is not None:
-            if use_sam2:
-                from mast3r.utils.optical_flow import compute_flow_sam2
-                f0 = cv2.imread(rgb_t)
-                f1 = cv2.imread(rgb_adj)
-                if f0 is not None and f1 is not None and f0.shape == f1.shape:
-                    flow_mask = compute_flow_sam2([f0, f1])
-                    if flow_mask.shape != (H, W):
-                        static_mask = cv2.resize(
-                            flow_mask.astype(np.uint8), (W, H),
-                            interpolation=cv2.INTER_NEAREST).astype(bool)
-                    else:
-                        static_mask = flow_mask
-            else:
-                f0 = cv2.imread(rgb_t,   cv2.IMREAD_GRAYSCALE).astype(np.float32)
-                f1 = cv2.imread(rgb_adj, cv2.IMREAD_GRAYSCALE).astype(np.float32)
-                if f0.shape == f1.shape:
-                    flow = cv2.calcOpticalFlowFarneback(
-                        f0, f1, None,
-                        pyr_scale=0.5, levels=3, winsize=15,
-                        iterations=3, poly_n=5, poly_sigma=1.2, flags=0)
-                    flow_mask = np.linalg.norm(flow, axis=-1) < flow_threshold
-                    if flow_mask.shape != (H, W):
-                        static_mask = cv2.resize(
-                            flow_mask.astype(np.uint8), (W, H),
-                            interpolation=cv2.INTER_NEAREST).astype(bool)
-                    else:
-                        static_mask = flow_mask
+        if precomputed_masks is not None and vname in precomputed_masks and precomputed_masks[vname] is not None:
+            static_mask = precomputed_masks[vname]
+            if static_mask.shape != (H, W):
+                static_mask = cv2.resize(static_mask.astype(np.uint8), (W, H), interpolation=cv2.INTER_NEAREST).astype(bool)
+        else:
+            static_mask = np.ones((H, W), dtype=bool)
+            if rgb_t is not None and rgb_adj is not None:
+                if use_sam2:
+                    from mast3r.utils.optical_flow import compute_flow_sam2
+                    f0 = cv2.imread(rgb_t)
+                    f1 = cv2.imread(rgb_adj)
+                    if f0 is not None and f1 is not None and f0.shape == f1.shape:
+                        flow_mask = compute_flow_sam2([f0, f1])
+                        if flow_mask.shape != (H, W):
+                            static_mask = cv2.resize(
+                                flow_mask.astype(np.uint8), (W, H),
+                                interpolation=cv2.INTER_NEAREST).astype(bool)
+                        else:
+                            static_mask = flow_mask
+                else:
+                    f0 = cv2.imread(rgb_t,   cv2.IMREAD_GRAYSCALE).astype(np.float32)
+                    f1 = cv2.imread(rgb_adj, cv2.IMREAD_GRAYSCALE).astype(np.float32)
+                    if f0.shape == f1.shape:
+                        flow = cv2.calcOpticalFlowFarneback(
+                            f0, f1, None,
+                            pyr_scale=0.5, levels=3, winsize=15,
+                            iterations=3, poly_n=5, poly_sigma=1.2, flags=0)
+                        flow_mask = np.linalg.norm(flow, axis=-1) < flow_threshold
+                        if flow_mask.shape != (H, W):
+                            static_mask = cv2.resize(
+                                flow_mask.astype(np.uint8), (W, H),
+                                interpolation=cv2.INTER_NEAREST).astype(bool)
+                        else:
+                            static_mask = flow_mask
 
         _dbg_out = os.path.join("flow_masks_output", vname)
         os.makedirs(_dbg_out, exist_ok=True)
@@ -137,7 +143,8 @@ def build_static_gt_pointcloud(t, view_names, dataset_root,
 def get_static_correspondences(t, view_names, scene, dataset_root,
                                flow_threshold=2.0,
                                min_conf_thr=2.0,
-                               use_sam2=False):
+                               use_sam2=False,
+                               precomputed_masks=None):
     """
     Build (estimated, GT) 3-D point correspondences for static regions.
 
@@ -218,29 +225,32 @@ def get_static_correspondences(t, view_names, scene, dataset_root,
         rgb_t   = _rgb_path(t)
         rgb_adj = _rgb_path(t + 1) or _rgb_path(t - 1)
 
-        static_small = np.ones((h_mod, w_mod), dtype=bool)
-        if rgb_t is not None and rgb_adj is not None:
-            if use_sam2:
-                from mast3r.utils.optical_flow import compute_flow_sam2
-                f0 = cv2.imread(rgb_t)
-                f1 = cv2.imread(rgb_adj)
-                if f0 is not None and f1 is not None and f0.shape == f1.shape:
-                    flow_mask = compute_flow_sam2([f0, f1])
-                    static_small = cv2.resize(
-                        flow_mask.astype(np.uint8), (w_mod, h_mod),
-                        interpolation=cv2.INTER_NEAREST).astype(bool)
-            else:
-                f0 = cv2.imread(rgb_t,   cv2.IMREAD_GRAYSCALE).astype(np.float32)
-                f1 = cv2.imread(rgb_adj, cv2.IMREAD_GRAYSCALE).astype(np.float32)
-                if f0.shape == f1.shape:
-                    flow = cv2.calcOpticalFlowFarneback(
-                        f0, f1, None,
-                        pyr_scale=0.5, levels=3, winsize=15,
-                        iterations=3, poly_n=5, poly_sigma=1.2, flags=0)
-                    flow_mask = np.linalg.norm(flow, axis=-1) < flow_threshold
-                    static_small = cv2.resize(
-                        flow_mask.astype(np.uint8), (w_mod, h_mod),
-                        interpolation=cv2.INTER_NEAREST).astype(bool)
+        if precomputed_masks is not None and vname in precomputed_masks and precomputed_masks[vname] is not None:
+            static_small = cv2.resize(precomputed_masks[vname].astype(np.uint8), (w_mod, h_mod), interpolation=cv2.INTER_NEAREST).astype(bool)
+        else:
+            static_small = np.ones((h_mod, w_mod), dtype=bool)
+            if rgb_t is not None and rgb_adj is not None:
+                if use_sam2:
+                    from mast3r.utils.optical_flow import compute_flow_sam2
+                    f0 = cv2.imread(rgb_t)
+                    f1 = cv2.imread(rgb_adj)
+                    if f0 is not None and f1 is not None and f0.shape == f1.shape:
+                        flow_mask = compute_flow_sam2([f0, f1])
+                        static_small = cv2.resize(
+                            flow_mask.astype(np.uint8), (w_mod, h_mod),
+                            interpolation=cv2.INTER_NEAREST).astype(bool)
+                else:
+                    f0 = cv2.imread(rgb_t,   cv2.IMREAD_GRAYSCALE).astype(np.float32)
+                    f1 = cv2.imread(rgb_adj, cv2.IMREAD_GRAYSCALE).astype(np.float32)
+                    if f0.shape == f1.shape:
+                        flow = cv2.calcOpticalFlowFarneback(
+                            f0, f1, None,
+                            pyr_scale=0.5, levels=3, winsize=15,
+                            iterations=3, poly_n=5, poly_sigma=1.2, flags=0)
+                        flow_mask = np.linalg.norm(flow, axis=-1) < flow_threshold
+                        static_small = cv2.resize(
+                            flow_mask.astype(np.uint8), (w_mod, h_mod),
+                            interpolation=cv2.INTER_NEAREST).astype(bool)
 
         # ── Valid pixel mask (all criteria at model resolution) ────────────────
         valid = (conf_mod   > min_conf_thr) \

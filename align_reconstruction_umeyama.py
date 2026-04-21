@@ -133,8 +133,6 @@ def run_reconstruction(
     run_start = time.perf_counter()
     frame_times_sec = []
     mask_base_dir = os.path.join(out_dir, "flow_masks")
-    fused_dir = os.path.join(mask_base_dir, "fused_static_masks")
-    os.makedirs(fused_dir, exist_ok=True)
 
     for t in range(n_frames):
         out_frame_path = os.path.join(out_dir, f"frame_{t:02d}.npz")
@@ -325,15 +323,6 @@ def run_reconstruction(
                 valid_R_ts.append(R_t)
                 valid_est_poses.append(est_poses_all[i])
                 valid_est_intrinsics.append(est_intrinsics_all[i])
-
-            # Save fused mask (majority vote across views)
-            if valid_masks:
-                stacked = np.stack(valid_masks)
-                fused_mask = stacked.sum(axis=0) > (len(valid_masks) / 2.0)
-                cv2.imwrite(
-                    os.path.join(fused_dir, f"fused_static_mask_{t:02d}.png"),
-                    fused_mask.astype(np.uint8) * 255,
-                )
 
             save_dict = {
                 'gt_pts': gt_pts,
