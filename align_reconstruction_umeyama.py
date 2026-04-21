@@ -46,7 +46,7 @@ from eval_config import (
 # NOTE: Import rerun logging lazily inside `run_reconstruction` to avoid
 # circular-import issues when other modules import this file.
 CLEAN_DEPTH = True
-RUN_MULTI_VIEW_EVAL = False
+RUN_MULTI_VIEW_EVAL = True
 
 
 # ── helpers ───────────────────────────────────────────────────────────────────
@@ -95,12 +95,13 @@ def run_reconstruction(
         skip_rerun_init=False,
         skip_existing_frames=True,
         use_sam2=False,
+        no_rerun=False,
 ):
     rerun_stream = f"mast3r_stabilisation_{run_tag}"
-    if not skip_rerun_init:
+    if not skip_rerun_init and not no_rerun:
         try:
             rr.init(rerun_stream, spawn=False)
-            rr.connect(RERUN_ADDR)
+            rr.connect_grpc(RERUN_ADDR)
         except Exception as e:
             print(f"[WARN] Rerun init failed for {run_tag}: {e}")
 
@@ -114,7 +115,7 @@ def run_reconstruction(
     # When called from run_full_pipeline, rerun setup is already done there, so
     # avoid re-sending blueprints to reduce "overwriting" behavior.
     log_root = f"{run_tag}"
-    if not skip_rerun_init:
+    if not skip_rerun_init and not no_rerun:
         rr.log(log_root, rr.ViewCoordinates.RIGHT_HAND_Y_UP, static=True)
         configure_rerun_view_defaults(log_root, RERUN_EYE_UP)
 
@@ -145,7 +146,8 @@ def run_reconstruction(
         try:
             print(f"── t={t:02d} / {n_frames - 1} ──────────────────────────────────────")
 
-            log_cameras_rerun(t, view_names, dataset_root, log_root)
+            if not no_rerun:
+                log_cameras_rerun(t, view_names, dataset_root, log_root)
 
             masked_current_files = [
                 get_masked_image(t, v, views[v][t], cache_root, dataset_root)
@@ -168,6 +170,13 @@ def run_reconstruction(
             # ── Full GT ─────────────────────────────────────────────────────────
             gt_pts = build_gt_pointcloud(
                 t, view_names, dataset_root
+            )
+
+            # ── Static GT ───────────────────────────────────────────────────────
+            gt_static_pts = build_static_gt_pointcloud(
+                t, view_names, dataset_root,
+                flow_threshold=flow_threshold,
+                use_sam2=use_sam2
             )
             if gt_pts is None:
                 print(f"  [WARN] No GT pointcloud at t={t}; skipping frame.")
@@ -227,10 +236,12 @@ def run_reconstruction(
             aligned_pts = apply_similarity_transform(est_pts, s, R, tr)
 
             # ── Logging ─────────────────────────────────────────────────────────
-            log_alignment_results(
-                t, gt_pts, aligned_pts,
-                log_root=log_root,
-            )
+            if not no_rerun:
+                log_alignment_results(
+                    t, gt_pts, aligned_pts,
+                    gt_static_pts=gt_static_pts,
+                    log_root=log_root,
+                )
 
             # ── Collect camera params and flow masks ───────────────────────────
             valid_masks = []
@@ -405,7 +416,8 @@ def main():
 
     selected_codes_str = ", ".join(name.split("subject-")[1][:2] for name in selected_subjects)
     print(f"[INFO] Selected subjects: {selected_codes_str}")
-
+    rr.init("mast3r_stabilisation", spawn=False)
+    rr.connect_grpc(RERUN_ADDR)
     for subject_name in selected_subjects:
         dataset_root = os.path.join(DATASET_BASE_ROOT, subject_name)
         if not os.path.isdir(dataset_root):
@@ -434,7 +446,6 @@ def main():
     print("[done]")
     print("\nRun metrics with:")
     print("  python evaluate_temporal_consistency.py")
-
 
 if __name__ == "__main__":
     main()

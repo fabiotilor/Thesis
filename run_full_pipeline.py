@@ -73,6 +73,11 @@ def _parse_args():
         action="store_true",
         help="Use SAM2 for static mask computation instead of Farneback.",
     )
+    parser.add_argument(
+        "--no-rerun",
+        action="store_true",
+        help="Disable Rerun visualization to avoid blocking/latency.",
+    )
     return parser.parse_args()
 
 
@@ -118,8 +123,10 @@ def _target_views_for_nviews(nviews: int):
     return target_views
 
 
-def _run_eval(code: str, view_counts: list[int]):
+def _run_eval(code: str, view_counts: list[int], use_sam2: bool = False):
     cmd = [sys.executable, "evaluate_4D.py", f"--{code}", "--views"] + [str(v) for v in view_counts]
+    if use_sam2:
+        cmd += ["--use_sam2"]
     print(f"\nRUNNING: {' '.join(cmd)}")
     subprocess.run(cmd, check=True)
 
@@ -151,7 +158,8 @@ def main():
 
         for nviews in view_counts:
             # Create an independent rerun recording card per (subject, view-count).
-            init_recording(code, nviews)
+            if not args.no_rerun:
+                init_recording(code, nviews)
             view_root = f"mast3r_{code}_{nviews}views"
 
             suffix = "_sam2" if args.use_sam2 else ""
@@ -163,7 +171,8 @@ def main():
             for d in (baseline_dir, s1_dir, s2_dir, s3_dir):
                 os.makedirs(d, exist_ok=True)
 
-            configure_rerun_view_defaults(view_root, RERUN_EYE_UP)
+            if not args.no_rerun:
+                configure_rerun_view_defaults(view_root, RERUN_EYE_UP)
 
             frame_paths = []
 
@@ -181,6 +190,7 @@ def main():
                     run_tag=run_tag,
                     skip_rerun_init=True,
                     use_sam2=args.use_sam2,
+                    no_rerun=args.no_rerun,
                 )
 
             frame_paths = _sorted_frame_paths(baseline_dir)
@@ -191,7 +201,7 @@ def main():
             # Log GT sequence only if baseline was skipped.
             # When baseline ran, it already logged:
             #   <view_root>/gt (green)
-            if args.pgo:
+            if args.pgo and not args.no_rerun:
                 try:
                     log_gt_sequence(frame_paths, log_root=view_root)
                 except Exception as e:
@@ -214,18 +224,19 @@ def main():
                     method_label="strategy1",
                 )
                 _write_timing_json(s1_dir, "strategy1", len(frame_paths), time.perf_counter() - s1_start)
-                log_aligned_sequence(
-                    frame_paths,
-                    tf_s1,
-                    s_g1,
-                    R_g1,
-                    tr_g1,
-                    label="Strategy_1",
-                        # Strategy1: red
-                        color=[255, 0, 0],
-                    dataset_root=dataset_root,
-                        log_root=view_root,
-                )
+                if not args.no_rerun:
+                    log_aligned_sequence(
+                        frame_paths,
+                        tf_s1,
+                        s_g1,
+                        R_g1,
+                        tr_g1,
+                        label="Strategy_1",
+                            # Strategy1: red
+                            color=[255, 0, 0],
+                        dataset_root=dataset_root,
+                            log_root=view_root,
+                    )
 
                 print(f"\n[STAGE] Strategy 2: subject={code} views={nviews}")
                 s2_start = time.perf_counter()
@@ -243,18 +254,19 @@ def main():
                     method_label="strategy2",
                 )
                 _write_timing_json(s2_dir, "strategy2", len(frame_paths), time.perf_counter() - s2_start)
-                log_aligned_sequence(
-                    frame_paths,
-                    tf_s2,
-                    s_g2,
-                    R_g2,
-                    tr_g2,
-                    label="Strategy_2",
-                    # Strategy2: magenta
-                    color=[255, 0, 255],
-                    dataset_root=dataset_root,
-                    log_root=view_root,
-                )
+                if not args.no_rerun:
+                    log_aligned_sequence(
+                        frame_paths,
+                        tf_s2,
+                        s_g2,
+                        R_g2,
+                        tr_g2,
+                        label="Strategy_2",
+                        # Strategy2: magenta
+                        color=[255, 0, 255],
+                        dataset_root=dataset_root,
+                        log_root=view_root,
+                    )
 
             print(f"\n[STAGE] Strategy 3 (PGO): subject={code} views={nviews}")
             s3_start = time.perf_counter()
@@ -272,21 +284,22 @@ def main():
                 method_label="strategy3",
             )
             _write_timing_json(s3_dir, "strategy3", len(frame_paths), time.perf_counter() - s3_start)
-            log_aligned_sequence(
-                frame_paths,
-                tf_s3,
-                s_g3,
-                R_g3,
-                tr_g3,
-                label="Strategy_3",
-                # Strategy3: cyan
-                color=[0, 255, 255],
-                dataset_root=dataset_root,
-                log_root=view_root,
-            )
+            if not args.no_rerun:
+                log_aligned_sequence(
+                    frame_paths,
+                    tf_s3,
+                    s_g3,
+                    R_g3,
+                    tr_g3,
+                    label="Strategy_3",
+                    # Strategy3: cyan
+                    color=[0, 255, 255],
+                    dataset_root=dataset_root,
+                    log_root=view_root,
+                )
 
         print(f"\n[INFO] Evaluating subject {code} across methods/views ...")
-        _run_eval(code, view_counts)
+        _run_eval(code, view_counts, use_sam2=args.use_sam2)
 
     # Aggregate results across selected subjects only.
     csv_files = []

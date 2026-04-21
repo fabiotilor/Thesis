@@ -215,6 +215,7 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--all", action="store_true")
     parser.add_argument("--pgo", action="store_true", help="Evaluate only Strategy 3 outputs.")
+    parser.add_argument("--use_sam2", action="store_true", help="Evaluate SAM2 specific outputs.")
     parser.add_argument("--views", nargs="+", type=int, help="Optional view counts to evaluate (e.g. --views 2 3 4).")
     for code in SUBJECT_BY_CODE.keys(): parser.add_argument(f"--{code}", action="store_true")
     args = parser.parse_args()
@@ -224,8 +225,11 @@ def main():
     if not subjects: subjects = ["01"]  # Default
 
     method_roots = ["baseline", "strategy1", "strategy2", "strategy3"]
+    if args.use_sam2:
+        method_roots = [m + "_sam2" for m in method_roots]
+
     if args.pgo:
-        method_roots = ["strategy3"]
+        method_roots = ["strategy3_sam2" if args.use_sam2 else "strategy3"]
 
     view_set = set(args.views) if args.views else None
 

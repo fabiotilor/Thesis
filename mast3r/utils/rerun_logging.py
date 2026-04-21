@@ -7,7 +7,7 @@ import rerun.blueprint as rrb
 from .gt import load_gt_params, build_gt_validity_masks
 from .camera_utils import discover_view_name
 from .umeyama_alignment import apply_similarity_transform
-from eval_config import MIN_CONF_THR
+from eval_config import MIN_CONF_THR, RERUN_ADDR, RERUN_EYE_UP
 
 
 def init_recording(subject_code: str, n_views: int) -> None:
@@ -17,12 +17,20 @@ def init_recording(subject_code: str, n_views: int) -> None:
     Call this once before processing each (subject, n_views) combination.
     Each call creates an independent entry in the Rerun Sources panel, e.g.:
 
+        Local
+          mast3r_01_2views   10:55:18 — 35.3 MiB
+          mast3r_01_3views   10:55:44 — 38.1 MiB
+          mast3r_01_4views   10:56:12 — 41.0 MiB
+
     The entity paths and timeline used by every other function in this module
     are unaffected — they always operate on whichever recording is current.
     """
     application_id = f"mast3r_{subject_code}_{n_views}views"
     rr.init(application_id, spawn=False)
-    rr.connect_grpc()
+    try:
+        rr.connect_grpc(RERUN_ADDR)
+    except Exception as e:
+        print(f"[WARN] Rerun connect to {RERUN_ADDR} failed: {e}")
 
 
 def configure_rerun_view_defaults(log_root, eye_up):
@@ -105,7 +113,7 @@ def log_cameras_rerun(t, view_names, dataset_root, log_root):
             print(f"  [WARN] Image not found for {vname} at t={t}")
 
 
-def log_pointcloud(t, entity, positions, color=None, radii=0.002, max_points=100000):
+def log_pointcloud(t, entity, positions, color=None, radii=0.002, max_points=50000):
     """Basic reusable pointcloud logger with optional random sampling."""
     rr.set_time("frame", sequence=t)
 
@@ -123,10 +131,13 @@ def log_pointcloud(t, entity, positions, color=None, radii=0.002, max_points=100
     rr.log(entity, rr.Points3D(**kwargs))
 
 
-def log_alignment_results(t, gt_pts, aligned_pts, refined_pts=None, log_root="world", max_pts=50000):
+def log_alignment_results(t, gt_pts, aligned_pts, refined_pts=None, gt_static_pts=None, log_root="world",
+                          max_pts=50000):
     """Used by 3D alignment scripts to visualise registration quality."""
     if gt_pts is not None:
         log_pointcloud(t, f"{log_root}/gt", gt_pts, color=[0, 255, 0], max_points=max_pts)
+    if gt_static_pts is not None:
+        log_pointcloud(t, f"{log_root}/gt_static", gt_static_pts, color=[255, 165, 0], max_points=max_pts)
     if aligned_pts is not None:
         log_pointcloud(t, f"{log_root}/baseline/pointcloud", aligned_pts, color=[0, 0, 255], max_points=max_pts)
     if refined_pts is not None:
@@ -142,7 +153,7 @@ def log_gt_sequence(paths, log_root="4d_eval"):
         gt_pts = data['gt_pts']
         if np.any(np.linalg.norm(gt_pts, axis=-1) > 10.0):
             gt_pts = gt_pts / 1000.0
-        log_pointcloud(t, entity, gt_pts, color=[0, 255, 0], max_points=100000)
+        log_pointcloud(t, entity, gt_pts, color=[0, 255, 0])
 
 
 def log_aligned_sequence(paths, frame_transforms, s_glob, R_glob, tr_glob, label, color, dataset_root,
@@ -176,16 +187,32 @@ def log_aligned_sequence(paths, frame_transforms, s_glob, R_glob, tr_glob, label
         tr_tot = s_glob * (R_glob @ tr_i) + tr_glob
 
         all_pts_final = []
+        all_pts_static = []
+        # Get the static mask saved during baseline run
+        m_static = normalize_array(data['masks_2d'], V, H, W, is_mask=True) if 'masks_2d' in data else None
+
         for v in range(V):
             mask = np.ones((H, W), dtype=bool)
             if vmasks[v] is not None:
                 mask &= vmasks[v]
             if conf is not None:
                 mask &= (conf[v] > MIN_CONF_THR)
+
             p_v = pm[v][mask]
             if len(p_v) > 0:
                 all_pts_final.append(apply_similarity_transform(p_v, s_tot, R_tot, tr_tot))
 
+            if m_static is not None:
+                s_mask = mask & m_static[v]
+                p_s = pm[v][s_mask]
+                if len(p_s) > 0:
+                    all_pts_static.append(apply_similarity_transform(p_s, s_tot, R_tot, tr_tot))
+
         if all_pts_final:
             merged_pts = np.concatenate(all_pts_final, axis=0)
-            log_pointcloud(t, f"{entity_root}/pointcloud", merged_pts, color=color, max_points=100000)
+            log_pointcloud(t, f"{entity_root}/pointcloud", merged_pts, color=color)
+
+        if all_pts_static:
+            merged_static = np.concatenate(all_pts_static, axis=0)
+            # Use orange for static GT comparison reference, or a darker version of method color
+            log_pointcloud(t, f"{entity_root}/static_pointcloud", merged_static, color=[255, 165, 0], max_points=50000)
