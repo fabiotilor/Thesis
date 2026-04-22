@@ -144,6 +144,11 @@ def main():
     os.makedirs(cache_root, exist_ok=True)
 
     for subject_full, code in zip(selected_subjects, codes):
+        csv_path = f"eval_summary_{code}.csv"
+        if os.path.exists(csv_path):
+            print(f"[INFO] Skipping subject {code} as evaluation results already exist: {csv_path}")
+            continue
+
         dataset_root = os.path.join(DATASET_BASE_ROOT, subject_full)
         if not os.path.isdir(dataset_root):
             print(f"[WARN] Subject directory not found, skipping: {dataset_root}")
