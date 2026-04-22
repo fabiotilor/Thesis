@@ -147,3 +147,28 @@ skyseg.onnx
 # pixi environments
 .pixi
 *.egg-info
+# SAM2 - exclude everything non-Python
+sam2/demo/frontend/
+sam2/demo/data/
+sam2/notebooks/videos/
+sam2/notebooks/images/
+sam2/notebooks/*.ipynb
+sam2/assets/
+sam2/sav_dataset/example/
+sam2/sam2/csrc/
+*.mp4
+yarn.lock
+*.ts
+*.tsx
+*.scss
+*.graphql
+*.vert
+*.frag
+*.json
+*.yaml
+*.iml
+*.md
+*.jpg
+*.js
+*.png
+*.ipynb
