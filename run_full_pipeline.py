@@ -23,7 +23,6 @@ from eval_config import (
     RERUN_EYE_UP,
 )
 
-
 import align_reconstruction_umeyama as baseline_mod
 from align_reconstruction_umeyama import run_reconstruction as baseline_run_reconstruction
 
@@ -235,10 +234,10 @@ def main():
                         R_g1,
                         tr_g1,
                         label="Strategy_1",
-                            # Strategy1: red
-                            color=[255, 0, 0],
+                        # Strategy1: red
+                        color=[255, 0, 0],
                         dataset_root=dataset_root,
-                            log_root=view_root,
+                        log_root=view_root,
                     )
 
                 print(f"\n[STAGE] Strategy 2: subject={code} views={nviews}")
@@ -333,7 +332,21 @@ def main():
     pd.set_option("display.precision", 5)
     pd.set_option("display.width", 2000)
     pd.set_option("display.max_columns", None)
-    print(aggregated.to_string(index=False))
+
+    # Enforce logical column ordering
+    cols_to_show = [
+        'strategy', 'n_frames', 'chamfer', 'delta_consistency', 'completeness',
+        'static_comp', 'dyn_comp', 'static_acc', 'dyn_acc', 'motion_gap',
+        'align_frames', 'ate', 'rpe', 'rot_error', 'focal_error', 'pp_error',
+        'jitter_mean', 'jitter_std', 'jitter_p95', 'jitter_max', 'drift_mean', 'hf_jitter'
+    ]
+    # Filter to only include columns that actually exist in the aggregated DataFrame
+    cols_to_show = [c for c in cols_to_show if c in aggregated.columns]
+    # Add any remaining columns at the end
+    remaining = [c for c in aggregated.columns if c not in cols_to_show]
+    cols_to_show += remaining
+
+    print(aggregated[cols_to_show].to_string(index=False))
 
     out_file = "eval_summary_ALL_SUBJECTS.csv"
     aggregated.to_csv(out_file, index=False)

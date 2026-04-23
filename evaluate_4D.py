@@ -31,7 +31,7 @@ def print_metrics_summary(results_df, label):
     cols_to_show = [
         'strategy', 'n_frames',
         'align_frames',
-        'chamfer', 'delta_consistency', 'completeness', 'static_acc', 'dyn_acc', 'motion_gap',
+        'chamfer', 'delta_consistency', 'completeness', 'static_comp', 'dyn_comp', 'static_acc', 'dyn_acc', 'motion_gap',
         'ate', 'rpe', 'rot_error', 'focal_error', 'pp_error',
         'jitter_mean', 'jitter_std', 'jitter_p95', 'jitter_max',
         'drift_mean', 'hf_jitter'
@@ -49,6 +49,7 @@ def evaluate_strategy_dir(in_dir, out_plot_dir, strategy_label=""):
     print(f"  [EVAL] {strategy_label}: {len(files)} frames...")
 
     cham_dist, comp_score, s_acc_list, d_acc_list = [], [], [], []
+    s_comp_list, d_comp_list = [], []
     all_est_poses, all_est_intrinsics = [], []
     all_gt_poses, all_gt_intrinsics = [], []
     # For Jitter
@@ -72,11 +73,15 @@ def evaluate_strategy_dir(in_dir, out_plot_dir, strategy_label=""):
             g_s, g_d = split_points_by_mask(gt_pts, m_2d, ks, rts)
             s_acc_list.append(compute_accuracy(s_p, g_s, tau=0.01) if len(s_p) > 0 else np.nan)
             d_acc_list.append(compute_accuracy(d_p, g_d, tau=0.01) if len(d_p) > 0 else np.nan)
+            s_comp_list.append(compute_completeness(s_p, g_s, tau=0.01) if len(g_s) > 0 else np.nan)
+            d_comp_list.append(compute_completeness(d_p, g_d, tau=0.01) if len(g_d) > 0 else np.nan)
         else:
             cham_dist.append(np.nan)
             comp_score.append(np.nan)
             s_acc_list.append(np.nan)
             d_acc_list.append(np.nan)
+            s_comp_list.append(np.nan)
+            d_comp_list.append(np.nan)
 
         s_val, R_val, tr_val = data['scale'], data['R'], data['tr']
         if 'est_poses' in data and data['est_poses'] is not None and data['est_poses'].ndim >= 3:
@@ -111,6 +116,8 @@ def evaluate_strategy_dir(in_dir, out_plot_dir, strategy_label=""):
         'n_frames': len(files),
         'chamfer': np.nanmean(cham_dist),
         'completeness': np.nanmean(comp_score),
+        'static_comp': np.nanmean(s_comp_list),
+        'dyn_comp': np.nanmean(d_comp_list),
         'static_acc': m_static,
         'dyn_acc': m_dyn,
         'motion_gap': m_static - m_dyn if not np.isnan(m_static) and not np.isnan(m_dyn) else np.nan

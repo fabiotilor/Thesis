@@ -85,7 +85,7 @@ def extract_clean_gt_correspondences(data, dataset_root, n_samples=2000, vmasks=
         d_mod_gt = cv2.resize(d_img_gt, (W_mod, H_mod), interpolation=cv2.INTER_NEAREST)
 
         # Build total mask for this view
-        valid = (d_mod_gt > 0) & (d_mod_gt < DEPTH_MAX_M) & m_static[v] & vmasks[v]
+        valid = (d_mod_gt > 0) & m_static[v] & vmasks[v]
         if conf_est is not None:
             min_conf_thr = data.get('min_conf_thr', MIN_CONF_THR)
             valid &= (conf_est[v] > min_conf_thr)
