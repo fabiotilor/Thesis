@@ -99,7 +99,7 @@ def build_static_gt_pointcloud(t, view_names, dataset_root, precomputed_masks=No
                     static_mask.astype(np.uint8) * 255)
 
         K, cam2world = load_gt_params(view_dir)
-        keep = (depth_m > 0) & (depth_m < DEPTH_MAX_M) & static_mask
+        keep = (depth_m > 0) & static_mask
 
         ys, xs = np.where(keep)
         z = depth_m[ys, xs]
@@ -111,9 +111,9 @@ def build_static_gt_pointcloud(t, view_names, dataset_root, precomputed_masks=No
 
     return np.concatenate(all_pts, axis=0) if all_pts else None
 
-
+from eval_config import MIN_CONF_THR
 def get_static_correspondences(t, view_names, scene, dataset_root,
-                               min_conf_thr=2.0,
+                               min_conf_thr=MIN_CONF_THR,
                                precomputed_masks=None):
     """
     Build (estimated, GT) 3-D point correspondences for static regions.
