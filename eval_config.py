@@ -20,7 +20,7 @@ SUBJECT_NAMES = [
 SUBJECT_BY_CODE = {name.split("subject-")[1][:2]: name for name in SUBJECT_NAMES}
 
 # ── Filtering ─────────────────────────────────────────────────────────────────
-MIN_CONF_THR = 2.0
+MIN_CONF_THR = 3.472077 #Computed based on compute_otsu_threshold.py for DEX-YCB. Recompute for Hi4D and 4D-DRESS
 DEPTH_MAX_M = 1.5
 
 # ── Model ─────────────────────────────────────────────────────────────────────
