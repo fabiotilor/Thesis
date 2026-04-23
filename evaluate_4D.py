@@ -111,6 +111,7 @@ def _compute_metrics_for_alignment(
     view_names = [discover_view_name(dataset_root, k) for k in ks0]
 
     cham_dist, comp_score, s_acc_list, d_acc_list = [], [], [], []
+    s_comp_list, d_comp_list = [], []
     ate_list, rpe_list, rot_err_list, focal_err_list, pp_err_list = [], [], [], [], []
     all_pointmaps_mv, all_masks_mv = [], []
 
@@ -208,11 +209,15 @@ def _compute_metrics_for_alignment(
 
             s_acc_list.append(compute_accuracy(s_p, g_s, tau=0.01) if len(s_p) > 0 else np.nan)
             d_acc_list.append(compute_accuracy(d_p, g_d, tau=0.01) if len(d_p) > 0 else np.nan)
+            s_comp_list.append(compute_completeness(s_p, g_s, tau=0.01) if len(g_s) > 0 else np.nan)
+            d_comp_list.append(compute_completeness(d_p, g_d, tau=0.01) if len(g_d) > 0 else np.nan)
         else:
             cham_dist.append(np.nan)
             comp_score.append(np.nan)
             s_acc_list.append(np.nan)
             d_acc_list.append(np.nan)
+            s_comp_list.append(np.nan)
+            d_comp_list.append(np.nan)
 
         # ── Camera metrics ───────────────────────────────────────────────
         if "est_poses" in data and data["est_poses"] is not None and data["est_poses"].ndim >= 3:
@@ -249,6 +254,8 @@ def _compute_metrics_for_alignment(
         "n_frames": len(files),
         "chamfer_3d": chamfer_mean,
         "completeness": float(np.nanmean(comp_score)),
+        "static_comp": float(np.nanmean(s_comp_list)),
+        "dyn_comp": float(np.nanmean(d_comp_list)),
         "static_acc": m_static,
         "dyn_acc": m_dyn,
         "motion_gap": (m_static - m_dyn) if not (np.isnan(m_static) or np.isnan(m_dyn)) else np.nan,
@@ -463,7 +470,7 @@ def print_metrics_summary(results_df, label):
     cols_to_show = [
         "strategy", "n_frames",
         "chamfer_3d", "chamfer_4d", "delta_consistency",
-        "completeness", "static_acc", "dyn_acc", "motion_gap",
+        "completeness", "static_comp", "dyn_comp", "static_acc", "dyn_acc", "motion_gap",
         "ate", "rpe", "rot_error", "focal_error", "pp_error",
         "jitter_mean", "jitter_std", "jitter_p95", "jitter_max",
         "drift_mean", "hf_jitter",

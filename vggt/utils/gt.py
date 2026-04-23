@@ -63,7 +63,7 @@ def get_camera_correspondences(t, view_names, est_poses, dataset_root):
 
 
 def build_static_gt_pointcloud(t, view_names, dataset_root,
-                               flow_threshold=2.0):
+                               flow_threshold=2.0, use_sam2=True):
     all_pts = []
 
     for vname in view_names:
@@ -92,20 +92,31 @@ def build_static_gt_pointcloud(t, view_names, dataset_root,
 
         static_mask = np.ones((H, W), dtype=bool)
         if rgb_t is not None and rgb_adj is not None:
-            f0 = cv2.imread(rgb_t,   cv2.IMREAD_GRAYSCALE).astype(np.float32)
-            f1 = cv2.imread(rgb_adj, cv2.IMREAD_GRAYSCALE).astype(np.float32)
-            if f0.shape == f1.shape:
-                flow = cv2.calcOpticalFlowFarneback(
-                    f0, f1, None,
-                    pyr_scale=0.5, levels=3, winsize=15,
-                    iterations=3, poly_n=5, poly_sigma=1.2, flags=0)
-                flow_mask = np.linalg.norm(flow, axis=-1) < flow_threshold
-                if flow_mask.shape != (H, W):
-                    static_mask = cv2.resize(
-                        flow_mask.astype(np.uint8), (W, H),
-                        interpolation=cv2.INTER_NEAREST).astype(bool)
-                else:
-                    static_mask = flow_mask
+            if use_sam2:
+                from vggt.utils.optical_flow import compute_static_mask
+                sam2_mask = compute_static_mask([rgb_t, rgb_adj])
+                if sam2_mask is not None:
+                    if sam2_mask.shape != (H, W):
+                        static_mask = cv2.resize(
+                            sam2_mask.astype(np.uint8), (W, H),
+                            interpolation=cv2.INTER_NEAREST).astype(bool)
+                    else:
+                        static_mask = sam2_mask
+            else:
+                f0 = cv2.imread(rgb_t,   cv2.IMREAD_GRAYSCALE).astype(np.float32)
+                f1 = cv2.imread(rgb_adj, cv2.IMREAD_GRAYSCALE).astype(np.float32)
+                if f0.shape == f1.shape:
+                    flow = cv2.calcOpticalFlowFarneback(
+                        f0, f1, None,
+                        pyr_scale=0.5, levels=3, winsize=15,
+                        iterations=3, poly_n=5, poly_sigma=1.2, flags=0)
+                    flow_mask = np.linalg.norm(flow, axis=-1) < flow_threshold
+                    if flow_mask.shape != (H, W):
+                        static_mask = cv2.resize(
+                            flow_mask.astype(np.uint8), (W, H),
+                            interpolation=cv2.INTER_NEAREST).astype(bool)
+                    else:
+                        static_mask = flow_mask
 
         _dbg_out = os.path.join("flow_masks_output", vname)
         os.makedirs(_dbg_out, exist_ok=True)
@@ -113,8 +124,7 @@ def build_static_gt_pointcloud(t, view_names, dataset_root,
                     static_mask.astype(np.uint8) * 255)
 
         K, cam2world = load_gt_params(view_dir)
-        keep = (depth_m > 0) & (depth_m < DEPTH_MAX_M) & static_mask
-
+        keep = (depth_m > 0) & static_mask
         ys, xs = np.where(keep)
         z = depth_m[ys, xs]
         fx, fy = K[0, 0], K[1, 1]
@@ -125,10 +135,10 @@ def build_static_gt_pointcloud(t, view_names, dataset_root,
 
     return np.concatenate(all_pts, axis=0) if all_pts else None
 
-
+from eval_config import MIN_CONF_THR
 def get_static_correspondences(t, view_names, pts3d_list, confs, dataset_root,
                                flow_threshold=2.0,
-                               min_conf_thr=1.0):
+                               min_conf_thr=MIN_CONF_THR, use_sam2=True):
     """
     Build (estimated, GT) 3-D point correspondences for static regions.
 
@@ -229,17 +239,25 @@ def get_static_correspondences(t, view_names, pts3d_list, confs, dataset_root,
 
         static_small = np.ones((h_mod, w_mod), dtype=bool)
         if rgb_t is not None and rgb_adj is not None:
-            f0 = cv2.imread(rgb_t,   cv2.IMREAD_GRAYSCALE).astype(np.float32)
-            f1 = cv2.imread(rgb_adj, cv2.IMREAD_GRAYSCALE).astype(np.float32)
-            if f0.shape == f1.shape:
-                flow = cv2.calcOpticalFlowFarneback(
-                    f0, f1, None,
-                    pyr_scale=0.5, levels=3, winsize=15,
-                    iterations=3, poly_n=5, poly_sigma=1.2, flags=0)
-                flow_mask = np.linalg.norm(flow, axis=-1) < flow_threshold
-                static_small = cv2.resize(
-                    flow_mask.astype(np.uint8), (w_mod, h_mod),
-                    interpolation=cv2.INTER_NEAREST).astype(bool)
+            if use_sam2:
+                from vggt.utils.optical_flow import compute_static_mask
+                sam2_mask = compute_static_mask([rgb_t, rgb_adj])
+                if sam2_mask is not None:
+                    static_small = cv2.resize(
+                        sam2_mask.astype(np.uint8), (w_mod, h_mod),
+                        interpolation=cv2.INTER_NEAREST).astype(bool)
+            else:
+                f0 = cv2.imread(rgb_t,   cv2.IMREAD_GRAYSCALE).astype(np.float32)
+                f1 = cv2.imread(rgb_adj, cv2.IMREAD_GRAYSCALE).astype(np.float32)
+                if f0.shape == f1.shape:
+                    flow = cv2.calcOpticalFlowFarneback(
+                        f0, f1, None,
+                        pyr_scale=0.5, levels=3, winsize=15,
+                        iterations=3, poly_n=5, poly_sigma=1.2, flags=0)
+                    flow_mask = np.linalg.norm(flow, axis=-1) < flow_threshold
+                    static_small = cv2.resize(
+                        flow_mask.astype(np.uint8), (w_mod, h_mod),
+                        interpolation=cv2.INTER_NEAREST).astype(bool)
 
         # ── Valid pixel mask (all criteria at model resolution) ────────────────
         valid = (conf_mod   > min_conf_thr) \

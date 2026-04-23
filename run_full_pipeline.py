@@ -130,6 +130,11 @@ def main():
     # Stage 1: Baseline reconstruction
     # ══════════════════════════════════════════════════════════════════════
     for subject_full, code in zip(selected_subjects, codes):
+        csv_path = f"eval_summary_{code}.csv"
+        if os.path.exists(csv_path):
+            print(f"[INFO] Skipping subject {code} as {csv_path} already exists.")
+            continue
+
         dataset_root = os.path.join(DATASET_BASE_ROOT, subject_full)
         if not os.path.isdir(dataset_root):
             print(f"[WARN] Subject directory not found, skipping: {dataset_root}")
@@ -197,7 +202,15 @@ def main():
     pd.set_option("display.precision", 5)
     pd.set_option("display.width", 2000)
     pd.set_option("display.max_columns", None)
-    print(aggregated.to_string(index=False))
+    cols_to_show = [
+        "strategy", "n_frames", "chamfer_3d", "chamfer_4d", "delta_consistency", "completeness",
+        "static_comp", "dyn_comp", "static_acc", "dyn_acc", "motion_gap",
+        "ate", "rpe", "rot_error", "focal_error", "pp_error",
+        "jitter_mean", "jitter_std", "jitter_p95", "jitter_max",
+        "drift_mean", "hf_jitter"
+    ]
+    cols_to_show = [c for c in cols_to_show if c in aggregated.columns]
+    print(aggregated[cols_to_show].to_string(index=False))
 
     out_file = "eval_summary_ALL_SUBJECTS.csv"
     aggregated.to_csv(out_file, index=False)

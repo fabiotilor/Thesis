@@ -10,10 +10,10 @@ from .umeyama_alignment import apply_similarity_transform
 from eval_config import MIN_CONF_THR
 
 _RAW_COLOURS = [
-    [255, 128,   0],   # orange
-    [128,   0, 255],   # purple
-    [  0, 200, 200],   # teal
-    [200, 200,   0],   # yellow
+    [255, 128, 0],  # orange
+    [128, 0, 255],  # purple
+    [0, 200, 200],  # teal
+    [200, 200, 0],  # yellow
 ]
 
 
@@ -33,8 +33,12 @@ def init_recording(subject_code: str, n_views: int) -> None:
     are unaffected — they always operate on whichever recording is current.
     """
     application_id = f"vggt_{subject_code}_{n_views}views"
-    rr.init(application_id, spawn=False)
-    rr.connect_grpc()
+    try:
+        from eval_config import RERUN_ADDR
+        rr.init(application_id, spawn=False)
+        rr.connect_grpc(RERUN_ADDR)
+    except Exception as e:
+        print(f"  [WARN] Failed to connect to Rerun: {e}")
 
 
 def configure_rerun_view_defaults(log_root, eye_up):
@@ -63,9 +67,9 @@ def configure_rerun_view_defaults(log_root, eye_up):
 
     # Fallback variants for compatibility.
     for kwargs in (
-        {"origin": log_root, "name": f"{log_root}_3d", "eye_up": eye_up},
-        {"origin": log_root, "name": f"{log_root}_3d", "up": eye_up},
-        {"origin": log_root, "name": f"{log_root}_3d"},
+            {"origin": log_root, "name": f"{log_root}_3d", "eye_up": eye_up},
+            {"origin": log_root, "name": f"{log_root}_3d", "up": eye_up},
+            {"origin": log_root, "name": f"{log_root}_3d"},
     ):
         try:
             blueprint_variants.append(rrb.Blueprint(rrb.Spatial3DView(**kwargs)))
@@ -117,13 +121,23 @@ def log_cameras_rerun(t, view_names, dataset_root, log_root):
             print(f"  [WARN] Image not found for {vname} at t={t}")
 
 
-def log_pointcloud(t, entity, positions, color=None, radii=0.002):
+def log_pointcloud(t, entity, positions, color=None, radii=0.002, max_points=50000):
     """Basic reusable pointcloud logger."""
     rr.set_time("frame", sequence=t)
+
+    if positions is not None and len(positions) > max_points:
+        idx = np.random.choice(len(positions), max_points, replace=False)
+        if color is not None and isinstance(color, np.ndarray) and len(color) == len(positions):
+            color = color[idx]
+        positions = positions[idx]
+
     kwargs = {"positions": positions, "radii": radii}
     if color is not None:
         kwargs["colors"] = color
-    rr.log(entity, rr.Points3D(**kwargs))
+    try:
+        rr.log(entity, rr.Points3D(**kwargs))
+    except Exception as e:
+        print(f"  [WARN] Rerun logging failed for {entity}: {e}")
 
 
 def log_alignment_results(t, gt_pts, aligned_pts, refined_pts=None, log_root="world"):
@@ -148,7 +162,8 @@ def log_gt_sequence(paths, log_root="4d_eval"):
         log_pointcloud(t, entity, gt_pts, color=[0, 255, 0])
 
 
-def log_aligned_sequence(paths, frame_transforms, s_glob, R_glob, tr_glob, label, color, dataset_root, log_root="4d_eval"):
+def log_aligned_sequence(paths, frame_transforms, s_glob, R_glob, tr_glob, label, color, dataset_root,
+                         log_root="4d_eval"):
     """
     Robust 4D pointcloud logger. Handles inter-frame and global alignment composition.
     """
@@ -238,7 +253,7 @@ def log_fused_frame(t, merged_pts, log_root):
             rr.Points3D(
                 positions=merged_pts,
                 radii=0.002,
-                colors=np.array([0, 128, 255], dtype=np.uint8),   # blue-cyan
+                colors=np.array([0, 128, 255], dtype=np.uint8),  # blue-cyan
             ),
         )
     except Exception:

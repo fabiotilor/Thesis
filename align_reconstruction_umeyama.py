@@ -37,6 +37,7 @@ from vggt.utils.umeyama_alignment import (
 from vggt.utils.gt import (
     load_gt_params,
     build_gt_pointcloud,
+    build_static_gt_pointcloud,
     get_single_view_correspondences,
     build_gt_validity_masks,
     DEPTH_MAX_M,
@@ -264,6 +265,16 @@ def run_all_at_once_pipeline(
                 except Exception:
                     pass
 
+            # GT Static (orange)
+            if not no_rerun:
+                try:
+                    gt_static_pts = build_static_gt_pointcloud(t, view_names, dataset_root, use_sam2=True)
+                    if gt_static_pts is not None and len(gt_static_pts) > 0:
+                        _sub_static = max(1, len(gt_static_pts) // 50000)
+                        log_pointcloud(t, f"{log_root}/gt_static", gt_static_pts[::_sub_static], color=[255, 165, 0])
+                except Exception:
+                    pass
+
             # Raw unaligned (orange)
             if not no_rerun and len(raw_pts) > 0:
                 try:
@@ -394,4 +405,67 @@ def run_reconstruction(
     }
     with open(os.path.join(out_dir, "timing.json"), "w", encoding="utf-8") as f:
         json.dump(timing_payload, f, indent=2)
-    print(f"\\n[TIME] total={total_sec:.2f}s  per_frame={timing_payload['seconds_per_frame']:.3f}s")
+    print(f"\n[TIME] total={total_sec:.2f}s  per_frame={timing_payload['seconds_per_frame']:.3f}s")
+
+
+def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--all", action="store_true")
+    for code in SUBJECT_BY_CODE.keys():
+        parser.add_argument(f"--{code}", action="store_true")
+    parser.add_argument("--views", nargs="+", type=int)
+    parser.add_argument("--no-rerun", action="store_true")
+    parser.add_argument("--all-at-once", action="store_true", help="Process entire sequence in one batch")
+    parser.add_argument("--overwrite", action="store_true", help="Overwrite existing frames")
+    parser.add_argument("--method", type=str, default="baseline", help="Method name (subfolder in aligned_outputs)")
+    args = parser.parse_args()
+
+    selected_codes = [c for c in SUBJECT_BY_CODE.keys() if getattr(args, c)]
+    if args.all:
+        selected_codes = list(SUBJECT_BY_CODE.keys())
+    if not selected_codes:
+        print("[WARN] No subject selected, defaulting to --01")
+        selected_codes = ["01"]
+
+    view_counts = args.views if args.views else ([2, 3, 4] if RUN_MULTI_VIEW_EVAL else [4])
+
+    # Load VGGT4D model
+    torch.backends.cuda.matmul.allow_tf32 = True
+    print(f"[INFO] Loading VGGT4D from '{VGGT4D_CHECKPOINT}' on {DEVICE} ...")
+    model = VGGTFor4D()
+    model.load_state_dict(torch.load(VGGT4D_CHECKPOINT, weights_only=True))
+    model.eval()
+    model = model.to(DEVICE)
+
+    cache_root = os.path.join(tempfile.gettempdir(), "vggt4d_alignment_cache")
+    os.makedirs(cache_root, exist_ok=True)
+
+    for scode in selected_codes:
+        subject_full = SUBJECT_BY_CODE[scode]
+        dataset_root = os.path.join(DATASET_BASE_ROOT, subject_full)
+        if not os.path.isdir(dataset_root):
+            print(f"[WARN] Subject directory not found: {dataset_root}")
+            continue
+
+        for nviews in view_counts:
+            view_root = f"vggt4d_{scode}_{nviews}views"
+            baseline_dir = os.path.join("aligned_outputs", args.method, subject_full, f"{nviews}views")
+
+            target_views = VIEW_CONFIGS.get(nviews) or DEFAULT_TARGET_VIEWS
+
+            print(f"\n[RUN] Subject={scode} views={nviews} -> {baseline_dir}")
+            run_reconstruction(
+                model=model,
+                dataset_root=dataset_root,
+                target_views=target_views,
+                out_dir=baseline_dir,
+                cache_root=cache_root,
+                run_tag=view_root,
+                no_rerun=args.no_rerun,
+                all_at_once=args.all_at_once,
+                skip_existing_frames=not args.overwrite,
+            )
+
+
+if __name__ == "__main__":
+    main()

@@ -20,7 +20,7 @@ SUBJECT_NAMES = [
 SUBJECT_BY_CODE = {name.split("subject-")[1][:2]: name for name in SUBJECT_NAMES}
 
 # ── Filtering ─────────────────────────────────────────────────────────────────
-MIN_CONF_THR = 1.0  # TODO: verify against VGGT confidence scale; was 2.0 for MASt3R
+MIN_CONF_THR = 1.150320  #Computed based on compute_otsu_threshold.py
 DEPTH_MAX_M = 1.5
 
 # ── Model ─────────────────────────────────────────────────────────────────────

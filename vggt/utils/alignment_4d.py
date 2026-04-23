@@ -8,8 +8,6 @@ from .temporal_metrics import compute_static_jitter
 from eval_config import MIN_CONF_THR
 
 
-
-
 def normalize_spatial_dims(data):
     """Detects canonical (V, H, W) from NPZ data."""
     if 'pointmaps_confs' in data:
@@ -80,7 +78,7 @@ def extract_clean_gt_correspondences(data, dataset_root, n_samples=2000):
         d_mod_gt = cv2.resize(d_img_gt, (W_mod, H_mod), interpolation=cv2.INTER_NEAREST)
 
         # Build total mask for this view
-        valid = (d_mod_gt > 0) & (d_mod_gt < DEPTH_MAX_M) & m_static[v] & vmasks[v]
+        valid = (d_mod_gt > 0) & m_static[v] & vmasks[v]
         if conf_est is not None:
             valid &= (conf_est[v] > MIN_CONF_THR)
 
@@ -106,7 +104,7 @@ def extract_clean_gt_correspondences(data, dataset_root, n_samples=2000):
     return np.concatenate(all_src), np.concatenate(all_dst)
 
 
-def get_pointmap_correspondences(path_a, path_b, dataset_root):
+def get_pointmap_correspondences(path_a, path_b, dataset_root, vmask_cache=None):
     """Inter-frame alignment using only static/valid pixels."""
     data_a, data_b = np.load(path_a), np.load(path_b)
     V, H, W = normalize_spatial_dims(data_a)
@@ -120,12 +118,19 @@ def get_pointmap_correspondences(path_a, path_b, dataset_root):
     m_b = normalize_array(data_b['masks_2d'], V, H, W, is_mask=True)
 
     # We use vmasks to ensure we only align on high-quality regions (hand/table)
-    vmasks_a = build_gt_validity_masks(int(data_a['frame_idx']),
-                                       [discover_view_name(dataset_root, k) for k in data_a['Ks']], dataset_root,
-                                       target_hw=(H, W))
-    vmasks_b = build_gt_validity_masks(int(data_b['frame_idx']),
-                                       [discover_view_name(dataset_root, k) for k in data_b['Ks']], dataset_root,
-                                       target_hw=(H, W))
+    if vmask_cache is not None and path_a in vmask_cache:
+        vmasks_a = vmask_cache[path_a]
+    else:
+        vmasks_a = build_gt_validity_masks(int(data_a['frame_idx']),
+                                           [discover_view_name(dataset_root, k) for k in data_a['Ks']], dataset_root,
+                                           target_hw=(H, W))
+
+    if vmask_cache is not None and path_b in vmask_cache:
+        vmasks_b = vmask_cache[path_b]
+    else:
+        vmasks_b = build_gt_validity_masks(int(data_b['frame_idx']),
+                                           [discover_view_name(dataset_root, k) for k in data_b['Ks']], dataset_root,
+                                           target_hw=(H, W))
 
     src_list, dst_list = [], []
     for v in range(V):
@@ -141,8 +146,8 @@ def get_pointmap_correspondences(path_a, path_b, dataset_root):
     return np.concatenate(src_list), np.concatenate(dst_list)
 
 
-def estimate_interframe_transform_pointmap(path_a, path_b, dataset_root, return_error=False):
-    res = get_pointmap_correspondences(path_a, path_b, dataset_root)
+def estimate_interframe_transform_pointmap(path_a, path_b, dataset_root, return_error=False, vmask_cache=None):
+    res = get_pointmap_correspondences(path_a, path_b, dataset_root, vmask_cache=vmask_cache)
     if res is None:
         return (None, None) if return_error else None
 
@@ -200,7 +205,7 @@ def rotation_average(R_list, weights, max_iters=50, tol=1e-6):
                 continue
 
             v = theta * np.array([R_rel[2, 1] - R_rel[1, 2], R_rel[0, 2] - R_rel[2, 0], R_rel[1, 0] - R_rel[0, 1]]) / (
-                        2 * np.sin(theta))
+                    2 * np.sin(theta))
 
             # Weiszfeld re-weighting
             norm_v = np.linalg.norm(v)
@@ -260,13 +265,25 @@ def compose_similarity_transform(a, b):
 
 def strategy3_pgo(frame_npz_paths, dataset_root, num_iters=50):
     n_frames = len(frame_npz_paths)
+
+    print("    [PGO] Caching validity masks...")
+    vmask_cache = {}
+    for p in frame_npz_paths:
+        data = np.load(p)
+        t = int(data['frame_idx'])
+        ks = data['Ks']
+        view_names = [discover_view_name(dataset_root, k) for k in ks]
+        V, H, W = normalize_spatial_dims(data)
+        if H > 0:
+            vmask_cache[p] = build_gt_validity_masks(t, view_names, dataset_root, target_hw=(H, W))
+
     print("    [PGO] Computing T(T-1)/2 pairwise edges...")
     edges = {}
 
     for i in range(n_frames):
         for j in range(i + 1, n_frames):
             res = estimate_interframe_transform_pointmap(frame_npz_paths[i], frame_npz_paths[j], dataset_root,
-                                                         return_error=True)
+                                                         return_error=True, vmask_cache=vmask_cache)
             if res[0] is not None:
                 (s, R, t), err = res
                 weight = 1.0 / (err + 1e-6)
@@ -448,22 +465,22 @@ class FusionAccumulator:
         self.H = self.W = 0
 
         # ── Fusion buffers (lazy-init: depend on H, W) ──────────────────
-        self._aligned_sum = None   # {vname: (T, H, W, 3) float64}
-        self._conf_sum    = None   # {vname: (T, H, W)    float64}
-        self._weight_sum  = None   # (T,) float64  — same for all views
+        self._aligned_sum = None  # {vname: (T, H, W, 3) float64}
+        self._conf_sum = None  # {vname: (T, H, W)    float64}
+        self._weight_sum = None  # (T,) float64  — same for all views
 
         # ── Best-centred raw snapshot per frame ──────────────────────────
-        self._best_dist      = np.full(n_frames, np.inf)
-        self._best_transform = [None] * n_frames     # (s, R, tr) tuples
+        self._best_dist = np.full(n_frames, np.inf)
+        self._best_transform = [None] * n_frames  # (s, R, tr) tuples
 
         self._best = {
             v: {
-                "raw_pts":    [None] * n_frames,   # (H, W, 3) float32
-                "raw_conf":   [None] * n_frames,   # (H, W)    float32
-                "dyn_mask":   [None] * n_frames,   # (H, W)    bool
-                "cam2world":  [None] * n_frames,   # (4, 4)
-                "extrinsic":  [None] * n_frames,   # (3, 4)
-                "intrinsic":  [None] * n_frames,   # (3, 3)
+                "raw_pts": [None] * n_frames,  # (H, W, 3) float32
+                "raw_conf": [None] * n_frames,  # (H, W)    float32
+                "dyn_mask": [None] * n_frames,  # (H, W)    bool
+                "cam2world": [None] * n_frames,  # (4, 4)
+                "extrinsic": [None] * n_frames,  # (3, 4)
+                "intrinsic": [None] * n_frames,  # (3, 3)
             }
             for v in view_names
         }
@@ -488,16 +505,16 @@ class FusionAccumulator:
     # ── add one window ───────────────────────────────────────────────────
 
     def add_window(
-        self,
-        window_frames,          # list[int]  — global frame indices
-        view_names,             # list[str]
-        raw_per_view,           # {vname: (T_win, H, W, 3)}
-        aligned_per_view,       # {vname: (T_win, H, W, 3)}  — already in GT space
-        conf_per_view,          # {vname: (T_win, H, W)}
-        dyn_per_view,           # {vname: (T_win, H, W) bool}
-        cam_per_view,           # {vname: {"cam2world": (T_win,4,4), ...}}
-        transform,              # (s, R, tr) — the window's global Umeyama
-        temporal_weights,       # (T_win,)
+            self,
+            window_frames,  # list[int]  — global frame indices
+            view_names,  # list[str]
+            raw_per_view,  # {vname: (T_win, H, W, 3)}
+            aligned_per_view,  # {vname: (T_win, H, W, 3)}  — already in GT space
+            conf_per_view,  # {vname: (T_win, H, W)}
+            dyn_per_view,  # {vname: (T_win, H, W) bool}
+            cam_per_view,  # {vname: {"cam2world": (T_win,4,4), ...}}
+            transform,  # (s, R, tr) — the window's global Umeyama
+            temporal_weights,  # (T_win,)
     ):
         T_win = len(window_frames)
         center = (T_win - 1) / 2.0
@@ -514,10 +531,10 @@ class FusionAccumulator:
             self._weight_sum[frame_t] += w
             for vname in view_names:
                 self._aligned_sum[vname][frame_t] += (
-                    w * aligned_per_view[vname][fi].astype(np.float64)
+                        w * aligned_per_view[vname][fi].astype(np.float64)
                 )
                 self._conf_sum[vname][frame_t] += (
-                    w * conf_per_view[vname][fi].astype(np.float64)
+                        w * conf_per_view[vname][fi].astype(np.float64)
                 )
 
             # ── best-centred snapshot ────────────────────────────────────
@@ -525,12 +542,12 @@ class FusionAccumulator:
                 self._best_dist[frame_t] = dist
                 self._best_transform[frame_t] = transform
                 for vname in view_names:
-                    self._best[vname]["raw_pts"][frame_t]   = raw_per_view[vname][fi].copy()
-                    self._best[vname]["raw_conf"][frame_t]  = conf_per_view[vname][fi].copy()
-                    self._best[vname]["dyn_mask"][frame_t]   = dyn_per_view[vname][fi].copy()
-                    self._best[vname]["cam2world"][frame_t]  = cam_per_view[vname]["cam2world"][fi].copy()
-                    self._best[vname]["extrinsic"][frame_t]  = cam_per_view[vname]["extrinsic"][fi].copy()
-                    self._best[vname]["intrinsic"][frame_t]  = cam_per_view[vname]["intrinsic"][fi].copy()
+                    self._best[vname]["raw_pts"][frame_t] = raw_per_view[vname][fi].copy()
+                    self._best[vname]["raw_conf"][frame_t] = conf_per_view[vname][fi].copy()
+                    self._best[vname]["dyn_mask"][frame_t] = dyn_per_view[vname][fi].copy()
+                    self._best[vname]["cam2world"][frame_t] = cam_per_view[vname]["cam2world"][fi].copy()
+                    self._best[vname]["extrinsic"][frame_t] = cam_per_view[vname]["extrinsic"][fi].copy()
+                    self._best[vname]["intrinsic"][frame_t] = cam_per_view[vname]["intrinsic"][fi].copy()
 
     # ── query fused values ───────────────────────────────────────────────
 
