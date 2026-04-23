@@ -321,7 +321,16 @@ def main():
     pd.set_option("display.precision", 5)
     pd.set_option("display.width", 2000)
     pd.set_option("display.max_columns", None)
-    print(aggregated.to_string(index=False))
+
+    cols_to_show = [
+        'strategy', 'n_frames', 'chamfer', 'delta_consistency', 'completeness',
+        'static_comp', 'dyn_comp', 'static_acc', 'dyn_acc', 'motion_gap',
+        'ate', 'rpe', 'rot_error', 'focal_error', 'pp_error',
+        'jitter_mean', 'jitter_std', 'jitter_p95', 'jitter_max',
+        'drift_mean', 'hf_jitter'
+    ]
+    cols_to_show = [c for c in cols_to_show if c in aggregated.columns]
+    print(aggregated[cols_to_show].to_string(index=False))
 
     out_file = "eval_summary_ALL_SUBJECTS.csv"
     aggregated.to_csv(out_file, index=False)

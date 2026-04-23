@@ -158,7 +158,7 @@ def log_gt_sequence(paths, dataset_root, log_root="4d_eval"):
                     mask_2d = cv2.resize(mask_2d.astype(np.uint8), (depth_m.shape[1], depth_m.shape[0]),
                                          interpolation=cv2.INTER_NEAREST).astype(bool)
 
-                keep = (depth_m > 0) & (depth_m < DEPTH_MAX_M) & mask_2d
+                keep = (depth_m > 0) & mask_2d
                 ys, xs = np.where(keep)
                 z = depth_m[ys, xs]
                 K, cam2world = load_gt_params(view_dir)
