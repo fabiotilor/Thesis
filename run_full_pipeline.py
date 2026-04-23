@@ -67,6 +67,11 @@ def _parse_args():
         action="store_true",
         help="Run only Strategy 3 (PGO) + evaluation. Baseline outputs must already exist.",
     )
+    parser.add_argument(
+        "--no-rerun",
+        action="store_true",
+        help="Skip Rerun viewer initialization and logging setup.",
+    )
     return parser.parse_args()
 
 
@@ -139,6 +144,11 @@ def main():
     os.makedirs(cache_root, exist_ok=True)
 
     for subject_full, code in zip(selected_subjects, codes):
+        csv_path = f"eval_summary_{code}.csv"
+        if os.path.exists(csv_path):
+            print(f"[INFO] {csv_path} already exists, skipping subject {code}.")
+            continue
+
         dataset_root = os.path.join(DATASET_BASE_ROOT, subject_full)
         if not os.path.isdir(dataset_root):
             print(f"[WARN] Subject directory not found, skipping: {dataset_root}")
@@ -146,7 +156,8 @@ def main():
 
         for nviews in view_counts:
             # Create an independent rerun recording card per (subject, view-count).
-            init_recording(code, nviews)
+            if not args.no_rerun:
+                init_recording(code, nviews)
             view_root = f"vggt_{code}_{nviews}views"
 
             baseline_dir = os.path.join("aligned_outputs", "baseline", subject_full, f"{nviews}views")
@@ -157,7 +168,8 @@ def main():
             for d in (baseline_dir, s1_dir, s2_dir, s3_dir):
                 os.makedirs(d, exist_ok=True)
 
-            configure_rerun_view_defaults(view_root, RERUN_EYE_UP)
+            if not args.no_rerun:
+                configure_rerun_view_defaults(view_root, RERUN_EYE_UP)
 
             frame_paths = []
 
@@ -186,7 +198,7 @@ def main():
             #   <view_root>/gt (green)
             if args.pgo:
                 try:
-                    log_gt_sequence(frame_paths, log_root=view_root)
+                    log_gt_sequence(frame_paths, dataset_root=dataset_root, log_root=view_root)
                 except Exception as e:
                     print(f"[RERUN][WARN] log_gt_sequence failed for {code} {nviews}views: {e}")
 

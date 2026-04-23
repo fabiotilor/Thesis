@@ -92,20 +92,15 @@ def build_static_gt_pointcloud(t, view_names, dataset_root,
 
         static_mask = np.ones((H, W), dtype=bool)
         if rgb_t is not None and rgb_adj is not None:
-            f0 = cv2.imread(rgb_t,   cv2.IMREAD_GRAYSCALE).astype(np.float32)
-            f1 = cv2.imread(rgb_adj, cv2.IMREAD_GRAYSCALE).astype(np.float32)
-            if f0.shape == f1.shape:
-                flow = cv2.calcOpticalFlowFarneback(
-                    f0, f1, None,
-                    pyr_scale=0.5, levels=3, winsize=15,
-                    iterations=3, poly_n=5, poly_sigma=1.2, flags=0)
-                flow_mask = np.linalg.norm(flow, axis=-1) < flow_threshold
-                if flow_mask.shape != (H, W):
+            from .optical_flow import compute_static_mask
+            sam2_mask = compute_static_mask([rgb_t, rgb_adj])
+            if sam2_mask is not None:
+                if sam2_mask.shape != (H, W):
                     static_mask = cv2.resize(
-                        flow_mask.astype(np.uint8), (W, H),
+                        sam2_mask.astype(np.uint8), (W, H),
                         interpolation=cv2.INTER_NEAREST).astype(bool)
                 else:
-                    static_mask = flow_mask
+                    static_mask = sam2_mask
 
         _dbg_out = os.path.join("flow_masks_output", vname)
         os.makedirs(_dbg_out, exist_ok=True)
@@ -229,16 +224,11 @@ def get_static_correspondences(t, view_names, pts3d_list, confs, dataset_root,
 
         static_small = np.ones((h_mod, w_mod), dtype=bool)
         if rgb_t is not None and rgb_adj is not None:
-            f0 = cv2.imread(rgb_t,   cv2.IMREAD_GRAYSCALE).astype(np.float32)
-            f1 = cv2.imread(rgb_adj, cv2.IMREAD_GRAYSCALE).astype(np.float32)
-            if f0.shape == f1.shape:
-                flow = cv2.calcOpticalFlowFarneback(
-                    f0, f1, None,
-                    pyr_scale=0.5, levels=3, winsize=15,
-                    iterations=3, poly_n=5, poly_sigma=1.2, flags=0)
-                flow_mask = np.linalg.norm(flow, axis=-1) < flow_threshold
+            from .optical_flow import compute_static_mask
+            sam2_mask = compute_static_mask([rgb_t, rgb_adj])
+            if sam2_mask is not None:
                 static_small = cv2.resize(
-                    flow_mask.astype(np.uint8), (w_mod, h_mod),
+                    sam2_mask.astype(np.uint8), (w_mod, h_mod),
                     interpolation=cv2.INTER_NEAREST).astype(bool)
 
         # ── Valid pixel mask (all criteria at model resolution) ────────────────

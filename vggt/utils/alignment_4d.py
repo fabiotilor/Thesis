@@ -8,6 +8,19 @@ from .temporal_metrics import compute_static_jitter
 from eval_config import MIN_CONF_THR
 
 
+def precompute_vmasks(frame_npz_paths, dataset_root):
+    """Precompute GT validity masks to avoid redundant disk I/O."""
+    vmask_cache = {}
+    print("    [I/O] Precomputing validity masks...")
+    for path in frame_npz_paths:
+        data = np.load(path)
+        V, H, W = normalize_spatial_dims(data)
+        if H == 0: continue
+        t = int(data['frame_idx'])
+        view_names = [discover_view_name(dataset_root, k) for k in data['Ks']]
+        vmasks = build_gt_validity_masks(t, view_names, dataset_root, target_hw=(H, W))
+        vmask_cache[path] = vmasks
+    return vmask_cache
 
 
 def normalize_spatial_dims(data):
@@ -42,7 +55,7 @@ def normalize_array(arr, V, H, W, is_mask=False):
     return arr
 
 
-def extract_clean_gt_correspondences(data, dataset_root, n_samples=2000):
+def extract_clean_gt_correspondences(data, dataset_root, n_samples=2000, precomputed_vmasks=None):
     """
     Implements the robust GT projection logic from align_reconstruction_umeyama.py.
     Matches pointmap pixels to GT back-projected world points using scaled intrinsics.
@@ -56,7 +69,11 @@ def extract_clean_gt_correspondences(data, dataset_root, n_samples=2000):
 
     t, ks_gt = int(data['frame_idx']), data['Ks']
     view_names = [discover_view_name(dataset_root, k) for k in ks_gt]
-    vmasks = build_gt_validity_masks(t, view_names, dataset_root, target_hw=(H_mod, W_mod))
+
+    if precomputed_vmasks is not None:
+        vmasks = precomputed_vmasks
+    else:
+        vmasks = build_gt_validity_masks(t, view_names, dataset_root, target_hw=(H_mod, W_mod))
 
     all_src, all_dst = [], []
     rng = np.random.default_rng(42)
@@ -106,7 +123,7 @@ def extract_clean_gt_correspondences(data, dataset_root, n_samples=2000):
     return np.concatenate(all_src), np.concatenate(all_dst)
 
 
-def get_pointmap_correspondences(path_a, path_b, dataset_root):
+def get_pointmap_correspondences(path_a, path_b, dataset_root, vmask_cache=None):
     """Inter-frame alignment using only static/valid pixels."""
     data_a, data_b = np.load(path_a), np.load(path_b)
     V, H, W = normalize_spatial_dims(data_a)
@@ -120,12 +137,19 @@ def get_pointmap_correspondences(path_a, path_b, dataset_root):
     m_b = normalize_array(data_b['masks_2d'], V, H, W, is_mask=True)
 
     # We use vmasks to ensure we only align on high-quality regions (hand/table)
-    vmasks_a = build_gt_validity_masks(int(data_a['frame_idx']),
-                                       [discover_view_name(dataset_root, k) for k in data_a['Ks']], dataset_root,
-                                       target_hw=(H, W))
-    vmasks_b = build_gt_validity_masks(int(data_b['frame_idx']),
-                                       [discover_view_name(dataset_root, k) for k in data_b['Ks']], dataset_root,
-                                       target_hw=(H, W))
+    if vmask_cache is not None and path_a in vmask_cache:
+        vmasks_a = vmask_cache[path_a]
+    else:
+        vmasks_a = build_gt_validity_masks(int(data_a['frame_idx']),
+                                           [discover_view_name(dataset_root, k) for k in data_a['Ks']], dataset_root,
+                                           target_hw=(H, W))
+
+    if vmask_cache is not None and path_b in vmask_cache:
+        vmasks_b = vmask_cache[path_b]
+    else:
+        vmasks_b = build_gt_validity_masks(int(data_b['frame_idx']),
+                                           [discover_view_name(dataset_root, k) for k in data_b['Ks']], dataset_root,
+                                           target_hw=(H, W))
 
     src_list, dst_list = [], []
     for v in range(V):
@@ -141,8 +165,8 @@ def get_pointmap_correspondences(path_a, path_b, dataset_root):
     return np.concatenate(src_list), np.concatenate(dst_list)
 
 
-def estimate_interframe_transform_pointmap(path_a, path_b, dataset_root, return_error=False):
-    res = get_pointmap_correspondences(path_a, path_b, dataset_root)
+def estimate_interframe_transform_pointmap(path_a, path_b, dataset_root, return_error=False, vmask_cache=None):
+    res = get_pointmap_correspondences(path_a, path_b, dataset_root, vmask_cache=vmask_cache)
     if res is None:
         return (None, None) if return_error else None
 
@@ -200,7 +224,7 @@ def rotation_average(R_list, weights, max_iters=50, tol=1e-6):
                 continue
 
             v = theta * np.array([R_rel[2, 1] - R_rel[1, 2], R_rel[0, 2] - R_rel[2, 0], R_rel[1, 0] - R_rel[0, 1]]) / (
-                        2 * np.sin(theta))
+                    2 * np.sin(theta))
 
             # Weiszfeld re-weighting
             norm_v = np.linalg.norm(v)
@@ -260,13 +284,17 @@ def compose_similarity_transform(a, b):
 
 def strategy3_pgo(frame_npz_paths, dataset_root, num_iters=50):
     n_frames = len(frame_npz_paths)
+
+    # Precompute masks
+    vmask_cache = precompute_vmasks(frame_npz_paths, dataset_root)
+
     print("    [PGO] Computing T(T-1)/2 pairwise edges...")
     edges = {}
 
     for i in range(n_frames):
         for j in range(i + 1, n_frames):
             res = estimate_interframe_transform_pointmap(frame_npz_paths[i], frame_npz_paths[j], dataset_root,
-                                                         return_error=True)
+                                                         return_error=True, vmask_cache=vmask_cache)
             if res[0] is not None:
                 (s, R, t), err = res
                 weight = 1.0 / (err + 1e-6)
@@ -338,9 +366,10 @@ def strategy3_pgo(frame_npz_paths, dataset_root, num_iters=50):
 
 
 def solve_final_gt_registration(frame_npz_paths, frame_transforms, dataset_root):
+    vmask_cache = precompute_vmasks(frame_npz_paths, dataset_root)
     all_src, all_dst = [], []
     for i, path in enumerate(frame_npz_paths):
-        res = extract_clean_gt_correspondences(np.load(path), dataset_root)
+        res = extract_clean_gt_correspondences(np.load(path), dataset_root, precomputed_vmasks=vmask_cache.get(path))
         if res is None: continue
         src, dst = res
         # Apply inter-frame transform to bring to unified space

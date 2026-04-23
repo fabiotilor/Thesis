@@ -13,21 +13,14 @@ from eval_config import MIN_CONF_THR
 def init_recording(subject_code: str, n_views: int) -> None:
     """
     Initialise a fresh Rerun recording for one (subject, view-count) pair.
-
-    Call this once before processing each (subject, n_views) combination.
-    Each call creates an independent entry in the Rerun Sources panel, e.g.:
-
-        Local
-          mast3r_01_2views   10:55:18 — 35.3 MiB
-          mast3r_01_3views   10:55:44 — 38.1 MiB
-          mast3r_01_4views   10:56:12 — 41.0 MiB
-
-    The entity paths and timeline used by every other function in this module
-    are unaffected — they always operate on whichever recording is current.
     """
     application_id = f"vggt_{subject_code}_{n_views}views"
     rr.init(application_id, spawn=False)
-    rr.connect_grpc()
+    try:
+        from eval_config import RERUN_ADDR
+        rr.connect_grpc(RERUN_ADDR)
+    except Exception as e:
+        print(f"[WARN] Rerun connection failed: {e}")
 
 
 def configure_rerun_view_defaults(log_root, eye_up):
@@ -56,9 +49,9 @@ def configure_rerun_view_defaults(log_root, eye_up):
 
     # Fallback variants for compatibility.
     for kwargs in (
-        {"origin": log_root, "name": f"{log_root}_3d", "eye_up": eye_up},
-        {"origin": log_root, "name": f"{log_root}_3d", "up": eye_up},
-        {"origin": log_root, "name": f"{log_root}_3d"},
+            {"origin": log_root, "name": f"{log_root}_3d", "eye_up": eye_up},
+            {"origin": log_root, "name": f"{log_root}_3d", "up": eye_up},
+            {"origin": log_root, "name": f"{log_root}_3d"},
     ):
         try:
             blueprint_variants.append(rrb.Blueprint(rrb.Spatial3DView(**kwargs)))
@@ -110,9 +103,14 @@ def log_cameras_rerun(t, view_names, dataset_root, log_root):
             print(f"  [WARN] Image not found for {vname} at t={t}")
 
 
-def log_pointcloud(t, entity, positions, color=None, radii=0.002):
+def log_pointcloud(t, entity, positions, color=None, radii=0.002, max_points=50000):
     """Basic reusable pointcloud logger."""
     rr.set_time("frame", sequence=t)
+    if len(positions) > max_points:
+        idx = np.random.choice(len(positions), max_points, replace=False)
+        positions = positions[idx]
+        if color is not None and isinstance(color, np.ndarray) and len(color) == len(positions):
+            pass  # Handle per-point colors if we ever use them
     kwargs = {"positions": positions, "radii": radii}
     if color is not None:
         kwargs["colors"] = color
@@ -129,9 +127,12 @@ def log_alignment_results(t, gt_pts, aligned_pts, refined_pts=None, log_root="wo
         log_pointcloud(t, f"{log_root}/estimated/stabilised", refined_pts, color=[255, 0, 255])
 
 
-def log_gt_sequence(paths, log_root="4d_eval"):
+def log_gt_sequence(paths, dataset_root, log_root="4d_eval"):
     """Logs the GT sequence from a list of NPZ paths."""
+    from .gt import load_gt_params, DEPTH_SCALE, DEPTH_MAX_M
+    from .camera_utils import discover_view_name
     entity = f"{log_root}/gt"
+    entity_static = f"{log_root}/gt_static"
     for p in paths:
         data = np.load(p)
         t = int(data['frame_idx'])
@@ -140,8 +141,42 @@ def log_gt_sequence(paths, log_root="4d_eval"):
             gt_pts = gt_pts / 1000.0
         log_pointcloud(t, entity, gt_pts, color=[0, 255, 0])
 
+        if 'masks_2d' in data:
+            view_names = [discover_view_name(dataset_root, k) for k in data['Ks']]
+            static_mask = data['masks_2d']
+            all_pts_static = []
+            for i, vname in enumerate(view_names):
+                view_dir = os.path.join(dataset_root, vname)
+                depth_path = os.path.join(view_dir, "depth", f"{t:05d}.png")
+                if not os.path.exists(depth_path): continue
+                depth_raw = cv2.imread(depth_path, cv2.IMREAD_UNCHANGED)
+                if depth_raw is None: continue
+                depth_m = depth_raw.astype(np.float32) * DEPTH_SCALE
 
-def log_aligned_sequence(paths, frame_transforms, s_glob, R_glob, tr_glob, label, color, dataset_root, log_root="4d_eval"):
+                mask_2d = static_mask[i]
+                if mask_2d.shape != depth_m.shape:
+                    mask_2d = cv2.resize(mask_2d.astype(np.uint8), (depth_m.shape[1], depth_m.shape[0]),
+                                         interpolation=cv2.INTER_NEAREST).astype(bool)
+
+                keep = (depth_m > 0) & (depth_m < DEPTH_MAX_M) & mask_2d
+                ys, xs = np.where(keep)
+                z = depth_m[ys, xs]
+                K, cam2world = load_gt_params(view_dir)
+                fx, fy = K[0, 0], K[1, 1]
+                cx, cy = K[0, 2], K[1, 2]
+                pts_cam = np.stack([(xs - cx) * z / fx, (ys - cy) * z / fy, z], axis=-1)
+                pts_world = (cam2world[:3, :3] @ pts_cam.T).T + cam2world[:3, 3]
+                all_pts_static.append(pts_world)
+
+            if all_pts_static:
+                gt_static = np.concatenate(all_pts_static, axis=0)
+                if np.any(np.linalg.norm(gt_static, axis=-1) > 10.0):
+                    gt_static = gt_static / 1000.0
+                log_pointcloud(t, entity_static, gt_static, color=[255, 165, 0])
+
+
+def log_aligned_sequence(paths, frame_transforms, s_glob, R_glob, tr_glob, label, color, dataset_root,
+                         log_root="4d_eval"):
     """
     Robust 4D pointcloud logger. Handles inter-frame and global alignment composition.
     """

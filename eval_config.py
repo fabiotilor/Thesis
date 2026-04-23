@@ -20,7 +20,7 @@ SUBJECT_NAMES = [
 SUBJECT_BY_CODE = {name.split("subject-")[1][:2]: name for name in SUBJECT_NAMES}
 
 # ── Filtering ─────────────────────────────────────────────────────────────────
-MIN_CONF_THR = 1.0
+MIN_CONF_THR = 1.593370 # Threshold computed based on compute_otsu_threshold.py
 DEPTH_MAX_M = 1.5
 
 # ── Model ─────────────────────────────────────────────────────────────────────
