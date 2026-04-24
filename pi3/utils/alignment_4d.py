@@ -5,7 +5,7 @@ from .umeyama_alignment import estimate_similarity_transform, apply_similarity_t
 from .gt import build_gt_validity_masks, DEPTH_MAX_M, load_gt_params
 from .camera_utils import discover_view_name
 from .temporal_metrics import compute_static_jitter
-from eval_config import MIN_CONF_THR
+from eval_config import CONF_PERCENTILE
 
 # Ensure Pi3/DUSt3R paths are initialized
 try:
@@ -63,6 +63,12 @@ def extract_clean_gt_correspondences(data, dataset_root, n_samples=2000, vmasks=
     if vmasks is None:
         vmasks = build_gt_validity_masks(t, view_names, dataset_root, target_hw=(H_mod, W_mod))
 
+    # ── Global threshold for the whole frame ──
+    if conf_est is not None:
+        frame_thr = np.quantile(conf_est, 1.0 - CONF_PERCENTILE)
+    else:
+        frame_thr = 0.0
+
     all_src, all_dst = [], []
     rng = np.random.default_rng(42)
 
@@ -87,8 +93,7 @@ def extract_clean_gt_correspondences(data, dataset_root, n_samples=2000, vmasks=
         # Build total mask for this view
         valid = (d_mod_gt > 0) & m_static[v] & vmasks[v]
         if conf_est is not None:
-            min_conf_thr = data.get('min_conf_thr', MIN_CONF_THR)
-            valid &= (conf_est[v] > min_conf_thr)
+            valid &= (conf_est[v] > frame_thr)
 
         ys, xs = np.where(valid)
         if len(ys) < 6: continue
@@ -121,6 +126,9 @@ def get_pointmap_correspondences(path_a, path_b, dataset_root, vmasks_a=None, vm
     pm_a = normalize_array(data_a['pointmaps'], V, H, W).astype(np.float32)
     pm_b = normalize_array(data_b['pointmaps'], V, H, W).astype(np.float32)
 
+    conf_a = normalize_array(data_a['pointmaps_confs'], V, H, W) if 'pointmaps_confs' in data_a else None
+    conf_b = normalize_array(data_b['pointmaps_confs'], V, H, W) if 'pointmaps_confs' in data_b else None
+
     # Simple strategy: align based on static pixels existing in both frames
     m_a = normalize_array(data_a['masks_2d'], V, H, W, is_mask=True)
     m_b = normalize_array(data_b['masks_2d'], V, H, W, is_mask=True)
@@ -136,10 +144,20 @@ def get_pointmap_correspondences(path_a, path_b, dataset_root, vmasks_a=None, vm
                                            target_hw=(H, W))
 
     src_list, dst_list = [], []
+
+    # ── Global thresholds ──
+    thr_a = np.quantile(conf_a, 1.0 - CONF_PERCENTILE) if conf_a is not None else 0.0
+    thr_b = np.quantile(conf_b, 1.0 - CONF_PERCENTILE) if conf_b is not None else 0.0
+
     for v in range(V):
         if vmasks_a[v] is None or vmasks_b[v] is None: continue
         # Intersection of static and valid
         mask = m_a[v] & m_b[v] & vmasks_a[v] & vmasks_b[v]
+        if conf_a is not None:
+            mask &= (conf_a[v] > thr_a)
+        if conf_b is not None:
+            mask &= (conf_b[v] > thr_b)
+
         ys, xs = np.where(mask)
         if len(ys) > 6:
             src_list.append(pm_b[v][ys, xs])

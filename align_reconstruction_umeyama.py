@@ -38,13 +38,13 @@ from pi3.utils.gt import (
 from eval_config import (
     DATASET_BASE_ROOT, SUBJECT_NAMES, SUBJECT_BY_CODE,
     DEVICE, RERUN_ADDR,
-    MIN_CONF_THR, VIEW_CONFIGS, DEFAULT_TARGET_VIEWS, RERUN_EYE_UP
+    CONF_PERCENTILE, VIEW_CONFIGS, DEFAULT_TARGET_VIEWS, RERUN_EYE_UP
 )
 
 # NOTE: Import rerun logging lazily inside `run_reconstruction` to avoid
 # circular-import issues when other modules import this file.
 CLEAN_DEPTH = True
-RUN_MULTI_VIEW_EVAL = False
+RUN_MULTI_VIEW_EVAL = True
 
 
 # ── helpers ───────────────────────────────────────────────────────────────────
@@ -191,11 +191,16 @@ def run_reconstruction(
             K_est = recover_intrinsic_from_rays_d(rays_d, force_center_principal_point=True)
             est_intrinsics_all = K_est[0].float().cpu().numpy()
 
+            # ── Compute Global Confidence Threshold for this Frame ─────────────
+            all_confs = np.concatenate([c.ravel() for c in confs])
+            frame_thr = np.quantile(all_confs, 1.0 - CONF_PERCENTILE)
+            print(f"  [CONF] Global Frame Threshold (top {100*CONF_PERCENTILE:.0f}%): {frame_thr:.4f}")
+
             est_poses_all = np.zeros((imgs_tensor.shape[1], 4, 4))
             for i in range(imgs_tensor.shape[1]):
                 local_pts = res['local_points'][0, i].float().cpu().numpy().reshape(-1, 3)
                 global_pts = res['points'][0, i].float().cpu().numpy().reshape(-1, 3)
-                valid = confs[i].ravel() > MIN_CONF_THR
+                valid = confs[i].ravel() > frame_thr
                 if np.sum(valid) > 10:
                     s_est, R_est, t_trans = estimate_similarity_transform(local_pts[valid], global_pts[valid])
                     T_mat = np.eye(4)
@@ -234,7 +239,7 @@ def run_reconstruction(
             # ── Correspondences ─────────────────────────────────────────────────
             src_corr, dst_corr = get_static_correspondences(
                 t, view_names, pts3d_list, confs, dataset_root,
-                min_conf_thr=MIN_CONF_THR,
+                conf_percentile=CONF_PERCENTILE,
                 precomputed_masks=precomputed_masks
             )
 
@@ -262,7 +267,7 @@ def run_reconstruction(
             for i, vname in enumerate(view_names):
                 pts_i = pts3d_list[i].reshape(-1, 3)
                 conf_i = confs[i].ravel()
-                conf_ok = conf_i > MIN_CONF_THR
+                conf_ok = conf_i > frame_thr
 
                 gt_mask = gt_validity_masks[i]
                 if gt_mask is None:
@@ -358,7 +363,8 @@ def run_reconstruction(
                 'R_ts': np.array(valid_R_ts),
                 'est_poses': np.array(valid_est_poses),
                 'est_intrinsics': np.array(valid_est_intrinsics),
-                'min_conf_thr': float(MIN_CONF_THR)
+                'min_conf_thr': float(frame_thr),
+                'conf_percentile': float(CONF_PERCENTILE)
             }
             if valid_masks:
                 save_dict['masks_2d'] = np.stack(valid_masks)

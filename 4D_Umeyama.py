@@ -23,7 +23,7 @@ from pi3.utils.alignment_4d import (
 
 from eval_config import (
     DATASET_BASE_ROOT, SUBJECT_NAMES, SUBJECT_BY_CODE,
-    MIN_CONF_THR, RERUN_ADDR, RERUN_EYE_UP
+    CONF_PERCENTILE, RERUN_ADDR, RERUN_EYE_UP
 )
 # ── camera discovery ───────────────────────────────────────────────────────────
 # Moved to utils.camera_utils
@@ -118,8 +118,11 @@ def save_aligned_results(
                     print(f"    [WARN] Frame {t} view {v}: Could not discover view name for K.")
 
                 if conf is not None:
-                    min_conf_thr = data.get('min_conf_thr', MIN_CONF_THR)
-                    mask &= conf[v] > min_conf_thr
+                    if 'min_conf_thr' in data:
+                        thr = data['min_conf_thr']
+                    else:
+                        thr = np.quantile(conf[v], 1.0 - CONF_PERCENTILE)
+                    mask &= conf[v] > thr
 
                 p_v = pm[v][mask]
                 if len(p_v) > 0:
@@ -129,7 +132,7 @@ def save_aligned_results(
             if n_pts == 0:
                 print(
                     f"    [ERROR] Frame {t}: No points survived filtering "
-                    f"(Conf > {MIN_CONF_THR} + GT Masks)."
+                    f"(Conf Percentile {CONF_PERCENTILE} + GT Masks)."
                 )
 
             aligned_pts = np.concatenate(all_pts, axis=0) if all_pts else np.zeros((0, 3))
