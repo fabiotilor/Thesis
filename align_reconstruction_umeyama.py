@@ -41,7 +41,8 @@ from mast3r.utils.gt import (
 from eval_config import (
     DATASET_BASE_ROOT, SUBJECT_NAMES, SUBJECT_BY_CODE,
     MODEL_NAME, IMAGE_SIZE, DEVICE, RERUN_ADDR,
-    MIN_CONF_THR, VIEW_CONFIGS, DEFAULT_TARGET_VIEWS, SCENE_GRAPH, RERUN_EYE_UP
+    VIEW_CONFIGS, DEFAULT_TARGET_VIEWS, SCENE_GRAPH, RERUN_EYE_UP,
+    CONF_PERCENTILE
 )
 
 # NOTE: Import rerun logging lazily inside `run_reconstruction` to avoid
@@ -91,11 +92,20 @@ def run_reconstruction(
         target_views,
         out_dir,
         cache_root,
+        subject_name=None,  # Added
+        num_views=None,     # Added
         run_tag="default",
         skip_rerun_init=False,
         skip_existing_frames=True,
         no_rerun=False,
 ):
+    # Determine subject and views if not provided
+    if subject_name is None:
+        subject_name = os.path.basename(dataset_root)
+    if num_views is None:
+        num_views = len(target_views) if target_views else 0
+
+    print(f"[INFO] Using adaptive percentile threshold: {CONF_PERCENTILE} for {subject_name} ({num_views} views)")
     rerun_stream = f"mast3r_stabilisation_{run_tag}"
     if not skip_rerun_init and not no_rerun:
         try:
@@ -193,7 +203,7 @@ def run_reconstruction(
             # ── Correspondences ─────────────────────────────────────────────────
             src_corr, dst_corr = get_static_correspondences(
                 t, view_names, scene, dataset_root,
-                min_conf_thr=MIN_CONF_THR,
+                conf_percentile=CONF_PERCENTILE,
                 precomputed_masks=precomputed_masks
             )
 
@@ -221,7 +231,8 @@ def run_reconstruction(
             for i, vname in enumerate(view_names):
                 pts_i = pts3d_list[i].reshape(-1, 3)
                 conf_i = confs[i].ravel()
-                conf_ok = conf_i > MIN_CONF_THR
+                thr_i = np.percentile(conf_i, 100 * (1 - CONF_PERCENTILE))
+                conf_ok = conf_i > thr_i
 
                 gt_mask = gt_validity_masks[i]
                 if gt_mask is None:
@@ -414,6 +425,8 @@ def main():
                 target_views=target_views,
                 out_dir=out_dir,
                 cache_root=cache_root,
+                subject_name=subject_name,
+                num_views=num_views,
                 run_tag=f"{subject_name}_{num_views}views",
             )
 

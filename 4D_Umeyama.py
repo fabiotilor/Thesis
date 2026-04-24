@@ -27,7 +27,7 @@ from mast3r.utils.alignment_4d import (
 
 from eval_config import (
     DATASET_BASE_ROOT, SUBJECT_NAMES, SUBJECT_BY_CODE,
-    MIN_CONF_THR, RERUN_ADDR, RERUN_EYE_UP
+    CONF_PERCENTILE, RERUN_ADDR, RERUN_EYE_UP
 )
 # ── camera discovery ───────────────────────────────────────────────────────────
 # Moved to utils.camera_utils
@@ -124,7 +124,8 @@ def save_aligned_results(
                     print(f"    [WARN] Frame {t} view {v}: Could not discover view name for K.")
 
                 if conf is not None:
-                    mask &= conf[v] > MIN_CONF_THR
+                    thr = np.percentile(conf[v], 100 * (1 - CONF_PERCENTILE))
+                    mask &= conf[v] > thr
 
                 p_v = pm[v][mask]
                 if len(p_v) > 0:
@@ -134,7 +135,7 @@ def save_aligned_results(
             if n_pts == 0:
                 print(
                     f"    [ERROR] Frame {t}: No points survived filtering "
-                    f"(Conf > {MIN_CONF_THR} + GT Masks)."
+                    f"(Conf > Top {CONF_PERCENTILE*100}% + GT Masks)."
                 )
 
             aligned_pts = np.concatenate(all_pts, axis=0) if all_pts else np.zeros((0, 3))

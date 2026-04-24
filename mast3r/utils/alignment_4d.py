@@ -5,7 +5,7 @@ from .umeyama_alignment import estimate_similarity_transform, apply_similarity_t
 from .gt import build_gt_validity_masks, DEPTH_MAX_M, load_gt_params
 from .camera_utils import discover_view_name
 from .temporal_metrics import compute_static_jitter
-from eval_config import MIN_CONF_THR
+from eval_config import CONF_PERCENTILE
 
 # Ensure DUSt3R and Mast3r paths are initialized
 try:
@@ -87,7 +87,8 @@ def extract_clean_gt_correspondences(data, dataset_root, n_samples=2000, vmasks=
         # Build total mask for this view
         valid = (d_mod_gt > 0) & m_static[v] & vmasks[v]
         if conf_est is not None:
-            valid &= (conf_est[v] > MIN_CONF_THR)
+            thr = np.percentile(conf_est[v], 100 * (1 - CONF_PERCENTILE))
+            valid &= (conf_est[v] > thr)
 
         ys, xs = np.where(valid)
         if len(ys) < 6: continue
@@ -107,7 +108,9 @@ def extract_clean_gt_correspondences(data, dataset_root, n_samples=2000, vmasks=
         all_src.append(pts_est)
         all_dst.append(pts_world_gt)
 
-    if not all_src: return None
+    if not all_src:
+        return None
+    # Return source (estimate static) and destination (GT static) correspondences
     return np.concatenate(all_src), np.concatenate(all_dst)
 
 
@@ -134,11 +137,21 @@ def get_pointmap_correspondences(path_a, path_b, dataset_root, vmasks_a=None, vm
                                            [discover_view_name(dataset_root, k) for k in data_b['Ks']], dataset_root,
                                            target_hw=(H, W))
 
+    conf_a = normalize_array(data_a['pointmaps_confs'], V, H, W) if 'pointmaps_confs' in data_a else None
+    conf_b = normalize_array(data_b['pointmaps_confs'], V, H, W) if 'pointmaps_confs' in data_b else None
+
     src_list, dst_list = [], []
     for v in range(V):
         if vmasks_a[v] is None or vmasks_b[v] is None: continue
         # Intersection of static and valid
         mask = m_a[v] & m_b[v] & vmasks_a[v] & vmasks_b[v]
+
+        if conf_a is not None:
+            thr_a = np.percentile(conf_a[v], 100 * (1 - CONF_PERCENTILE))
+            mask &= (conf_a[v] > thr_a)
+        if conf_b is not None:
+            thr_b = np.percentile(conf_b[v], 100 * (1 - CONF_PERCENTILE))
+            mask &= (conf_b[v] > thr_b)
         ys, xs = np.where(mask)
         if len(ys) > 6:
             src_list.append(pm_b[v][ys, xs])
@@ -400,12 +413,18 @@ def solve_final_gt_registration(frame_npz_paths, frame_transforms, dataset_root)
         all_src.append(src_aligned)
         all_dst.append(dst)
 
-    if not all_src: return 1.0, np.eye(3), np.zeros(3)
-    s_glob, R_glob, tr_glob = estimate_similarity_transform(np.concatenate(all_src), np.concatenate(all_dst))
+    if not all_src:
+        return 1.0, np.eye(3), np.zeros(3)
+
+    # Perform global alignment using the concatenated static points from the entire sequence
+    src_concat = np.concatenate(all_src)
+    dst_concat = np.concatenate(all_dst)
+    s_glob, R_glob, tr_glob = estimate_similarity_transform(src_concat, dst_concat)
 
     # Diagnostic
-    pred = s_glob * (np.concatenate(all_src) @ R_glob.T) + tr_glob
-    err = np.linalg.norm(pred - np.concatenate(all_dst), axis=-1).mean()
+    pred = s_glob * (src_concat @ R_glob.T) + tr_glob
+    err = np.linalg.norm(pred - dst_concat, axis=-1).mean()
+    print(f"  [4D-GT] Registration: Aligned concatenated STATIC points to STATIC GT.")
     print(f"  [4D-GT] Scale: {s_glob:.4f}  Residual Err: {err:.4f}  Corrs: {len(pred):,}")
     return s_glob, R_glob, tr_glob
 

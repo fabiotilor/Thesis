@@ -57,7 +57,7 @@ RERUN_ADDR = "127.0.0.1:9876"
 # Reconstruction hyper-parameters
 LR1, NITER1 = 0.07, 300
 LR2, NITER2 = 0.01, 300
-MIN_CONF_THR = 1.5  # confidence threshold for point-cloud masking
+CONF_PERCENTILE = 0.5  # Filter to retain the top 50% of points based on confidence
 SCENEGRAPH = "complete"  # "complete" | "swin" | "logwin" | "oneref"
 CLEAN_DEPTH = True
 OPT_DEPTH = True  # refine+depth mode
@@ -95,7 +95,10 @@ def log_timestep(t: int, view_names: list, scene) -> None:
 
     # Dense point cloud + per-pixel confidence
     pts3d_list, _, confs = to_numpy(scene.get_dense_pts3d(clean_depth=CLEAN_DEPTH))
-    conf_masks = [c > MIN_CONF_THR for c in confs]  # list[H×W bool]
+    conf_masks = []
+    for c in confs:
+        thr = np.percentile(c, 100 * (1 - CONF_PERCENTILE))
+        conf_masks.append(c > thr)
 
     all_pts = []
     all_cols = []

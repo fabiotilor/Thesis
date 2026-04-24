@@ -7,7 +7,7 @@ import rerun.blueprint as rrb
 from .gt import load_gt_params, build_gt_validity_masks
 from .camera_utils import discover_view_name, get_rgb_path
 from .umeyama_alignment import apply_similarity_transform
-from eval_config import MIN_CONF_THR, RERUN_ADDR, RERUN_EYE_UP
+from eval_config import CONF_PERCENTILE, RERUN_ADDR, RERUN_EYE_UP
 
 
 def init_recording(subject_code: str, n_views: int) -> None:
@@ -186,7 +186,8 @@ def log_aligned_sequence(paths, frame_transforms, s_glob, R_glob, tr_glob, label
             if vmasks[v] is not None:
                 mask &= vmasks[v]
             if conf is not None:
-                mask &= (conf[v] > MIN_CONF_THR)
+                thr = np.percentile(conf[v], 100 * (1 - CONF_PERCENTILE))
+                mask &= (conf[v] > thr)
 
             p_v = pm[v][mask]
             if len(p_v) > 0:

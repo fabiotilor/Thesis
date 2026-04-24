@@ -111,9 +111,9 @@ def build_static_gt_pointcloud(t, view_names, dataset_root, precomputed_masks=No
 
     return np.concatenate(all_pts, axis=0) if all_pts else None
 
-from eval_config import MIN_CONF_THR
+from eval_config import CONF_PERCENTILE
 def get_static_correspondences(t, view_names, scene, dataset_root,
-                               min_conf_thr=MIN_CONF_THR,
+                               conf_percentile=CONF_PERCENTILE,
                                precomputed_masks=None):
     """
     Build (estimated, GT) 3-D point correspondences for static regions.
@@ -199,7 +199,8 @@ def get_static_correspondences(t, view_names, scene, dataset_root,
                         interpolation=cv2.INTER_NEAREST).astype(bool)
 
         # ── Valid pixel mask (all criteria at model resolution) ────────────────
-        valid = (conf_mod   > min_conf_thr) \
+        thr = np.percentile(conf_mod, 100 * (1 - conf_percentile))
+        valid = (conf_mod   > thr) \
               & static_small \
               & (depth_small > 0) \
               & (depth_small < DEPTH_MAX_M)
