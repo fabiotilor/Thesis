@@ -65,7 +65,7 @@ from eval_config import (
     IMAGE_SIZE,
     DEVICE,
     RERUN_ADDR,
-    MIN_CONF_THR,
+    CONF_PERCENTILE,
     VIEW_CONFIGS,
     DEFAULT_TARGET_VIEWS,
     RERUN_EYE_UP,
@@ -156,7 +156,10 @@ def run_all_at_once_pipeline(
             "intrinsic": intrinsic[idx_start:idx_end],
         })
 
-        # Merge all views into one raw pointcloud for this frame
+        # ── Compute Global Confidence Threshold for this Frame ─────────────
+        all_confs_f = np.concatenate([c.ravel() for c in conf_views])
+        frame_thr = np.quantile(all_confs_f, 1.0 - CONF_PERCENTILE)
+
         merged_pts_list = []
         merged_conf_list = []
 
@@ -170,14 +173,14 @@ def run_all_at_once_pipeline(
                 t, vname, pm_views[vi], conf_views[vi],
                 dataset_root,
                 static_mask=static,
-                min_conf_thr=MIN_CONF_THR,
+                conf_percentile=CONF_PERCENTILE,
             )
             if src is not None and len(src) > 0:
                 all_src.append(src)
                 all_dst.append(dst)
 
             # Merge valid points
-            valid = (conf_flat > MIN_CONF_THR)
+            valid = (conf_flat > frame_thr)
             gt_validity = build_gt_validity_masks(
                 t, [vname], dataset_root,
                 depth_max_m=DEPTH_MAX_M, target_hw=(H, W),
@@ -328,6 +331,8 @@ def run_all_at_once_pipeline(
                 "R_ts": np.array(valid_R_ts),
                 "est_poses": per_frame_cams[t]["cam2world"],
                 "est_intrinsics": per_frame_cams[t]["intrinsic"],
+                "min_conf_thr": float(frame_thr),
+                "conf_percentile": float(CONF_PERCENTILE),
             }
             np.savez(out_frame_path, **save_dict)
             frame_times_sec.append(time.perf_counter() - frame_start)

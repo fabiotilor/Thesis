@@ -60,7 +60,7 @@ from eval_config import (
     SUBJECT_NAMES,
     SUBJECT_BY_CODE,
     DATASET_BASE_ROOT,
-    MIN_CONF_THR,
+    CONF_PERCENTILE,
 )
 
 
@@ -136,6 +136,9 @@ def _compute_metrics_for_alignment(
             conf = normalize_array(data["pointmaps_confs"], V, H, W)
             t_idx = int(data["frame_idx"])
 
+            # ── Global threshold for the whole frame ──
+            frame_thr = np.quantile(conf, 1.0 - CONF_PERCENTILE) if conf is not None else 0.0
+
             vmasks = build_gt_validity_masks(
                 t_idx, view_names, dataset_root,
                 depth_max_m=DEPTH_MAX_M, target_hw=(H, W),
@@ -144,7 +147,7 @@ def _compute_metrics_for_alignment(
             parts = []
             for v in range(V):
                 pts_flat = pm[v].reshape(-1, 3)
-                valid = conf[v].ravel() > MIN_CONF_THR
+                valid = conf[v].ravel() > frame_thr
                 if vmasks[v] is not None:
                     vm = vmasks[v]
                     if vm.shape != (H, W):
@@ -167,6 +170,9 @@ def _compute_metrics_for_alignment(
             conf = normalize_array(data["pointmaps_confs"], V, H, W)
             t_idx = int(data["frame_idx"])
 
+            # ── Global threshold for the whole frame ──
+            frame_thr = np.quantile(conf, 1.0 - CONF_PERCENTILE) if conf is not None else 0.0
+
             vmasks = build_gt_validity_masks(
                 t_idx, view_names, dataset_root,
                 depth_max_m=DEPTH_MAX_M, target_hw=(H, W),
@@ -175,7 +181,7 @@ def _compute_metrics_for_alignment(
             parts = []
             for v in range(V):
                 pts_flat = pm[v].reshape(-1, 3)
-                valid = conf[v].ravel() > MIN_CONF_THR
+                valid = conf[v].ravel() > frame_thr
                 if vmasks[v] is not None:
                     vm = vmasks[v]
                     if vm.shape != (H, W):
@@ -373,6 +379,9 @@ def evaluate_multi_strategy(baseline_dir, dataset_root, view_label, subject_full
         ks = data["Ks"]
         view_names = [discover_view_name(dataset_root, k) for k in ks]
 
+        # ── Global threshold for the whole frame ──
+        frame_thr = np.quantile(conf, 1.0 - CONF_PERCENTILE) if conf is not None else 0.0
+
         vmasks = build_gt_validity_masks(
             t_idx, view_names, dataset_root,
             depth_max_m=DEPTH_MAX_M, target_hw=(H, W),
@@ -386,7 +395,7 @@ def evaluate_multi_strategy(baseline_dir, dataset_root, view_label, subject_full
             static = m_2d[v].ravel() if m_2d.ndim == 3 else m_2d.ravel()
             src, dst = get_single_view_correspondences(
                 t_idx, view_names[v], pm[v], conf[v], dataset_root,
-                static_mask=static, min_conf_thr=MIN_CONF_THR
+                static_mask=static, conf_percentile=CONF_PERCENTILE
             )
             if src is not None and len(src) > 0:
                 all_src.append(src)

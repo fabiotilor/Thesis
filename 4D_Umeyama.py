@@ -24,7 +24,7 @@ from vggt.utils.alignment_4d import (
 
 from eval_config import (
     DATASET_BASE_ROOT, SUBJECT_NAMES, SUBJECT_BY_CODE,
-    MIN_CONF_THR, RERUN_ADDR, RERUN_EYE_UP
+    CONF_PERCENTILE, RERUN_ADDR, RERUN_EYE_UP
 )
 # ── camera discovery ───────────────────────────────────────────────────────────
 # Moved to utils.camera_utils
@@ -112,6 +112,12 @@ def save_aligned_results(
             view_names = [discover_view_name(dataset_root, k) for k in ks]
             vmasks = build_gt_validity_masks(t, view_names, dataset_root, target_hw=(H, W))
 
+            # ── Global threshold for the whole frame ──
+            if conf is not None:
+                frame_thr = np.quantile(conf, 1.0 - CONF_PERCENTILE)
+            else:
+                frame_thr = 0.0
+
             for v in range(V):
                 mask = np.ones((H, W), dtype=bool)
                 if vmasks[v] is not None:
@@ -122,7 +128,7 @@ def save_aligned_results(
                     print(f"    [WARN] Frame {t} view {v}: Could not discover view name for K.")
 
                 if conf is not None:
-                    mask &= conf[v] > MIN_CONF_THR
+                    mask &= conf[v] > frame_thr
 
                 p_v = pm[v][mask]
                 if len(p_v) > 0:
@@ -132,7 +138,7 @@ def save_aligned_results(
             if n_pts == 0:
                 print(
                     f"    [ERROR] Frame {t}: No points survived filtering "
-                    f"(Conf > {MIN_CONF_THR} + GT Masks)."
+                    f"(Conf > {frame_thr:.4f} + GT Masks)."
                 )
 
             aligned_pts = np.concatenate(all_pts, axis=0) if all_pts else np.zeros((0, 3))

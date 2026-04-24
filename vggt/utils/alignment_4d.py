@@ -5,7 +5,7 @@ from .umeyama_alignment import estimate_similarity_transform, apply_similarity_t
 from .gt import build_gt_validity_masks, DEPTH_MAX_M, load_gt_params
 from .camera_utils import discover_view_name
 from .temporal_metrics import compute_static_jitter
-from eval_config import MIN_CONF_THR
+from eval_config import CONF_PERCENTILE
 
 
 def normalize_spatial_dims(data):
@@ -56,6 +56,12 @@ def extract_clean_gt_correspondences(data, dataset_root, n_samples=2000):
     view_names = [discover_view_name(dataset_root, k) for k in ks_gt]
     vmasks = build_gt_validity_masks(t, view_names, dataset_root, target_hw=(H_mod, W_mod))
 
+    # ── Global threshold for the whole frame ──
+    if conf_est is not None:
+        frame_thr = np.quantile(conf_est, 1.0 - CONF_PERCENTILE)
+    else:
+        frame_thr = 0.0
+
     all_src, all_dst = [], []
     rng = np.random.default_rng(42)
 
@@ -77,10 +83,10 @@ def extract_clean_gt_correspondences(data, dataset_root, n_samples=2000):
         # Downsample GT depth to model resolution
         d_mod_gt = cv2.resize(d_img_gt, (W_mod, H_mod), interpolation=cv2.INTER_NEAREST)
 
-        # Build total mask for this view
+        # Build total mask for this view (STATIC ONLY)
         valid = (d_mod_gt > 0) & m_static[v] & vmasks[v]
         if conf_est is not None:
-            valid &= (conf_est[v] > MIN_CONF_THR)
+            valid &= (conf_est[v] > frame_thr)
 
         ys, xs = np.where(valid)
         if len(ys) < 6: continue
@@ -372,6 +378,7 @@ def solve_final_gt_registration(frame_npz_paths, frame_transforms, dataset_root)
     # Diagnostic
     pred = s_glob * (np.concatenate(all_src) @ R_glob.T) + tr_glob
     err = np.linalg.norm(pred - np.concatenate(all_dst), axis=-1).mean()
+    print(f"  [4D-GT] Registration: Aligned concatenated STATIC points to STATIC GT.")
     print(f"  [4D-GT] Scale: {s_glob:.4f}  Residual Err: {err:.4f}  Corrs: {len(pred):,}")
     return s_glob, R_glob, tr_glob
 

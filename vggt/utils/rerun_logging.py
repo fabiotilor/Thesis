@@ -7,7 +7,7 @@ import rerun.blueprint as rrb
 from .gt import load_gt_params, build_gt_validity_masks
 from .camera_utils import discover_view_name
 from .umeyama_alignment import apply_similarity_transform
-from eval_config import MIN_CONF_THR
+from eval_config import CONF_PERCENTILE
 
 _RAW_COLOURS = [
     [255, 128, 0],  # orange
@@ -192,13 +192,16 @@ def log_aligned_sequence(paths, frame_transforms, s_glob, R_glob, tr_glob, label
         R_tot = R_glob @ R_i
         tr_tot = s_glob * (R_glob @ tr_i) + tr_glob
 
+        # ── Global threshold for the whole frame ──
+        frame_thr = np.quantile(conf, 1.0 - CONF_PERCENTILE) if conf is not None else 0.0
+
         all_pts_final = []
         for v in range(V):
             mask = np.ones((H, W), dtype=bool)
             if vmasks[v] is not None:
                 mask &= vmasks[v]
             if conf is not None:
-                mask &= (conf[v] > MIN_CONF_THR)
+                mask &= (conf[v] > frame_thr)
             p_v = pm[v][mask]
             if len(p_v) > 0:
                 all_pts_final.append(apply_similarity_transform(p_v, s_tot, R_tot, tr_tot))
@@ -223,7 +226,9 @@ def log_raw_window(window_idx, frame_indices, view_names,
         for vi, vname in enumerate(view_names):
             pts = raw_per_view[vname][fi].reshape(-1, 3)
             conf = conf_per_view[vname][fi].ravel()
-            valid = conf > MIN_CONF_THR
+            # ── Global threshold for the whole frame ──
+            frame_thr = np.quantile(conf_per_view[vi], 1.0 - CONF_PERCENTILE)
+            valid = conf > frame_thr
             if not valid.any():
                 continue
             entity = f"{log_root}/raw_windows/win_{window_idx:02d}/{vname}/pointcloud"

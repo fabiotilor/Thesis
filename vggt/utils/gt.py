@@ -135,10 +135,10 @@ def build_static_gt_pointcloud(t, view_names, dataset_root,
 
     return np.concatenate(all_pts, axis=0) if all_pts else None
 
-from eval_config import MIN_CONF_THR
+from eval_config import CONF_PERCENTILE
 def get_static_correspondences(t, view_names, pts3d_list, confs, dataset_root,
                                flow_threshold=2.0,
-                               min_conf_thr=MIN_CONF_THR, use_sam2=True):
+                               conf_percentile=CONF_PERCENTILE, use_sam2=True):
     """
     Build (estimated, GT) 3-D point correspondences for static regions.
 
@@ -180,8 +180,9 @@ def get_static_correspondences(t, view_names, pts3d_list, confs, dataset_root,
         pts3d_list = pts3d_list.cpu().numpy()
     if isinstance(confs, torch.Tensor):
         confs = confs.cpu().numpy()
-    pts3d_list = np.asarray(pts3d_list)
-    confs = np.asarray(confs)
+    # ── Global threshold for the whole frame ──
+    all_confs = np.concatenate([c.ravel() for c in confs])
+    frame_thr = np.quantile(all_confs, 1.0 - conf_percentile)
 
     for i, vname in enumerate(view_names):
         view_dir = os.path.join(dataset_root, vname)
@@ -260,7 +261,7 @@ def get_static_correspondences(t, view_names, pts3d_list, confs, dataset_root,
                         interpolation=cv2.INTER_NEAREST).astype(bool)
 
         # ── Valid pixel mask (all criteria at model resolution) ────────────────
-        valid = (conf_mod   > min_conf_thr) \
+        valid = (conf_mod   > frame_thr) \
               & static_small \
               & (depth_small > 0) \
               & (depth_small < DEPTH_MAX_M)
@@ -289,7 +290,7 @@ def get_static_correspondences(t, view_names, pts3d_list, confs, dataset_root,
     return np.concatenate(all_est, axis=0), np.concatenate(all_gt, axis=0)
 
 def get_single_view_correspondences(t, vname, pts3d, conf, dataset_root,
-                                     static_mask=None, min_conf_thr=1.0):
+                                     static_mask=None, conf_percentile=CONF_PERCENTILE):
     """
     Build (estimated, GT) 3-D point correspondences for ONE view.
 
@@ -307,12 +308,15 @@ def get_single_view_correspondences(t, vname, pts3d, conf, dataset_root,
     static_mask : np.ndarray (H, W) bool, optional
         True = static pixel (from VGGT4D dynamic mask, inverted).
         If None, all pixels are considered static.
-    min_conf_thr : float
+    conf_percentile : float
 
     Returns
     -------
-    (src, dst) : tuple of np.ndarray (N, 3) each, or (None, None) if too few
+    # Threshold for this frame/view
+    # Since this is single-view, we use the local quantile
     """
+    thr = np.quantile(conf, 1.0 - conf_percentile)
+
     view_dir = os.path.join(dataset_root, vname)
 
     depth_path = os.path.join(view_dir, "depth", f"{t:05d}.png")
@@ -359,7 +363,7 @@ def get_single_view_correspondences(t, vname, pts3d, conf, dataset_root,
             static_small = static_mask
 
     # Valid pixel mask
-    valid = (conf > min_conf_thr) \
+    valid = (conf.reshape(h_mod, w_mod) > thr) \
           & static_small \
           & (depth_small > 0) \
           & (depth_small < DEPTH_MAX_M)
