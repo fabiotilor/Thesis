@@ -5,7 +5,7 @@ from .umeyama_alignment import estimate_similarity_transform, apply_similarity_t
 from .gt import build_gt_validity_masks, DEPTH_MAX_M, load_gt_params
 from .camera_utils import discover_view_name
 from .temporal_metrics import compute_static_jitter
-from eval_config import MIN_CONF_THR
+from eval_config import CONF_PERCENTILE
 
 
 def precompute_vmasks(frame_npz_paths, dataset_root):
@@ -99,7 +99,8 @@ def extract_clean_gt_correspondences(data, dataset_root, n_samples=2000, precomp
         # Build total mask for this view
         valid = (d_mod_gt > 0) & m_static[v] & vmasks[v]
         if conf_est is not None:
-            valid &= (conf_est[v] > MIN_CONF_THR)
+            thr = np.percentile(conf_est[v], 100 * (1 - CONF_PERCENTILE))
+            valid &= (conf_est[v] > thr)
 
         ys, xs = np.where(valid)
         if len(ys) < 6: continue
@@ -136,6 +137,9 @@ def get_pointmap_correspondences(path_a, path_b, dataset_root, vmask_cache=None)
     m_a = normalize_array(data_a['masks_2d'], V, H, W, is_mask=True)
     m_b = normalize_array(data_b['masks_2d'], V, H, W, is_mask=True)
 
+    conf_a = normalize_array(data_a['pointmaps_confs'], V, H, W) if 'pointmaps_confs' in data_a else None
+    conf_b = normalize_array(data_b['pointmaps_confs'], V, H, W) if 'pointmaps_confs' in data_b else None
+
     # We use vmasks to ensure we only align on high-quality regions (hand/table)
     if vmask_cache is not None and path_a in vmask_cache:
         vmasks_a = vmask_cache[path_a]
@@ -156,6 +160,14 @@ def get_pointmap_correspondences(path_a, path_b, dataset_root, vmask_cache=None)
         if vmasks_a[v] is None or vmasks_b[v] is None: continue
         # Intersection of static and valid
         mask = m_a[v] & m_b[v] & vmasks_a[v] & vmasks_b[v]
+
+        if conf_a is not None:
+            thr_a = np.percentile(conf_a[v], 100 * (1 - CONF_PERCENTILE))
+            mask &= (conf_a[v] > thr_a)
+        if conf_b is not None:
+            thr_b = np.percentile(conf_b[v], 100 * (1 - CONF_PERCENTILE))
+            mask &= (conf_b[v] > thr_b)
+
         ys, xs = np.where(mask)
         if len(ys) > 6:
             src_list.append(pm_b[v][ys, xs])

@@ -121,10 +121,10 @@ def build_static_gt_pointcloud(t, view_names, dataset_root,
     return np.concatenate(all_pts, axis=0) if all_pts else None
 
 
-from eval_config import MIN_CONF_THR
+from eval_config import CONF_PERCENTILE
 def get_static_correspondences(t, view_names, pts3d_list, confs, dataset_root,
                                flow_threshold=2.0,
-                               min_conf_thr=MIN_CONF_THR):
+                               conf_percentile=CONF_PERCENTILE):
     """
     Build (estimated, GT) 3-D point correspondences for static regions.
 
@@ -233,14 +233,15 @@ def get_static_correspondences(t, view_names, pts3d_list, confs, dataset_root,
                     interpolation=cv2.INTER_NEAREST).astype(bool)
 
         # ── Valid pixel mask (all criteria at model resolution) ────────────────
-        valid = (conf_mod   > min_conf_thr) \
+        thr = np.percentile(conf_mod, 100 * (1 - conf_percentile))
+        valid = (conf_mod   > thr) \
               & static_small \
               & (depth_small > 0)
 
         # Debug prints for 0 correspondences
         print(f"    [Debug View {vname} t={t}] GT valid depth: {np.sum(depth_small > 0)}")
         print(f"    [Debug View {vname} t={t}] Static mask valid: {np.sum(static_small)}")
-        print(f"    [Debug View {vname} t={t}] Conf > thr ({min_conf_thr}): {np.sum(conf_mod > min_conf_thr)} (Max conf: {np.max(conf_mod):.3f})")
+        print(f"    [Debug View {vname} t={t}] Conf > thr ({thr:.3f}): {np.sum(conf_mod > thr)} (Max conf: {np.max(conf_mod):.3f})")
         print(f"    [Debug View {vname} t={t}] Intersection valid: {np.sum(valid)}")
 
         if not np.any(valid):

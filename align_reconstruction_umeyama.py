@@ -5,7 +5,10 @@ import json
 import time
 import numpy as np
 import torch
-import rerun as rr
+try:
+    import rerun as rr
+except ImportError:
+    rr = None
 import glob
 import cv2
 from collections import defaultdict
@@ -38,7 +41,7 @@ from vggt.utils.gt import (
 from eval_config import (
     DATASET_BASE_ROOT, SUBJECT_NAMES, SUBJECT_BY_CODE,
     MODEL_NAME, IMAGE_SIZE, DEVICE, RERUN_ADDR,
-    MIN_CONF_THR, VIEW_CONFIGS, DEFAULT_TARGET_VIEWS, RERUN_EYE_UP
+    CONF_PERCENTILE, VIEW_CONFIGS, DEFAULT_TARGET_VIEWS, RERUN_EYE_UP
 )
 # NOTE: Import rerun logging lazily inside `run_reconstruction` to avoid
 # circular-import issues when other modules import this file.
@@ -90,6 +93,7 @@ def run_reconstruction(
     run_tag="default",
     skip_rerun_init=False,
     skip_existing_frames=True,
+    use_gt_intrinsics=False,
 ):
     rerun_stream = f"vggt_stabilisation_{run_tag}"
     if not skip_rerun_init:
@@ -175,6 +179,102 @@ def run_reconstruction(
             # closed_form_inverse_se3 expects (N, 3, 4) or (N, 4, 4)
             est_c2w = closed_form_inverse_se3(extrinsic.squeeze(0)).cpu().numpy()  # (V, 4, 4)
 
+            # ── [EXPERIMENT] GT Intrinsics Injection ────────────────────────────
+            # Strategy: Instead of just scaling by f_gt/f_est (an approximation),
+            # we do a proper back-projection:
+            #   1. From the model's world_points and predicted w2c pose, recover
+            #      the per-pixel depth in camera space: Z = (R_est @ P_world + t_est)[2]
+            #   2. Back-project the depth through GT intrinsics:
+            #      P_new = Z * K_gt_inv @ [u, v, 1]^T  (in camera space)
+            #   3. Transform back to world space via est c2w:
+            #      P_world_new = R_c2w @ P_new + t_c2w
+            # This correctly handles both focal length and principal point differences.
+            if use_gt_intrinsics:
+                print(f"  [EXP] ── GT Intrinsics Back-Projection: t={t:02d} ──────────────────────")
+                V_inj, H_inj, W_inj = pts3d_all.shape[:3]
+                # Dex-YCB sensor resolution (the resolution at which K_gt is defined)
+                SENSOR_H, SENSOR_W = 480, 640
+
+                for i in range(V_inj):
+                    K_est = intrinsics_est[i]         # (3,3) predicted intrinsics at 518px
+                    f_est_x, f_est_y = K_est[0, 0], K_est[1, 1]
+                    cx_est,  cy_est  = K_est[0, 2], K_est[1, 2]
+
+                    # Load GT intrinsics at native sensor resolution
+                    view_dir_i = os.path.join(dataset_root, view_names[i])
+                    K_gt_native, _ = load_gt_params(view_dir_i)  # (3,3) at 640x480
+
+                    # Scale GT K to model resolution (518x518)
+                    sx = W_inj / SENSOR_W   # e.g. 518/640 = 0.809
+                    sy = H_inj / SENSOR_H   # e.g. 518/480 = 1.079
+                    K_gt_mod = K_gt_native.copy()
+                    K_gt_mod[0, 0] *= sx   # fx
+                    K_gt_mod[1, 1] *= sy   # fy
+                    K_gt_mod[0, 2] *= sx   # cx
+                    K_gt_mod[1, 2] *= sy   # cy
+
+                    f_gt_x, f_gt_y = K_gt_mod[0, 0], K_gt_mod[1, 1]
+                    cx_gt,  cy_gt  = K_gt_mod[0, 2], K_gt_mod[1, 2]
+
+                    print(f"    View {view_names[i]} [{i}]:")
+                    print(f"      EST K  -> fx={f_est_x:.2f}  fy={f_est_y:.2f}  cx={cx_est:.2f}  cy={cy_est:.2f}")
+                    print(f"      GT  K  -> fx={f_gt_x:.2f}  fy={f_gt_y:.2f}  cx={cx_gt:.2f}  cy={cy_gt:.2f}")
+                    print(f"      Scale ratio: sx_sensor={sx:.4f}  sy_sensor={sy:.4f}")
+                    print(f"      Focal ratio: fx_gt/fx_est={f_gt_x/f_est_x:.4f}  fy_gt/fy_est={f_gt_y/f_est_y:.4f}")
+
+                    # Step 1: Transform world_points into estimated camera space
+                    # extrinsics_w2c[i] is (3, 4): [R | t]
+                    R_w2c = extrinsics_w2c[i, :3, :3]  # (3,3)
+                    t_w2c = extrinsics_w2c[i, :3,  3]  # (3,)
+
+                    pts_world = pts3d_all[i].reshape(-1, 3)  # (H*W, 3)
+                    pts_cam   = (pts_world @ R_w2c.T) + t_w2c  # (H*W, 3) in camera space
+
+                    # Step 2: Extract per-pixel depth (Z > 0 is in front of camera)
+                    Z = pts_cam[:, 2]  # (H*W,)
+
+                    # Diagnostic: depth stats before injection
+                    valid_depth = Z > 0
+                    print(f"      Depth (est cam space): min={Z[valid_depth].min():.4f}  "
+                          f"max={Z[valid_depth].max():.4f}  "
+                          f"mean={Z[valid_depth].mean():.4f}  "
+                          f"valid_px={valid_depth.sum():,}/{len(Z):,}")
+
+                    # Step 3: Build pixel grid [u, v] at model resolution
+                    us = np.tile(np.arange(W_inj), H_inj)    # (H*W,)
+                    vs = np.repeat(np.arange(H_inj), W_inj)  # (H*W,)
+
+                    # Step 4: Back-project through GT intrinsics
+                    # X_cam_new = (u - cx_gt) / fx_gt * Z
+                    # Y_cam_new = (v - cy_gt) / fy_gt * Z
+                    # Z_cam_new = Z  (depth is preserved)
+                    X_new = (us - cx_gt) / f_gt_x * Z
+                    Y_new = (vs - cy_gt) / f_gt_y * Z
+                    pts_cam_new = np.stack([X_new, Y_new, Z], axis=-1)  # (H*W, 3)
+
+                    # Step 5: Transform corrected camera-space points back to world space
+                    # c2w = inv(w2c), est_c2w[i] is (4,4)
+                    R_c2w = est_c2w[i, :3, :3]  # (3,3)
+                    t_c2w = est_c2w[i, :3,  3]  # (3,)
+                    pts_world_new = (pts_cam_new @ R_c2w.T) + t_c2w  # (H*W, 3)
+
+                    # Diagnostic: compare old vs new point cloud centroid
+                    old_centroid = pts_world[valid_depth].mean(axis=0)
+                    new_centroid = pts_world_new[valid_depth].mean(axis=0)
+                    print(f"      Centroid (old world): {old_centroid}")
+                    print(f"      Centroid (new world): {new_centroid}")
+                    centroid_shift = np.linalg.norm(new_centroid - old_centroid)
+                    print(f"      Centroid shift (m):   {centroid_shift:.5f}")
+
+                    # Write corrected points back
+                    pts3d_all[i] = pts_world_new.reshape(H_inj, W_inj, 3)
+
+                    # Step 6: Update intrinsics record to GT (for saving/evaluation)
+                    intrinsics_est[i] = K_gt_mod
+                    print(f"      intrinsics_est[{i}] updated to GT K (at model res).")
+
+                print(f"  [EXP] ── Injection complete for t={t:02d} ────────────────────────────")
+
             # ── Full GT ─────────────────────────────────────────────────────────
             gt_pts = build_gt_pointcloud(
                 t, view_names, dataset_root
@@ -188,7 +288,7 @@ def run_reconstruction(
             src_corr, dst_corr = get_static_correspondences(
                 t, view_names, pts3d_all, confs_all, dataset_root,
                 flow_threshold=flow_threshold,
-                min_conf_thr=MIN_CONF_THR
+                conf_percentile=CONF_PERCENTILE
             )
 
             if src_corr is not None and len(src_corr) >= 3:
@@ -218,7 +318,9 @@ def run_reconstruction(
                 # VGGT pointmaps are already (H, W, 3)
                 pts_i = pts3d_all[i].reshape(-1, 3)
                 conf_i = confs_all[i].ravel()
-                conf_ok = conf_i > MIN_CONF_THR
+                # Filter top-K percentile
+                thr = np.percentile(conf_i, 100 * (1 - CONF_PERCENTILE))
+                conf_ok = conf_i > thr
 
                 gt_mask = gt_validity_masks[i]
                 if gt_mask is None:
@@ -338,6 +440,11 @@ def parse_subject_selection_args():
         type=int,
         help="Optional view counts to run (e.g. --views 2 3 4). Defaults to [2,3,4] when multi-view eval is enabled.",
     )
+    parser.add_argument(
+        "--use-gt-intrinsics",
+        action="store_true",
+        help="Experiment: Use Ground Truth intrinsics to rescale VGGT pointmaps and poses.",
+    )
     return parser.parse_args()
 
 
@@ -392,6 +499,7 @@ def main():
                 cache_root=cache_root,
                 flow_threshold=flow_threshold,
                 run_tag=f"{subject_name}_{num_views}views",
+                use_gt_intrinsics=args.use_gt_intrinsics,
             )
 
     print("[done]")

@@ -72,6 +72,11 @@ def _parse_args():
         action="store_true",
         help="Skip Rerun viewer initialization and logging setup.",
     )
+    parser.add_argument(
+        "--use-gt-intrinsics",
+        action="store_true",
+        help="Experiment: Use Ground Truth intrinsics to rescale VGGT pointmaps and poses.",
+    )
     return parser.parse_args()
 
 
@@ -156,19 +161,20 @@ def main():
 
         for nviews in view_counts:
             # Create an independent rerun recording card per (subject, view-count).
-            if not args.no_rerun:
+            if not args.no_rerun and rr is not None:
                 init_recording(code, nviews)
             view_root = f"vggt_{code}_{nviews}views"
 
-            baseline_dir = os.path.join("aligned_outputs", "baseline", subject_full, f"{nviews}views")
-            s1_dir = os.path.join("aligned_outputs", "strategy1", subject_full, f"{nviews}views")
-            s2_dir = os.path.join("aligned_outputs", "strategy2", subject_full, f"{nviews}views")
-            s3_dir = os.path.join("aligned_outputs", "strategy3", subject_full, f"{nviews}views")
+            suffix = "_gt_focal" if args.use_gt_intrinsics else ""
+            baseline_dir = os.path.join("aligned_outputs", f"baseline{suffix}", subject_full, f"{nviews}views")
+            s1_dir = os.path.join("aligned_outputs", f"strategy1{suffix}", subject_full, f"{nviews}views")
+            s2_dir = os.path.join("aligned_outputs", f"strategy2{suffix}", subject_full, f"{nviews}views")
+            s3_dir = os.path.join("aligned_outputs", f"strategy3{suffix}", subject_full, f"{nviews}views")
 
             for d in (baseline_dir, s1_dir, s2_dir, s3_dir):
                 os.makedirs(d, exist_ok=True)
 
-            if not args.no_rerun:
+            if not args.no_rerun and rr is not None:
                 configure_rerun_view_defaults(view_root, RERUN_EYE_UP)
 
             frame_paths = []
@@ -186,6 +192,7 @@ def main():
                     flow_threshold=1.0,
                     run_tag=run_tag,
                     skip_rerun_init=True,
+                    use_gt_intrinsics=args.use_gt_intrinsics,
                 )
 
             frame_paths = _sorted_frame_paths(baseline_dir)

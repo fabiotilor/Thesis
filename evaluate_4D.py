@@ -229,9 +229,10 @@ def main():
     subjects = selected if not args.all else [s.split("-subject-")[1][:2] for s in SUBJECT_NAMES]
     if not subjects: subjects = ["01"]  # Default
 
-    method_roots = ["baseline", "strategy1", "strategy2", "strategy3"]
+    method_roots = ["baseline", "strategy1", "strategy2", "strategy3",
+                    "baseline_gt_focal", "strategy1_gt_focal", "strategy2_gt_focal", "strategy3_gt_focal"]
     if args.pgo:
-        method_roots = ["strategy3"]
+        method_roots = ["strategy3", "strategy3_gt_focal"]
 
     view_set = set(args.views) if args.views else None
 
