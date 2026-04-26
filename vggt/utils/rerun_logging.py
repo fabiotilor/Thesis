@@ -3,11 +3,12 @@ import cv2
 import numpy as np
 import rerun as rr
 import rerun.blueprint as rrb
+import time
 
 from .gt import load_gt_params, build_gt_validity_masks
 from .camera_utils import discover_view_name
 from .umeyama_alignment import apply_similarity_transform
-from eval_config import CONF_PERCENTILE
+from eval_config import CONF_PERCENTILE, RERUN_EYE_UP, RERUN_ADDR
 
 _RAW_COLOURS = [
     [255, 128, 0],  # orange
@@ -34,11 +35,30 @@ def init_recording(subject_code: str, n_views: int) -> None:
     """
     application_id = f"vggt_{subject_code}_{n_views}views"
     try:
-        from eval_config import RERUN_ADDR
         rr.init(application_id, spawn=False)
         rr.connect_grpc(RERUN_ADDR)
     except Exception as e:
         print(f"  [WARN] Failed to connect to Rerun: {e}")
+
+
+def initialize_rerun_session(app_id, rerun_addr, log_root):
+    """
+    Initialize rerun with robust fallback:
+    1) try external rerun server (grpc),
+    2) if unavailable, spawn local viewer.
+    """
+    try:
+        rr.init(app_id, spawn=False)
+        rr.connect_grpc(rerun_addr)
+        print(f"  [RERUN] Connected to existing viewer at {rerun_addr}")
+    except Exception as e:
+        print(f"  [RERUN][WARN] Could not connect to {rerun_addr}: {e}")
+        print("  [RERUN] Spawning local viewer instead...")
+        rr.init(app_id, spawn=True)
+
+    rr.log(log_root, rr.ViewCoordinates.RIGHT_HAND_Y_UP, static=True)
+    time.sleep(0.01)
+    configure_rerun_view_defaults(log_root, RERUN_EYE_UP)
 
 
 def configure_rerun_view_defaults(log_root, eye_up):

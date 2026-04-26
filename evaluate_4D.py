@@ -61,6 +61,7 @@ from eval_config import (
     SUBJECT_BY_CODE,
     DATASET_BASE_ROOT,
     CONF_PERCENTILE,
+    RERUN_ADDR,
 )
 
 
@@ -395,7 +396,8 @@ def evaluate_multi_strategy(baseline_dir, dataset_root, view_label, subject_full
             static = m_2d[v].ravel() if m_2d.ndim == 3 else m_2d.ravel()
             src, dst = get_single_view_correspondences(
                 t_idx, view_names[v], pm[v], conf[v], dataset_root,
-                static_mask=static, conf_percentile=CONF_PERCENTILE
+                static_mask=static, conf_percentile=CONF_PERCENTILE,
+                use_static_mask=False
             )
             if src is not None and len(src) > 0:
                 all_src.append(src)

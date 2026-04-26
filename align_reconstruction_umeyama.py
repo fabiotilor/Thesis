@@ -174,6 +174,7 @@ def run_all_at_once_pipeline(
                 dataset_root,
                 static_mask=static,
                 conf_percentile=CONF_PERCENTILE,
+                use_static_mask=False,
             )
             if src is not None and len(src) > 0:
                 all_src.append(src)

@@ -40,7 +40,7 @@ def normalize_array(arr, V, H, W, is_mask=False):
     return arr
 
 
-def extract_clean_gt_correspondences(data, dataset_root, n_samples=2000):
+def extract_clean_gt_correspondences(data, dataset_root, n_samples=2000, use_static_mask=True):
     """
     Implements the robust GT projection logic from align_reconstruction_umeyama.py.
     Matches pointmap pixels to GT back-projected world points using scaled intrinsics.
@@ -83,8 +83,10 @@ def extract_clean_gt_correspondences(data, dataset_root, n_samples=2000):
         # Downsample GT depth to model resolution
         d_mod_gt = cv2.resize(d_img_gt, (W_mod, H_mod), interpolation=cv2.INTER_NEAREST)
 
-        # Build total mask for this view (STATIC ONLY)
-        valid = (d_mod_gt > 0) & m_static[v] & vmasks[v]
+        # Build total mask for this view
+        valid = (d_mod_gt > 0) & vmasks[v]
+        if use_static_mask:
+            valid &= m_static[v]
         if conf_est is not None:
             valid &= (conf_est[v] > frame_thr)
 
@@ -360,10 +362,10 @@ def strategy3_pgo(frame_npz_paths, dataset_root, num_iters=50):
     return [(val[0], val[1], val[2]) for val in T_global]
 
 
-def solve_final_gt_registration(frame_npz_paths, frame_transforms, dataset_root):
+def solve_final_gt_registration(frame_npz_paths, frame_transforms, dataset_root, use_static_mask=True):
     all_src, all_dst = [], []
     for i, path in enumerate(frame_npz_paths):
-        res = extract_clean_gt_correspondences(np.load(path), dataset_root)
+        res = extract_clean_gt_correspondences(np.load(path), dataset_root, use_static_mask=use_static_mask)
         if res is None: continue
         src, dst = res
         # Apply inter-frame transform to bring to unified space

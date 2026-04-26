@@ -2,7 +2,7 @@ import os
 import torch
 
 # ── Paths ─────────────────────────────────────────────────────────────────────
-DATASET_BASE_ROOT = "/local/home/frrajic/xode/fabio/datasets/dex-ycb-multiview"
+DATASET_BASE_ROOT = "/home/fabio/datasets/dex-ycb-multiview" #/local/home/frrajic/xode/fabio/datasets/dex-ycb-multiview
 
 SUBJECT_NAMES = [
     "20200709-subject-01__20200709_141754",

@@ -36,28 +36,9 @@ from vggt.utils.rerun_logging import (
     log_cameras_rerun,
     log_gt_sequence,
     log_aligned_sequence,
-    log_pointcloud
+    log_pointcloud,
+    initialize_rerun_session,
 )
-
-
-def initialize_rerun_session(app_id, rerun_addr, log_root):
-    """
-    Initialize rerun with robust fallback:
-    1) try external rerun server (grpc),
-    2) if unavailable, spawn local viewer.
-    """
-    try:
-        rr.init(app_id, spawn=False)
-        rr.connect_grpc(rerun_addr)
-        print(f"  [RERUN] Connected to existing viewer at {rerun_addr}")
-    except Exception as e:
-        print(f"  [RERUN][WARN] Could not connect to {rerun_addr}: {e}")
-        print("  [RERUN] Spawning local viewer instead...")
-        rr.init(app_id, spawn=True)
-
-    rr.log(log_root, rr.ViewCoordinates.RIGHT_HAND_Y_UP, static=True)
-    time.sleep(0.01)
-    configure_rerun_view_defaults(log_root, RERUN_EYE_UP)
 
 
 def save_aligned_results(
@@ -224,7 +205,7 @@ def evaluate_subject(subject_name, selected_views=None, pgo_only=False):
             print(f"\n--- [Strategy 1] Reference Frame Alignment ({vdir}) ---")
             start_s1 = time.perf_counter()
             tf_s1 = strategy1_reference(paths, dataset_root)
-            s_g1, R_g1, tr_g1 = solve_final_gt_registration(paths, tf_s1, dataset_root)
+            s_g1, R_g1, tr_g1 = solve_final_gt_registration(paths, tf_s1, dataset_root, use_static_mask=False)
 
             strat1_label = f"Strategy_1_{vdir}"
             save_aligned_results(paths, tf_s1, s_g1, R_g1, tr_g1, subject_name, strat1_label, dataset_root)
@@ -241,7 +222,7 @@ def evaluate_subject(subject_name, selected_views=None, pgo_only=False):
             print(f"\n--- [Strategy 2] Hierarchical Alignment ({vdir}) ---")
             start_s2 = time.perf_counter()
             tf_s2 = strategy2_hierarchical(paths, dataset_root)
-            s_g2, R_g2, tr_g2 = solve_final_gt_registration(paths, tf_s2, dataset_root)
+            s_g2, R_g2, tr_g2 = solve_final_gt_registration(paths, tf_s2, dataset_root, use_static_mask=False)
 
             strat2_label = f"Strategy_2_{vdir}"
             save_aligned_results(paths, tf_s2, s_g2, R_g2, tr_g2, subject_name, strat2_label, dataset_root)
@@ -258,7 +239,7 @@ def evaluate_subject(subject_name, selected_views=None, pgo_only=False):
         print(f"\n--- [Strategy 3] Pose Graph Optimization ({vdir}) ---")
         start_s3 = time.perf_counter()
         tf_s3 = strategy3_pgo(paths, dataset_root, num_iters=50)
-        s_g3, R_g3, tr_g3 = solve_final_gt_registration(paths, tf_s3, dataset_root)
+        s_g3, R_g3, tr_g3 = solve_final_gt_registration(paths, tf_s3, dataset_root, use_static_mask=False)
 
         strat3_label = f"Strategy_3_{vdir}"
         save_aligned_results(paths, tf_s3, s_g3, R_g3, tr_g3, subject_name, strat3_label, dataset_root)
