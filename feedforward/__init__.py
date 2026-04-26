@@ -1,24 +1,26 @@
-
 import torch
 from utils.geometry import unproject_depth_map_to_point_map_torch, closed_form_inverse_se3
 from PIL import Image
 import numpy as np
-import sys 
+import sys
+import os
+
 
 def preprocess(images, output_width=518):
     # Used to reproduce the submitted results
-    if isinstance(images, torch.Tensor)==False:
+    if isinstance(images, torch.Tensor) == False:
         # first convert to torch tensor 
-        images = torch.from_numpy(np.stack(images, axis=0)).float()/255.0
+        images = torch.from_numpy(np.stack(images, axis=0)).float() / 255.0
     _, original_height, original_width, _ = images.shape
-    if original_width==output_width and original_height%14==0:
+    if original_width == output_width and original_height % 14 == 0:
         return images
-    if original_width<original_height:
-        images = images.permute(0,2,1,3)  #(N,H,W,C)
+    if original_width < original_height:
+        images = images.permute(0, 2, 1, 3)  # (N,H,W,C)
         original_width, original_height = original_height, original_width
-    output_height = round(output_width*original_height/original_width/14)*14
-    images_ff = torch.nn.functional.interpolate(images.permute(0,3,1,2), size=(output_height, output_width), mode='bilinear', align_corners=False)
-    images_ff = images_ff.permute(0,2,3,1)  #(N,H,W,C)
+    output_height = round(output_width * original_height / original_width / 14) * 14
+    images_ff = torch.nn.functional.interpolate(images.permute(0, 3, 1, 2), size=(output_height, output_width),
+                                                mode='bilinear', align_corners=False)
+    images_ff = images_ff.permute(0, 2, 3, 1)  # (N,H,W,C)
     return images_ff
 
 
@@ -31,7 +33,9 @@ class FeedForward_Model(torch.nn.Module):
                 self.vggt_branch = 'point'
             else:
                 self.vggt_branch = 'depth'
-            sys.path.append('vggt') #Or replace with the path to your vggt folder
+            vggt_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'models', 'vggt')
+            if vggt_path not in sys.path:
+                sys.path.insert(0, vggt_path)
             from vggt.models.vggt import VGGT
             '''
             self.model = VGGT(enable_point=(self.vggt_branch=='point'), enable_track=False, enable_depth=(self.vggt_branch=='depth'), enable_camera=True)
@@ -57,9 +61,6 @@ class FeedForward_Model(torch.nn.Module):
         else:
             raise NotImplementedError(f"Model {self.configs.model} not implemented in FeedForward_Model.")
         self.model.eval()
-    
-
-
 
     def forward(self, images, preprocessed=False, gt_dict=None):
         output_dict = {}
@@ -70,138 +71,146 @@ class FeedForward_Model(torch.nn.Module):
         if 'vggt' in self.configs.model:
             dtype = torch.bfloat16 if torch.cuda.get_device_capability()[0] >= 8 else torch.float16
             with torch.autocast(device_type='cuda', dtype=dtype):
-                raw_outputs = self.model(images_ff.permute(0,3,1,2))  #(N,3,H,W)
+                raw_outputs = self.model(images_ff.permute(0, 3, 1, 2))  # (N,3,H,W)
             from vggt.utils.pose_enc import pose_encoding_to_extri_intri
-            output_dict['extrinsics'], output_dict['intrinsics'] = pose_encoding_to_extri_intri(raw_outputs['pose_enc'], images_ff.shape[1:3])
-            output_dict['extrinsics'], output_dict['intrinsics'] = output_dict['extrinsics'][0], output_dict['intrinsics'][0] #squeeze the batch=1 dimension
+            output_dict['extrinsics'], output_dict['intrinsics'] = pose_encoding_to_extri_intri(raw_outputs['pose_enc'],
+                                                                                                images_ff.shape[1:3])
+            output_dict['extrinsics'], output_dict['intrinsics'] = output_dict['extrinsics'][0], \
+            output_dict['intrinsics'][0]  # squeeze the batch=1 dimension
             if 'depth' in self.configs.model:
-                B,N,H,W,D = raw_outputs['depth'].shape
+                B, N, H, W, D = raw_outputs['depth'].shape
                 output_dict['points'] = unproject_depth_map_to_point_map_torch(
-                        depth_map=raw_outputs['depth'].view(B*N,H,W),
-                        extrinsics_cam=output_dict['extrinsics'].view(B*N,3,4),
-                        intrinsics_cam=output_dict['intrinsics'].view(B*N,3,3)).view(B,N,H,W,3)[0]
-                output_dict['points_conf'] = raw_outputs['depth_conf'][0] #squeeze the batch=1 dimension
+                    depth_map=raw_outputs['depth'].view(B * N, H, W),
+                    extrinsics_cam=output_dict['extrinsics'].view(B * N, 3, 4),
+                    intrinsics_cam=output_dict['intrinsics'].view(B * N, 3, 3)).view(B, N, H, W, 3)[0]
+                output_dict['points_conf'] = raw_outputs['depth_conf'][0]  # squeeze the batch=1 dimension
             else:
-                output_dict['points'] = raw_outputs['world_points'][0]  #(N,H,W,3)
-                output_dict['points_conf'] = raw_outputs['world_points_conf'][0]  #(N,H,W)
+                output_dict['points'] = raw_outputs['world_points'][0]  # (N,H,W,3)
+                output_dict['points_conf'] = raw_outputs['world_points_conf'][0]  # (N,H,W)
         elif self.configs.model == 'dav3':
             if self.configs.dav3.get('input_pose', False):
                 input_intrinsics = gt_dict['intrinsics'].clone()
-                input_intrinsics[...,1,2] = input_intrinsics[...,1,2] + 0.5
-                input_intrinsics[...,0,2] = input_intrinsics[...,0,2] + 0.5
-                input_extrinsics = torch.eye(4,device=device)[None,:,:].repeat(images_ff.shape[0],1,1).to(device)
-                input_extrinsics[:,:3,:4] = gt_dict['extrinsics'].clone()
+                input_intrinsics[..., 1, 2] = input_intrinsics[..., 1, 2] + 0.5
+                input_intrinsics[..., 0, 2] = input_intrinsics[..., 0, 2] + 0.5
+                input_extrinsics = torch.eye(4, device=device)[None, :, :].repeat(images_ff.shape[0], 1, 1).to(device)
+                input_extrinsics[:, :3, :4] = gt_dict['extrinsics'].clone()
             else:
                 input_intrinsics = None
                 input_extrinsics = None
             dav3_results = self.model.inference(
-                image=images_ff.permute(0,3,1,2).unsqueeze(0),
+                image=images_ff.permute(0, 3, 1, 2).unsqueeze(0),
                 intrinsics=input_intrinsics,
-                extrinsics=input_extrinsics) # 1, N, C, H, W
+                extrinsics=input_extrinsics)  # 1, N, C, H, W
 
             H, W = images_ff.shape[1:3]
 
             output_dict['extrinsics'] = dav3_results['extrinsics'][0].float()
             output_dict['intrinsics'] = dav3_results['intrinsics'][0].float().clone()
-            #Convert to opencv convention (cx = W-1/2, cy=H/2)
-            output_dict['intrinsics'][...,1,2] = output_dict['intrinsics'][...,1,2] - 0.5
-            output_dict['intrinsics'][...,0,2] = output_dict['intrinsics'][...,0,2] - 0.5
+            # Convert to opencv convention (cx = W-1/2, cy=H/2)
+            output_dict['intrinsics'][..., 1, 2] = output_dict['intrinsics'][..., 1, 2] - 0.5
+            output_dict['intrinsics'][..., 0, 2] = output_dict['intrinsics'][..., 0, 2] - 0.5
             output_dict['points'] = unproject_depth_map_to_point_map_torch(
-                depth_map=dav3_results.depth.view(-1,H,W),
-                extrinsics_cam=output_dict['extrinsics'][...,:3,:].view(-1,3,4),
-                intrinsics_cam=output_dict['intrinsics'].view(-1,3,3))
-            output_dict['points_conf'] = dav3_results['depth_conf'].view(-1,H,W)
+                depth_map=dav3_results.depth.view(-1, H, W),
+                extrinsics_cam=output_dict['extrinsics'][..., :3, :].view(-1, 3, 4),
+                intrinsics_cam=output_dict['intrinsics'].view(-1, 3, 3))
+            output_dict['points_conf'] = dav3_results['depth_conf'].view(-1, H, W)
         elif self.configs.model in ['pi3', 'pi3x']:
             dtype = torch.bfloat16 if torch.cuda.get_device_capability()[0] >= 8 else torch.float16
             if self.configs.model == 'pi3x':
                 if self.configs.pi3x.get('input_intrinsics', False):
                     input_intrinsics = gt_dict['intrinsics'].clone()
-                    input_intrinsics[...,1,2] = input_intrinsics[...,1,2] + 0.5
-                    input_intrinsics[...,0,2] = input_intrinsics[...,0,2] + 0.5 #Not sure here. But I guess it follows colmap-convention?
+                    input_intrinsics[..., 1, 2] = input_intrinsics[..., 1, 2] + 0.5
+                    input_intrinsics[..., 0, 2] = input_intrinsics[
+                                                      ..., 0, 2] + 0.5  # Not sure here. But I guess it follows colmap-convention?
                     input_intrinsics = input_intrinsics.unsqueeze(0)
                 else:
                     input_intrinsics = None
 
                 if self.configs.pi3x.get('input_extrinsics', False):
-                    input_extrinsics = torch.eye(4,device=device)[None,:,:].repeat(images_ff.shape[0],1,1).to(device)
-                    input_extrinsics[:,:3,:4] = closed_form_inverse_se3(gt_dict['extrinsics'].clone())[:,:3,:4] #opencv c2w
+                    input_extrinsics = torch.eye(4, device=device)[None, :, :].repeat(images_ff.shape[0], 1, 1).to(
+                        device)
+                    input_extrinsics[:, :3, :4] = closed_form_inverse_se3(gt_dict['extrinsics'].clone())[
+                        :, :3, :4]  # opencv c2w
                     input_extrinsics = input_extrinsics.unsqueeze(0)
                 else:
                     input_extrinsics = None
-                #TODO accept partial depth
+                # TODO accept partial depth
                 with torch.no_grad():
-                        with torch.amp.autocast('cuda', dtype=dtype):
-                            res = self.model(
-                                imgs=images_ff.permute(0,3,1,2).unsqueeze(0), #B, N, C, H, W [0,1]
-                                intrinsics=input_intrinsics,
-                                poses=input_extrinsics,
-                            )
-            
+                    with torch.amp.autocast('cuda', dtype=dtype):
+                        res = self.model(
+                            imgs=images_ff.permute(0, 3, 1, 2).unsqueeze(0),  # B, N, C, H, W [0,1]
+                            intrinsics=input_intrinsics,
+                            poses=input_extrinsics,
+                        )
+
             else:
                 with torch.no_grad():
                     with torch.amp.autocast('cuda', dtype=dtype):
-                        res = self.model(images_ff.permute(0,3,1,2).unsqueeze(0))
+                        res = self.model(images_ff.permute(0, 3, 1, 2).unsqueeze(0))
             from MoGe.moge.utils.geometry_torch import recover_focal_shift
             hh, ww = res['local_points'].shape[-3:-1]
             aspect_ratio = ww / hh
-            focal, shift = recover_focal_shift(points=res['local_points'], mask = torch.sigmoid(res['conf'][..., 0])>0.1)
-            f = (focal/2*(1+aspect_ratio**2)**0.5)*hh
-            intrinsics = torch.eye(3,device=device)[None,:,:].repeat(res['camera_poses'].shape[1],1,1)
-            intrinsics[:,0,0] = f[0]
-            intrinsics[:,1,1] = f[0] #squeeze the batch=1 dimension
-            intrinsics[:,0,2] = (ww-1)/2 
-            intrinsics[:,1,2] = (hh-1)/2
+            focal, shift = recover_focal_shift(points=res['local_points'],
+                                               mask=torch.sigmoid(res['conf'][..., 0]) > 0.1)
+            f = (focal / 2 * (1 + aspect_ratio ** 2) ** 0.5) * hh
+            intrinsics = torch.eye(3, device=device)[None, :, :].repeat(res['camera_poses'].shape[1], 1, 1)
+            intrinsics[:, 0, 0] = f[0]
+            intrinsics[:, 1, 1] = f[0]  # squeeze the batch=1 dimension
+            intrinsics[:, 0, 2] = (ww - 1) / 2
+            intrinsics[:, 1, 2] = (hh - 1) / 2
             bb, nn = res['camera_poses'].shape[:2]
-            extrinsics = closed_form_inverse_se3(res['camera_poses'].view(-1,4,4)).view(*res['camera_poses'].shape)
+            extrinsics = closed_form_inverse_se3(res['camera_poses'].view(-1, 4, 4)).view(*res['camera_poses'].shape)
             output_dict['extrinsics'] = extrinsics[0]
             output_dict['intrinsics'] = intrinsics
-            output_dict['points'] =  res['points'][0]
-            output_dict['points_conf'] = res['conf'][0,...,0].exp()+1     
+            output_dict['points'] = res['points'][0]
+            output_dict['points_conf'] = res['conf'][0, ..., 0].exp() + 1
         elif self.configs.model == 'ma':
             from uniception.models.encoders.image_normalizations import IMAGE_NORMALIZATION_DICT
             import torchvision.transforms as tvf
             img_norm = IMAGE_NORMALIZATION_DICT['dinov2']
             N, H, W, C = images_ff.shape
-            MA_RESOLUTION_LIST = [ #(w,h)
-                    (518, 518),  # 1:1
-                    (518, 392),  # 4:3
-                    (518, 336),  # 3:2
-                    (518, 294),  # 16:9
-                    (518, 252),  # 2:1
-                    (518, 168),  # 3.2:1
-                    (392, 518),  # 3:4
-                    (336, 518),  # 2:3
-                    (294, 518),  # 9:16
-                    (252, 518),  # 1:2
+            MA_RESOLUTION_LIST = [  # (w,h)
+                (518, 518),  # 1:1
+                (518, 392),  # 4:3
+                (518, 336),  # 3:2
+                (518, 294),  # 16:9
+                (518, 252),  # 2:1
+                (518, 168),  # 3.2:1
+                (392, 518),  # 3:4
+                (336, 518),  # 2:3
+                (294, 518),  # 9:16
+                (252, 518),  # 1:2
 
             ]
-            assert (W,H) in MA_RESOLUTION_LIST, f'mapanything only supports {MA_RESOLUTION_LIST} now, but got {(W,H)}'
-            images_ff = tvf.functional.normalize(images_ff.permute(0,3,1,2), mean=img_norm.mean, std=img_norm.std).reshape(1,N,C,H,W)
-            input_list = [dict(img=images[:,ii], true_shape=np.int32([[H,W]]), idx=ii, instance=str(ii), data_norm_type=['dinov2']) for ii in range(N)]
-            #add multi-modality 
+            assert (W, H) in MA_RESOLUTION_LIST, f'mapanything only supports {MA_RESOLUTION_LIST} now, but got {(W, H)}'
+            images_ff = tvf.functional.normalize(images_ff.permute(0, 3, 1, 2), mean=img_norm.mean,
+                                                 std=img_norm.std).reshape(1, N, C, H, W)
+            input_list = [dict(img=images[:, ii], true_shape=np.int32([[H, W]]), idx=ii, instance=str(ii),
+                               data_norm_type=['dinov2']) for ii in range(N)]
+            # add multi-modality
             ma_results = self.model.infer(
                 train_mode=False,
                 views=input_list,
-                memory_efficient_inference=False, # Trades off speed for more views (up to 2000 views on 140 GB)
-                use_amp=True,                     # Use mixed precision inference (recommended)
-                amp_dtype="bf16",                # bf16 inference (recommended; falls back to fp16 if bf16 not supported)
-                apply_mask=False,              # Apply masking to dense geometry outputs (We set to False!)
-                mask_edges=False,       # Remove edge artifacts by using normals and depth (We set to False!)
-                apply_confidence_mask=True,      # Filter low-confidence regions
-                confidence_percentile=10,         # Remove bottom 10 percentile confidence pixels (Useless?)
+                memory_efficient_inference=False,  # Trades off speed for more views (up to 2000 views on 140 GB)
+                use_amp=True,  # Use mixed precision inference (recommended)
+                amp_dtype="bf16",  # bf16 inference (recommended; falls back to fp16 if bf16 not supported)
+                apply_mask=False,  # Apply masking to dense geometry outputs (We set to False!)
+                mask_edges=False,  # Remove edge artifacts by using normals and depth (We set to False!)
+                apply_confidence_mask=True,  # Filter low-confidence regions
+                confidence_percentile=10,  # Remove bottom 10 percentile confidence pixels (Useless?)
             )
             output_dict['intrinsics'] = []
             output_dict['extrinsics'] = []
             output_dict['points'] = []
             output_dict['points_conf'] = []
             for i, pred in enumerate(ma_results):
-                cam2world = pred["camera_poses"] #1,4,4
+                cam2world = pred["camera_poses"]  # 1,4,4
                 output_dict['extrinsics'].append(closed_form_inverse_se3(cam2world))
                 output_dict['intrinsics'].append(pred["intrinsics"])
-                output_dict['points'].append(pred["pts3d"]) #1,H,W,3
+                output_dict['points'].append(pred["pts3d"])  # 1,H,W,3
                 output_dict['points_conf'].append(pred["conf"])
-            output_dict = {k:torch.stack(v, axis=1).squeeze(0) for k,v in output_dict.items()}
+            output_dict = {k: torch.stack(v, axis=1).squeeze(0) for k, v in output_dict.items()}
         else:
             raise NotImplementedError(f"Model {self.configs.model} not implemented in FeedForward_Model.")
-        
+
         return output_dict
