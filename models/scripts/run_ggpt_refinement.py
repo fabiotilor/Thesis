@@ -85,6 +85,11 @@ def main():
             in_dir = os.path.join(GGPT_INPUTS_ROOT, args.model, subject, f"{nviews}views")
             out_dir = os.path.join(GGPT_INPUTS_ROOT, out_model_name, subject, f"{nviews}views")
 
+            if 'mast3r' in args.model:
+                os.environ['SKIP_GGPT_PREALIGN'] = '1'
+            else:
+                os.environ['SKIP_GGPT_PREALIGN'] = '0'
+
             if not os.path.exists(in_dir):
                 print(f"WARNING: No input directory {in_dir}")
                 continue
@@ -119,15 +124,20 @@ def main():
 
                 demo_dataset = DemoDataset(name='demo', ff_data=ff_data, geo_data=geo_data)
                 scene_chunks, scene = demo_dataset[0]
-                chunks_batch = [[chunk] for chunk in scene_chunks]
+                # Process all chunks in a single batch to speed up refinement
+                chunks_batch = move_to_device(scene_chunks, DEVICE)
+                with torch.no_grad():
+                    out = ggpt_model(chunks_batch)
 
+                # Unnormalize and collect
                 to_collect = {'ff_pts': [], 'ff_pts_conf': []}
-                for chunk_batch in chunks_batch:
-                    chunk_batch = move_to_device(chunk_batch, DEVICE)
-                    with torch.no_grad():
-                        out = ggpt_model(chunk_batch)
-                    to_collect['ff_pts'].append(demo_dataset.unnormalize_pts(chunk_batch[0], out['ff_pts_out']))
-                    to_collect['ff_pts_conf'].append(out['ff_pts_conf_out'])
+                for i in range(len(scene_chunks)):
+                    # Extract the individual chunk's output from the batch
+                    chunk_out_pts = out['ff_pts_out'][i]
+                    chunk_out_conf = out['ff_pts_conf_out'][i]
+
+                    to_collect['ff_pts'].append(demo_dataset.unnormalize_pts(scene_chunks[i], chunk_out_pts))
+                    to_collect['ff_pts_conf'].append(chunk_out_conf)
 
                 ff_pts_all = torch.cat(to_collect['ff_pts'], dim=0)
                 ff_pts_conf_all = torch.cat(to_collect['ff_pts_conf'], dim=0)

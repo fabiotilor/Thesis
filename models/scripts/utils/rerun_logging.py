@@ -3,6 +3,7 @@ import cv2
 import numpy as np
 import rerun as rr
 import rerun.blueprint as rrb
+import time
 
 from .gt import load_gt_params, build_gt_validity_masks
 from .camera_utils import discover_view_name
@@ -15,6 +16,14 @@ def init_recording(subject_code: str, n_views: int) -> None:
     Initialise a fresh Rerun recording for one (subject, view-count) pair.
     """
     application_id = f"vggt_{subject_code}_{n_views}views"
+
+    # Aggressively try to clear previous state
+    try:
+        rr.disconnect()
+        time.sleep(0.5)  # Give gRPC time to settle
+    except:
+        pass
+
     rr.init(application_id, spawn=False)
     try:
         from eval_config import RERUN_ADDR
@@ -61,6 +70,8 @@ def configure_rerun_view_defaults(log_root, eye_up):
     for blueprint in blueprint_variants:
         try:
             rr.send_blueprint(blueprint)
+            # Ensure the root exists
+            rr.log(log_root, rr.ViewCoordinates.RIGHT_HAND_Y_UP, static=True)
             return
         except Exception:
             continue
@@ -103,14 +114,12 @@ def log_cameras_rerun(t, view_names, dataset_root, log_root):
             print(f"  [WARN] Image not found for {vname} at t={t}")
 
 
-def log_pointcloud(t, entity, positions, color=None, radii=0.002, max_points=50000):
-    """Basic reusable pointcloud logger."""
+def log_pointcloud(t, entity, positions, color=None, radii=0.002, max_points=25000):
+    """Basic reusable pointcloud logger. Lowered max_points to 25k to reduce channel load."""
     rr.set_time("frame", sequence=t)
     if len(positions) > max_points:
         idx = np.random.choice(len(positions), max_points, replace=False)
         positions = positions[idx]
-        if color is not None and isinstance(color, np.ndarray) and len(color) == len(positions):
-            pass  # Handle per-point colors if we ever use them
     kwargs = {"positions": positions, "radii": radii}
     if color is not None:
         kwargs["colors"] = color
@@ -125,6 +134,9 @@ def log_alignment_results(t, gt_pts, aligned_pts, refined_pts=None, log_root="wo
         log_pointcloud(t, f"{log_root}/baseline/pointcloud", aligned_pts, color=[0, 0, 255])
     if refined_pts is not None:
         log_pointcloud(t, f"{log_root}/estimated/stabilised", refined_pts, color=[255, 0, 255])
+
+    # Moderate sleep to prevent backpressure
+    time.sleep(0.01)
 
 
 def log_gt_sequence(paths, dataset_root, log_root="4d_eval"):
@@ -174,6 +186,9 @@ def log_gt_sequence(paths, dataset_root, log_root="4d_eval"):
                     gt_static = gt_static / 1000.0
                 log_pointcloud(t, entity_static, gt_static, color=[255, 165, 0])
 
+        # Moderate sleep
+        time.sleep(0.01)
+
 
 def log_aligned_sequence(paths, frame_transforms, s_glob, R_glob, tr_glob, label, color, dataset_root,
                          log_root="4d_eval"):
@@ -220,3 +235,6 @@ def log_aligned_sequence(paths, frame_transforms, s_glob, R_glob, tr_glob, label
         if all_pts_final:
             merged_pts = np.concatenate(all_pts_final, axis=0)
             log_pointcloud(t, f"{entity_root}/pointcloud", merged_pts, color=color)
+
+        # Moderate sleep to prevent backpressure
+        time.sleep(0.02)

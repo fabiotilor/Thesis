@@ -173,7 +173,7 @@ def save_aligned_results(
             }
 
             out_path = os.path.join(out_dir, f"frame_{t:04d}.npz")
-            np.savez_compressed(out_path, **save_dict)
+            np.savez(out_path, **save_dict)
         except Exception as e:
             print(f"    [ERROR] Strategy save failed for frame={i} ({path}): {e}")
             continue

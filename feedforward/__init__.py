@@ -9,7 +9,7 @@ import os
 def preprocess(images, output_width=518):
     # Used to reproduce the submitted results
     if isinstance(images, torch.Tensor) == False:
-        # first convert to torch tensor 
+        # first convert to torch tensor
         images = torch.from_numpy(np.stack(images, axis=0)).float() / 255.0
     _, original_height, original_width, _ = images.shape
     if original_width == output_width and original_height % 14 == 0:
@@ -58,6 +58,36 @@ class FeedForward_Model(torch.nn.Module):
         elif self.configs.model == 'ma':
             from mapanything.models import MapAnything
             self.model = MapAnything.from_pretrained("facebook/map-anything")
+        elif self.configs.model == 'mast3r':
+            mast3r_path = '/home/fabio/mast3r'
+            # Robust path discovery for remote execution
+            potential_paths = [mast3r_path]
+            # Try to find dust3r and croco submodules
+            for root in [mast3r_path]:
+                d_path = os.path.join(root, 'dust3r')
+                if os.path.isdir(d_path):
+                    potential_paths.append(d_path)
+                    potential_paths.append(os.path.join(d_path, 'dust3r'))  # some structures have nested pkg
+                    potential_paths.append(os.path.join(d_path, 'croco'))
+
+            for p in potential_paths:
+                if os.path.isdir(p) and p not in sys.path:
+                    sys.path.insert(0, p)
+
+            # Shadowing fix: Force 'models' to point to croco/models
+            croco_path = os.path.join(mast3r_path, 'dust3r', 'croco')
+            import types
+            m = types.ModuleType('models')
+            m.__path__ = [os.path.join(croco_path, 'models')]
+            old_models = sys.modules.get('models')
+            sys.modules['models'] = m
+
+            try:
+                from mast3r.model import AsymmetricMASt3R
+                self.model = AsymmetricMASt3R.from_pretrained("naver/MASt3R_ViTLarge_BaseDecoder_512_catmlpdpt_metric")
+            finally:
+                if old_models:
+                    sys.modules['models'] = old_models
         else:
             raise NotImplementedError(f"Model {self.configs.model} not implemented in FeedForward_Model.")
         self.model.eval()
@@ -210,6 +240,110 @@ class FeedForward_Model(torch.nn.Module):
                 output_dict['points'].append(pred["pts3d"])  # 1,H,W,3
                 output_dict['points_conf'].append(pred["conf"])
             output_dict = {k: torch.stack(v, axis=1).squeeze(0) for k, v in output_dict.items()}
+        elif self.configs.model == 'mast3r':
+            mast3r_path = '/home/fabio/mast3r'
+            potential_paths = [mast3r_path]
+            for root in [mast3r_path]:
+                d_path = os.path.join(root, 'dust3r')
+                if os.path.isdir(d_path):
+                    potential_paths.append(d_path)
+                    potential_paths.append(os.path.join(d_path, 'dust3r'))
+                    potential_paths.append(os.path.join(d_path, 'croco'))
+
+            for p in potential_paths:
+                if os.path.isdir(p) and p not in sys.path:
+                    sys.path.insert(0, p)
+
+            # Shadowing fix: Force 'models' to point to croco/models
+            croco_path = os.path.join(mast3r_path, 'dust3r', 'croco')
+            import types
+            m = types.ModuleType('models')
+            m.__path__ = [os.path.join(croco_path, 'models')]
+            old_models = sys.modules.get('models')
+            sys.modules['models'] = m
+
+            try:
+                from mast3r.image_pairs import make_pairs
+                from mast3r.cloud_opt.sparse_ga import sparse_global_alignment
+                from dust3r.utils.image import load_images
+                from dust3r.utils.device import to_numpy
+            finally:
+                if old_models:
+                    sys.modules['models'] = old_models
+
+            import tempfile
+            import shutil
+
+            # Save raw images to temp files since dust3r/mast3r expects file paths
+            temp_dir = tempfile.mkdtemp(prefix="mast3r_ggpt_")
+            image_paths = []
+
+            # Handle list of images or tensor
+            if isinstance(images, list):
+                N = len(images)
+                for i in range(N):
+                    img_path = os.path.join(temp_dir, f"frame_{i}.png")
+                    img_np = images[i] if isinstance(images[i], np.ndarray) else np.array(images[i])
+                    # Assuming RGB 0-255
+                    Image.fromarray(img_np.astype(np.uint8)).save(img_path)
+                    image_paths.append(img_path)
+            else:
+                N = images.shape[0]
+                for i in range(N):
+                    img_path = os.path.join(temp_dir, f"frame_{i}.png")
+                    img_np = (images[i].cpu().numpy() * 255).astype(np.uint8)
+                    if img_np.shape[0] == 3:  # C, H, W -> H, W, C
+                        img_np = np.transpose(img_np, (1, 2, 0))
+                    Image.fromarray(img_np).save(img_path)
+                    image_paths.append(img_path)
+
+            try:
+                # Load via dust3r util (resizes to 512 internally)
+                imgs_loaded = load_images(image_paths, size=512)
+                pairs = make_pairs(imgs_loaded, scene_graph="complete", symmetrize=True)
+
+                # Suppress output if desired, or let it print
+                scene = sparse_global_alignment(
+                    image_paths,
+                    pairs,
+                    temp_dir,
+                    self.model,
+                    device=device,
+                    matching_conf_thr=0.0
+                )
+
+                pts3d_world_list, _, confs = to_numpy(scene.get_dense_pts3d(clean_depth=True))
+
+                try:
+                    im_poses = scene.get_im_poses()
+                except AttributeError:
+                    im_poses = scene.get_poses()
+
+                try:
+                    est_intrinsics_all = scene.get_intrinsics()
+                except AttributeError:
+                    est_intrinsics_all = scene.intrinsics
+
+                H, W = confs[0].shape
+
+                # Store outputs
+                output_dict['points'] = torch.from_numpy(np.stack(pts3d_world_list)).to(device).reshape(N, H, W, 3)
+                output_dict['geo_points'] = torch.from_numpy(np.stack(pts3d_world_list)).to(device).reshape(N, H, W, 3)
+                output_dict['points_conf'] = torch.from_numpy(np.stack(confs)).to(device)
+                output_dict['extrinsics'] = closed_form_inverse_se3(
+                    im_poses.to(device))  # Convert cam2world to world2cam
+                output_dict['intrinsics'] = est_intrinsics_all.to(device)
+
+                # Update images_ff to match MASt3R resolution (usually 512 on long side)
+                mast3r_imgs = []
+                for img_data in imgs_loaded:
+                    # img_data['img'] is (1, 3, H, W), normalized to approx [-1, 1]
+                    mast3r_imgs.append(img_data['img'][0].permute(1, 2, 0) * 0.5 + 0.5)
+                output_dict['images_ff'] = torch.stack(mast3r_imgs).to(device)
+
+            finally:
+                shutil.rmtree(temp_dir, ignore_errors=True)
+
         else:
             raise NotImplementedError(f"Model {self.configs.model} not implemented in FeedForward_Model.")
 
