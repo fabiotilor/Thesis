@@ -4,9 +4,12 @@ from matching.densematcher import match_dense
 import sys
 
 def init_match_models(model_name, device):
-    if type(model_name) != str:
+    from omegaconf import ListConfig, DictConfig
+    # Debug print to verify type and force sync
+    print(f"DEBUG: model_name type: {type(model_name)}")
+    if isinstance(model_name, (ListConfig, DictConfig)):
         model_name = OmegaConf.to_object(model_name)
-    if type(model_name) in [list]:
+    if isinstance(model_name, list):
         models = {}
         for mn in model_name:
             models[mn] = init_match_model_single(mn, device)
