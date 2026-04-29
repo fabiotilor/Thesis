@@ -124,7 +124,8 @@ def build_static_gt_pointcloud(t, view_names, dataset_root,
 from eval_config import CONF_PERCENTILE
 def get_static_correspondences(t, view_names, pts3d_list, confs, dataset_root,
                                flow_threshold=2.0,
-                               conf_percentile=CONF_PERCENTILE):
+                               conf_percentile=CONF_PERCENTILE, use_sam2=True,
+                               use_static_mask=True):
     """
     Build (estimated, GT) 3-D point correspondences for static regions.
 
@@ -224,7 +225,7 @@ def get_static_correspondences(t, view_names, pts3d_list, confs, dataset_root,
         rgb_adj = _rgb_path(t + 1) or _rgb_path(t - 1)
 
         static_small = np.ones((h_mod, w_mod), dtype=bool)
-        if rgb_t is not None and rgb_adj is not None:
+        if use_sam2 and rgb_t is not None and rgb_adj is not None:
             from .optical_flow import compute_static_mask
             sam2_mask = compute_static_mask([rgb_t, rgb_adj])
             if sam2_mask is not None:
@@ -233,15 +234,18 @@ def get_static_correspondences(t, view_names, pts3d_list, confs, dataset_root,
                     interpolation=cv2.INTER_NEAREST).astype(bool)
 
         # ── Valid pixel mask (all criteria at model resolution) ────────────────
-        thr = np.percentile(conf_mod, 100 * (1 - conf_percentile))
-        valid = (conf_mod   > thr) \
-              & static_small \
-              & (depth_small > 0)
+        frame_thr = np.percentile(conf_mod, 100 * (1 - conf_percentile))
+        valid = (conf_mod   > frame_thr) \
+              & (depth_small > 0) \
+              & (depth_small < DEPTH_MAX_M)
+
+        if use_static_mask:
+            valid &= static_small
 
         # Debug prints for 0 correspondences
         print(f"    [Debug View {vname} t={t}] GT valid depth: {np.sum(depth_small > 0)}")
         print(f"    [Debug View {vname} t={t}] Static mask valid: {np.sum(static_small)}")
-        print(f"    [Debug View {vname} t={t}] Conf > thr ({thr:.3f}): {np.sum(conf_mod > thr)} (Max conf: {np.max(conf_mod):.3f})")
+        print(f"    [Debug View {vname} t={t}] Conf > thr ({frame_thr:.3f}): {np.sum(conf_mod > frame_thr)} (Max conf: {np.max(conf_mod):.3f})")
         print(f"    [Debug View {vname} t={t}] Intersection valid: {np.sum(valid)}")
 
         if not np.any(valid):

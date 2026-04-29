@@ -63,7 +63,13 @@ def evaluate_strategy_dir(in_dir, out_plot_dir, strategy_label=""):
 
     for f in files:
         data = np.load(f)
-        gt_pts, est_pts = data['gt_pts'], data['aligned_pts']
+        gt_pts = data['gt_pts']
+        if 'aligned_pts' in data:
+            est_pts = data['aligned_pts']
+        else:
+            # Fallback for old baseline outputs
+            pm = normalize_array(data['pointmaps'], *normalize_spatial_dims(data))
+            est_pts = pm.reshape(-1, 3)
 
         # Squeeze out nans if any (sanity check)
         valid_est = ~np.any(np.isnan(est_pts), axis=-1)
@@ -92,7 +98,10 @@ def evaluate_strategy_dir(in_dir, out_plot_dir, strategy_label=""):
             s_comp_list.append(np.nan)
             d_comp_list.append(np.nan)
 
-        s_val, R_val, tr_val = data['scale'], data['R'], data['tr']
+        # Support both new (scale, R, tr) and potentially missing keys
+        s_val = data['scale'] if 'scale' in data else 1.0
+        R_val = data['R'] if 'R' in data else np.eye(3)
+        tr_val = data['tr'] if 'tr' in data else np.zeros(3)
 
         if 'est_poses' in data and data['est_poses'] is not None and data['est_poses'].ndim >= 3:
             e_p = data['est_poses']

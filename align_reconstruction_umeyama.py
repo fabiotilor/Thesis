@@ -288,7 +288,8 @@ def run_reconstruction(
             src_corr, dst_corr = get_static_correspondences(
                 t, view_names, pts3d_all, confs_all, dataset_root,
                 flow_threshold=flow_threshold,
-                conf_percentile=CONF_PERCENTILE
+                conf_percentile=CONF_PERCENTILE,
+                use_static_mask=False
             )
 
             if src_corr is not None and len(src_corr) >= 3:
