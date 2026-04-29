@@ -59,9 +59,9 @@ def build_views(dataset_root, target_views=None):
 
 def parse_args():
     parser = argparse.ArgumentParser(description="MASt3R-to-GGPT Data Preparation Script")
-    parser.add_argument("--subject", type=str, default="01", help="Subject code (e.g. 01) or full name")
+    parser.add_argument("--subject", type=str, default="all", help="Subject code (e.g. 01) or full name")
     parser.add_argument("--all", action="store_true", help="Process all subjects in SUBJECT_BY_CODE")
-    parser.add_argument("--views", nargs="+", type=int, default=[2], help="Number of views to use (e.g. 2 3 4)")
+    parser.add_argument("--views", nargs="+", type=int, default=[2, 3, 4], help="Number of views to use (e.g. 2 3 4)")
     parser.add_argument("--output_dir", type=str, default=os.path.expanduser("~/mast3r/ggpt_inputs"),
                         help="Root output directory")
     parser.add_argument("--no-rerun", action="store_true", help="Disable Rerun logging")
@@ -72,7 +72,7 @@ def main():
     args = parse_args()
 
     # Resolve subjects to process
-    if args.all:
+    if args.all or args.subject == "all":
         subjects_to_process = sorted(SUBJECT_BY_CODE.keys())
         print(f"[INFO] Processing all subjects: {subjects_to_process}")
     else:
