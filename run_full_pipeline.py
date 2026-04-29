@@ -213,7 +213,7 @@ def main():
                 print(f"\n[STAGE] Strategy 1: subject={code} views={nviews}")
                 s1_start = time.perf_counter()
                 tf_s1 = strategy1_reference(frame_paths, dataset_root)
-                s_g1, R_g1, tr_g1 = solve_final_gt_registration(frame_paths, tf_s1, dataset_root)
+                s_g1, R_g1, tr_g1 = solve_final_gt_registration(frame_paths, tf_s1, dataset_root, use_static_mask=False)
                 save_aligned_results(
                     frame_paths,
                     tf_s1,
@@ -243,7 +243,7 @@ def main():
                 print(f"\n[STAGE] Strategy 2: subject={code} views={nviews}")
                 s2_start = time.perf_counter()
                 tf_s2 = strategy2_hierarchical(frame_paths, dataset_root)
-                s_g2, R_g2, tr_g2 = solve_final_gt_registration(frame_paths, tf_s2, dataset_root)
+                s_g2, R_g2, tr_g2 = solve_final_gt_registration(frame_paths, tf_s2, dataset_root, use_static_mask=False)
                 save_aligned_results(
                     frame_paths,
                     tf_s2,
@@ -273,7 +273,7 @@ def main():
             print(f"\n[STAGE] Strategy 3 (PGO): subject={code} views={nviews}")
             s3_start = time.perf_counter()
             tf_s3 = strategy3_pgo(frame_paths, dataset_root, num_iters=50)
-            s_g3, R_g3, tr_g3 = solve_final_gt_registration(frame_paths, tf_s3, dataset_root)
+            s_g3, R_g3, tr_g3 = solve_final_gt_registration(frame_paths, tf_s3, dataset_root, use_static_mask=False)
             save_aligned_results(
                 frame_paths,
                 tf_s3,

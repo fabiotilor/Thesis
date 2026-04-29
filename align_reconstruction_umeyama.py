@@ -240,7 +240,8 @@ def run_reconstruction(
             src_corr, dst_corr = get_static_correspondences(
                 t, view_names, pts3d_list, confs, dataset_root,
                 conf_percentile=CONF_PERCENTILE,
-                precomputed_masks=precomputed_masks
+                precomputed_masks=precomputed_masks,
+                use_static_mask=False
             )
 
             if src_corr is not None and len(src_corr) >= 3:

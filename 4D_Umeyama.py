@@ -218,7 +218,7 @@ def evaluate_subject(subject_name, selected_views=None, pgo_only=False):
             print(f"\n--- [Strategy 1] Reference Frame Alignment ({vdir}) ---")
             start_s1 = time.perf_counter()
             tf_s1 = strategy1_reference(paths, dataset_root)
-            s_g1, R_g1, tr_g1 = solve_final_gt_registration(paths, tf_s1, dataset_root)
+            s_g1, R_g1, tr_g1 = solve_final_gt_registration(paths, tf_s1, dataset_root, use_static_mask=False)
 
             strat1_label = f"Strategy_1_{vdir}"
             save_aligned_results(paths, tf_s1, s_g1, R_g1, tr_g1, subject_name, strat1_label, dataset_root)
@@ -235,7 +235,7 @@ def evaluate_subject(subject_name, selected_views=None, pgo_only=False):
             print(f"\n--- [Strategy 2] Hierarchical Alignment ({vdir}) ---")
             start_s2 = time.perf_counter()
             tf_s2 = strategy2_hierarchical(paths, dataset_root)
-            s_g2, R_g2, tr_g2 = solve_final_gt_registration(paths, tf_s2, dataset_root)
+            s_g2, R_g2, tr_g2 = solve_final_gt_registration(paths, tf_s2, dataset_root, use_static_mask=False)
 
             strat2_label = f"Strategy_2_{vdir}"
             save_aligned_results(paths, tf_s2, s_g2, R_g2, tr_g2, subject_name, strat2_label, dataset_root)
@@ -252,7 +252,7 @@ def evaluate_subject(subject_name, selected_views=None, pgo_only=False):
         print(f"\n--- [Strategy 3] Pose Graph Optimization ({vdir}) ---")
         start_s3 = time.perf_counter()
         tf_s3 = strategy3_pgo(paths, dataset_root, num_iters=50)
-        s_g3, R_g3, tr_g3 = solve_final_gt_registration(paths, tf_s3, dataset_root)
+        s_g3, R_g3, tr_g3 = solve_final_gt_registration(paths, tf_s3, dataset_root, use_static_mask=False)
 
         strat3_label = f"Strategy_3_{vdir}"
         save_aligned_results(paths, tf_s3, s_g3, R_g3, tr_g3, subject_name, strat3_label, dataset_root)
