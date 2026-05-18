@@ -150,10 +150,13 @@ def compute_flow_sam2(frames: list[np.ndarray]) -> np.ndarray:
     return static_mask
 
 
-def compute_static_mask(rgb_paths):
+def compute_static_mask(rgb_paths, dataset_type="dex-ycb"):
     """
     Returns a boolean mask (H, W) where True = static across all frame transitions.
     SAM2 based high-fidelity segmentation.
+
+    For Hi4D, returns all-True mask since there is no static background;
+    segmentation masks handle foreground filtering separately.
     """
     # Load all frames
     frames = []
@@ -163,4 +166,10 @@ def compute_static_mask(rgb_paths):
             frames.append(img)
     if len(frames) < 2:
         return None
+
+    if dataset_type == "hi4d":
+        # Hi4D has no static background — return all-True mask
+        H, W = frames[0].shape[:2]
+        return np.ones((H, W), dtype=bool)
+
     return compute_flow_sam2(frames)

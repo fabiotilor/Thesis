@@ -4,8 +4,8 @@ import numpy as np
 import rerun as rr
 import rerun.blueprint as rrb
 
-from .gt import load_gt_params, build_gt_validity_masks
-from .camera_utils import discover_view_name
+from .gt import load_gt_params, build_gt_validity_masks, _load_hi4d_seg_mask
+from .camera_utils import discover_view_name, get_rgb_path
 from .umeyama_alignment import apply_similarity_transform
 from eval_config import CONF_PERCENTILE
 
@@ -66,26 +66,16 @@ def configure_rerun_view_defaults(log_root, eye_up):
             continue
 
 
-def log_cameras_rerun(t, view_names, dataset_root, log_root):
+def log_cameras_rerun(t, view_names, dataset_root, log_root, dataset_type="dex-ycb"):
     """
     Logs pinhole cameras with RGB image content.
-    Expects dataset_root/{vname}/rgb/{t:05d}.png
     """
     rr.set_time("frame", sequence=t)
     for vname in view_names:
         view_dir = os.path.join(dataset_root, vname)
-        K, c2w = load_gt_params(view_dir)
+        K, c2w = load_gt_params(view_dir, dataset_type=dataset_type)
 
-        rgb_dir = os.path.join(view_dir, "rgb")
-        if not os.path.isdir(rgb_dir):
-            rgb_dir = view_dir
-
-        rgb_path = None
-        for ext in (".png", ".jpg", ".jpeg"):
-            p = os.path.join(rgb_dir, f"{t:05d}{ext}")
-            if os.path.exists(p):
-                rgb_path = p
-                break
+        rgb_path = get_rgb_path(view_dir, t, dataset_type=dataset_type)
 
         if rgb_path:
             img_bgr = cv2.imread(rgb_path)
@@ -117,7 +107,7 @@ def log_pointcloud(t, entity, positions, color=None, radii=0.002, max_points=500
     rr.log(entity, rr.Points3D(**kwargs))
 
 
-def log_alignment_results(t, gt_pts, aligned_pts, refined_pts=None, log_root="world"):
+def log_alignment_results(t, gt_pts, aligned_pts, refined_pts=None, gt_static_pts=None, log_root="world"):
     """Used by 3D alignment scripts to visualise registration quality."""
     if gt_pts is not None:
         log_pointcloud(t, f"{log_root}/gt", gt_pts, color=[0, 255, 0])
@@ -125,9 +115,11 @@ def log_alignment_results(t, gt_pts, aligned_pts, refined_pts=None, log_root="wo
         log_pointcloud(t, f"{log_root}/baseline/pointcloud", aligned_pts, color=[0, 0, 255])
     if refined_pts is not None:
         log_pointcloud(t, f"{log_root}/estimated/stabilised", refined_pts, color=[255, 0, 255])
+    if gt_static_pts is not None:
+        log_pointcloud(t, f"{log_root}/gt_static", gt_static_pts, color=[255, 165, 0])
 
 
-def log_gt_sequence(paths, dataset_root, log_root="4d_eval"):
+def log_gt_sequence(paths, dataset_root=None, log_root="4d_eval", dataset_type="dex-ycb"):
     """Logs the GT sequence from a list of NPZ paths."""
     from .gt import load_gt_params, DEPTH_SCALE, DEPTH_MAX_M
     from .camera_utils import discover_view_name
@@ -141,8 +133,12 @@ def log_gt_sequence(paths, dataset_root, log_root="4d_eval"):
             gt_pts = gt_pts / 1000.0
         log_pointcloud(t, entity, gt_pts, color=[0, 255, 0])
 
-        if 'masks_2d' in data:
-            view_names = [discover_view_name(dataset_root, k) for k in data['Ks']]
+        if dataset_type == "hi4d":
+            # Hi4D has no depth-based static GT; skip static GT logging
+            continue
+
+        if 'masks_2d' in data and dataset_root is not None:
+            view_names = [discover_view_name(dataset_root, k, dataset_type=dataset_type) for k in data['Ks']]
             static_mask = data['masks_2d']
             all_pts_static = []
             for i, vname in enumerate(view_names):
@@ -161,7 +157,7 @@ def log_gt_sequence(paths, dataset_root, log_root="4d_eval"):
                 keep = (depth_m > 0) & mask_2d
                 ys, xs = np.where(keep)
                 z = depth_m[ys, xs]
-                K, cam2world = load_gt_params(view_dir)
+                K, cam2world = load_gt_params(view_dir, dataset_type=dataset_type)
                 fx, fy = K[0, 0], K[1, 1]
                 cx, cy = K[0, 2], K[1, 2]
                 pts_cam = np.stack([(xs - cx) * z / fx, (ys - cy) * z / fy, z], axis=-1)
@@ -176,7 +172,7 @@ def log_gt_sequence(paths, dataset_root, log_root="4d_eval"):
 
 
 def log_aligned_sequence(paths, frame_transforms, s_glob, R_glob, tr_glob, label, color, dataset_root,
-                         log_root="4d_eval"):
+                         log_root="4d_eval", dataset_type="dex-ycb"):
     """
     Robust 4D pointcloud logger. Handles inter-frame and global alignment composition.
     """
@@ -193,12 +189,12 @@ def log_aligned_sequence(paths, frame_transforms, s_glob, R_glob, tr_glob, label
         conf = normalize_array(data['pointmaps_confs'], V, H, W) if 'pointmaps_confs' in data else None
 
         t, ks = int(data['frame_idx']), data['Ks']
-        view_names = [discover_view_name(dataset_root, k) for k in ks]
-        vmasks = build_gt_validity_masks(t, view_names, dataset_root, target_hw=(H, W))
+        view_names = [discover_view_name(dataset_root, k, dataset_type=dataset_type) for k in ks]
+        vmasks = build_gt_validity_masks(t, view_names, dataset_root, target_hw=(H, W), dataset_type=dataset_type)
 
         # Log cameras and images only on the first strategy to avoid redundant writes.
         if i == 0:
-            log_cameras_rerun(t, view_names, dataset_root, log_root)
+            log_cameras_rerun(t, view_names, dataset_root, log_root, dataset_type=dataset_type)
 
         s_i, R_i, tr_i = frame_transforms[i]
         s_tot = s_glob * s_i

@@ -13,15 +13,11 @@ import rerun as rr
 import torch
 
 from eval_config import (
-    SUBJECT_BY_CODE,
-    SUBJECT_NAMES,
-    DATASET_BASE_ROOT,
-    VIEW_CONFIGS,
-    DEFAULT_TARGET_VIEWS,
-    MODEL_NAME,
+    DATASETS,
     DEVICE,
     RERUN_ADDR,
     RERUN_EYE_UP,
+    MODEL_NAME,
 )
 
 from vggt.models.vggt import VGGT
@@ -52,9 +48,10 @@ save_aligned_results = _umeyama4d_mod.save_aligned_results
 
 def _parse_args():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--all", action="store_true", help="Run all subjects.")
-    for code in SUBJECT_BY_CODE.keys():
-        parser.add_argument(f"--{code}", action="store_true", help=f"Run subject {code}.")
+    parser.add_argument("--data", type=str, choices=["dex-ycb", "hi4d"], default="dex-ycb", help="Dataset to use")
+    parser.add_argument("--all", action="store_true", help="Run all subjects/pairs.")
+    parser.add_argument("--pair", type=str, default=None, help="Specific pair/action for hi4d (e.g. pair00/dance00)")
+    parser.add_argument("--subjects", nargs="+", type=str, help="Specific subject codes to run.")
     parser.add_argument(
         "--views",
         nargs="+",
@@ -77,18 +74,35 @@ def _parse_args():
         action="store_true",
         help="Experiment: Use Ground Truth intrinsics to rescale VGGT pointmaps and poses.",
     )
-    return parser.parse_args()
+    parser.add_argument("--limit-frames", type=int, default=None, help="Limit number of frames to process")
+
+    return parser.parse_known_args()[0]
 
 
-def _selected_subjects(args):
+def _selected_subjects(args, dataset_config):
+    subject_names = dataset_config["subject_names"]
+    subject_by_code = {name.split("subject-")[1][:2] if "subject-" in name else name: name for name in subject_names}
+
+    if args.pair:
+        # Direct pair/action specification for hi4d
+        return [args.pair], [args.pair]
+
     if args.all:
-        codes = list(SUBJECT_BY_CODE.keys())
+        codes = list(subject_by_code.keys())
+    elif args.subjects:
+        codes = args.subjects
     else:
-        codes = [code for code in SUBJECT_BY_CODE.keys() if getattr(args, code)]
-    if not codes:
-        print("[WARN] No subject selection flag provided; defaulting to --01")
-        codes = ["01"]
-    return [SUBJECT_BY_CODE[c] for c in codes], codes
+        # Check if any legacy flags were used (e.g., --01)
+        codes = [a.lstrip('-') for a in sys.argv if a.startswith('--') and a.lstrip('-') in subject_by_code]
+        if not codes:
+            if args.data == "hi4d":
+                # Default: run all hi4d subjects
+                codes = list(subject_by_code.keys())
+            else:
+                print(f"[WARN] No subject selection provided; defaulting to first subject.")
+                codes = [list(subject_by_code.keys())[0]]
+
+    return [subject_by_code.get(c, c) for c in codes], codes
 
 
 def _sorted_frame_paths(frame_dir: str):
@@ -115,29 +129,57 @@ def _write_timing_json(out_dir: str, method_label: str, n_frames: int, total_sec
         json.dump(payload, f, indent=2)
 
 
-def _target_views_for_nviews(nviews: int):
-    target_views = VIEW_CONFIGS.get(nviews)
+def _target_views_for_nviews(nviews: int, dataset_config, subject_name=None):
+    view_configs = dataset_config.get("view_configs", {})
+
+    # Try pair-specific config
+    if subject_name:
+        pair_prefix = subject_name.split("/")[0]
+        if pair_prefix in view_configs:
+            target_views = view_configs[pair_prefix].get(nviews)
+            if target_views:
+                return target_views
+
+    # Fallback to default or flat config
+    default_config = view_configs.get("default", view_configs)
+    target_views = default_config.get(nviews)
+
     if target_views is None:
-        target_views = DEFAULT_TARGET_VIEWS
+        target_views = dataset_config.get("default_target_views")
     return target_views
 
 
-def _run_eval(code: str, view_counts: list[int]):
-    cmd = [sys.executable, "evaluate_4D.py", f"--{code}", "--views"] + [str(v) for v in view_counts]
+def _run_eval(code: str, view_counts: list[int], dataset_type: str):
+    cmd = [sys.executable, "evaluate_4D.py", "--data", dataset_type, "--views"] + [str(v) for v in view_counts]
+    if dataset_type == "hi4d":
+        cmd += ["--pair", code]
+    else:
+        cmd += ["--subjects", code]
     print(f"\nRUNNING: {' '.join(cmd)}")
     subprocess.run(cmd, check=True)
 
 
 def main():
     args = _parse_args()
-    selected_subjects, codes = _selected_subjects(args)
+    dataset_config = DATASETS[args.data]
+    dataset_type = args.data
+    selected_subjects, codes = _selected_subjects(args, dataset_config)
 
     if args.views is None:
-        view_counts = [2, 3, 4] if baseline_mod.RUN_MULTI_VIEW_EVAL else [4]
+        if dataset_type == "hi4d":
+            # Default view counts for Hi4D from config
+            default_vc = dataset_config.get("view_configs", {}).get("default", {})
+            view_counts = sorted([k for k in default_vc.keys() if isinstance(k, int)])
+            if not view_counts:
+                view_counts = [4]
+        else:
+            view_counts = [2, 3, 4] if baseline_mod.RUN_MULTI_VIEW_EVAL else [4]
     else:
         view_counts = args.views
 
     print(f"[INFO] Selected subjects: {codes}")
+    print(f"[INFO] Dataset: {dataset_type}")
+    print(f"[INFO] View counts: {view_counts}")
 
     # Load the VGGT model once.
     torch.backends.cuda.matmul.allow_tf32 = True
@@ -145,16 +187,22 @@ def main():
     model = VGGT.from_pretrained(MODEL_NAME).to(DEVICE)
     model.eval()
 
-    cache_root = os.path.join(tempfile.gettempdir(), "vggt_alignment_cache")
+    cache_root = os.path.join(tempfile.gettempdir(), f"vggt_alignment_cache_{dataset_type}")
     os.makedirs(cache_root, exist_ok=True)
 
     for subject_full, code in zip(selected_subjects, codes):
-        csv_path = f"eval_summary_{code}.csv"
+        safe_code = code.replace("/", "_")
+
+        if dataset_type == "hi4d":
+            csv_path = f"hi4d_eval_summary_{safe_code}.csv"
+        else:
+            csv_path = f"eval_summary_{safe_code}.csv"
+
         if os.path.exists(csv_path):
             print(f"[INFO] {csv_path} already exists, skipping subject {code}.")
             continue
 
-        dataset_root = os.path.join(DATASET_BASE_ROOT, subject_full)
+        dataset_root = os.path.join(dataset_config["root"], subject_full)
         if not os.path.isdir(dataset_root):
             print(f"[WARN] Subject directory not found, skipping: {dataset_root}")
             continue
@@ -163,25 +211,26 @@ def main():
             # Create an independent rerun recording card per (subject, view-count).
             if not args.no_rerun and rr is not None:
                 init_recording(code, nviews)
-            view_root = f"vggt_{code}_{nviews}views"
+            view_root = f"vggt_{dataset_type}_{code}_{nviews}views"
 
             suffix = "_gt_focal" if args.use_gt_intrinsics else ""
-            baseline_dir = os.path.join("aligned_outputs", f"baseline{suffix}", subject_full, f"{nviews}views")
-            s1_dir = os.path.join("aligned_outputs", f"strategy1{suffix}", subject_full, f"{nviews}views")
-            s2_dir = os.path.join("aligned_outputs", f"strategy2{suffix}", subject_full, f"{nviews}views")
-            s3_dir = os.path.join("aligned_outputs", f"strategy3{suffix}", subject_full, f"{nviews}views")
+            baseline_dir = os.path.join("aligned_outputs", "vggt", dataset_type, f"baseline{suffix}", subject_full, f"{nviews}views")
+            s1_dir = os.path.join("aligned_outputs", "vggt", dataset_type, f"strategy1{suffix}", subject_full, f"{nviews}views")
+            s2_dir = os.path.join("aligned_outputs", "vggt", dataset_type, f"strategy2{suffix}", subject_full, f"{nviews}views")
+            s3_dir = os.path.join("aligned_outputs", "vggt", dataset_type, f"strategy3{suffix}", subject_full, f"{nviews}views")
 
             for d in (baseline_dir, s1_dir, s2_dir, s3_dir):
                 os.makedirs(d, exist_ok=True)
 
             if not args.no_rerun and rr is not None:
-                configure_rerun_view_defaults(view_root, RERUN_EYE_UP)
+                eye_up = dataset_config.get("eye_up", RERUN_EYE_UP)
+                configure_rerun_view_defaults(view_root, eye_up)
 
             frame_paths = []
 
             if not args.pgo:
                 print(f"\n[STAGE] Baseline: subject={code} views={nviews}")
-                target_views = _target_views_for_nviews(nviews)
+                target_views = _target_views_for_nviews(nviews, dataset_config, subject_full)
                 run_tag = view_root
                 baseline_run_reconstruction(
                     model=model,
@@ -193,6 +242,9 @@ def main():
                     run_tag=run_tag,
                     skip_rerun_init=True,
                     use_gt_intrinsics=args.use_gt_intrinsics,
+                    no_rerun=args.no_rerun,
+                    limit_frames=args.limit_frames,
+                    dataset_type=dataset_type,
                 )
 
             frame_paths = _sorted_frame_paths(baseline_dir)
@@ -201,19 +253,17 @@ def main():
                 continue
 
             # Log GT sequence only if baseline was skipped.
-            # When baseline ran, it already logged:
-            #   <view_root>/gt (green)
-            if args.pgo:
+            if args.pgo and not args.no_rerun:
                 try:
-                    log_gt_sequence(frame_paths, dataset_root=dataset_root, log_root=view_root)
+                    log_gt_sequence(frame_paths, dataset_root=dataset_root, log_root=view_root, dataset_type=dataset_type)
                 except Exception as e:
                     print(f"[RERUN][WARN] log_gt_sequence failed for {code} {nviews}views: {e}")
 
             if not args.pgo:
                 print(f"\n[STAGE] Strategy 1: subject={code} views={nviews}")
                 s1_start = time.perf_counter()
-                tf_s1 = strategy1_reference(frame_paths, dataset_root)
-                s_g1, R_g1, tr_g1 = solve_final_gt_registration(frame_paths, tf_s1, dataset_root, use_static_mask=False)
+                tf_s1 = strategy1_reference(frame_paths, dataset_root, dataset_type=dataset_type)
+                s_g1, R_g1, tr_g1 = solve_final_gt_registration(frame_paths, tf_s1, dataset_root, use_static_mask=False, dataset_type=dataset_type)
                 save_aligned_results(
                     frame_paths,
                     tf_s1,
@@ -224,25 +274,28 @@ def main():
                     out_dir=s1_dir,
                     dataset_root=dataset_root,
                     method_label="strategy1",
+                    dataset_type=dataset_type,
                 )
                 _write_timing_json(s1_dir, "strategy1", len(frame_paths), time.perf_counter() - s1_start)
-                log_aligned_sequence(
-                    frame_paths,
-                    tf_s1,
-                    s_g1,
-                    R_g1,
-                    tr_g1,
-                    label="Strategy_1",
-                        # Strategy1: red
-                        color=[255, 0, 0],
-                    dataset_root=dataset_root,
-                        log_root=view_root,
-                )
+                if not args.no_rerun:
+                    log_aligned_sequence(
+                        frame_paths,
+                        tf_s1,
+                        s_g1,
+                        R_g1,
+                        tr_g1,
+                        label="Strategy_1",
+                            # Strategy1: red
+                            color=[255, 0, 0],
+                        dataset_root=dataset_root,
+                            log_root=view_root,
+                        dataset_type=dataset_type,
+                    )
 
                 print(f"\n[STAGE] Strategy 2: subject={code} views={nviews}")
                 s2_start = time.perf_counter()
-                tf_s2 = strategy2_hierarchical(frame_paths, dataset_root)
-                s_g2, R_g2, tr_g2 = solve_final_gt_registration(frame_paths, tf_s2, dataset_root, use_static_mask=False)
+                tf_s2 = strategy2_hierarchical(frame_paths, dataset_root, dataset_type=dataset_type)
+                s_g2, R_g2, tr_g2 = solve_final_gt_registration(frame_paths, tf_s2, dataset_root, use_static_mask=False, dataset_type=dataset_type)
                 save_aligned_results(
                     frame_paths,
                     tf_s2,
@@ -253,25 +306,28 @@ def main():
                     out_dir=s2_dir,
                     dataset_root=dataset_root,
                     method_label="strategy2",
+                    dataset_type=dataset_type,
                 )
                 _write_timing_json(s2_dir, "strategy2", len(frame_paths), time.perf_counter() - s2_start)
-                log_aligned_sequence(
-                    frame_paths,
-                    tf_s2,
-                    s_g2,
-                    R_g2,
-                    tr_g2,
-                    label="Strategy_2",
-                    # Strategy2: magenta
-                    color=[255, 0, 255],
-                    dataset_root=dataset_root,
-                    log_root=view_root,
-                )
+                if not args.no_rerun:
+                    log_aligned_sequence(
+                        frame_paths,
+                        tf_s2,
+                        s_g2,
+                        R_g2,
+                        tr_g2,
+                        label="Strategy_2",
+                        # Strategy2: magenta
+                        color=[255, 0, 255],
+                        dataset_root=dataset_root,
+                        log_root=view_root,
+                        dataset_type=dataset_type,
+                    )
 
             print(f"\n[STAGE] Strategy 3 (PGO): subject={code} views={nviews}")
             s3_start = time.perf_counter()
-            tf_s3 = strategy3_pgo(frame_paths, dataset_root, num_iters=50)
-            s_g3, R_g3, tr_g3 = solve_final_gt_registration(frame_paths, tf_s3, dataset_root, use_static_mask=False)
+            tf_s3 = strategy3_pgo(frame_paths, dataset_root, num_iters=50, dataset_type=dataset_type)
+            s_g3, R_g3, tr_g3 = solve_final_gt_registration(frame_paths, tf_s3, dataset_root, use_static_mask=False, dataset_type=dataset_type)
             save_aligned_results(
                 frame_paths,
                 tf_s3,
@@ -282,28 +338,35 @@ def main():
                 out_dir=s3_dir,
                 dataset_root=dataset_root,
                 method_label="strategy3",
+                dataset_type=dataset_type,
             )
             _write_timing_json(s3_dir, "strategy3", len(frame_paths), time.perf_counter() - s3_start)
-            log_aligned_sequence(
-                frame_paths,
-                tf_s3,
-                s_g3,
-                R_g3,
-                tr_g3,
-                label="Strategy_3",
-                # Strategy3: cyan
-                color=[0, 255, 255],
-                dataset_root=dataset_root,
-                log_root=view_root,
-            )
+            if not args.no_rerun:
+                log_aligned_sequence(
+                    frame_paths,
+                    tf_s3,
+                    s_g3,
+                    R_g3,
+                    tr_g3,
+                    label="Strategy_3",
+                    # Strategy3: cyan
+                    color=[0, 255, 255],
+                    dataset_root=dataset_root,
+                    log_root=view_root,
+                    dataset_type=dataset_type,
+                )
 
         print(f"\n[INFO] Evaluating subject {code} across methods/views ...")
-        _run_eval(code, view_counts)
+        _run_eval(code, view_counts, dataset_type)
 
     # Aggregate results across selected subjects only.
     csv_files = []
     for code in codes:
-        csv_path = f"eval_summary_{code}.csv"
+        safe_code = code.replace("/", "_")
+        if dataset_type == "hi4d":
+            csv_path = f"hi4d_eval_summary_{safe_code}.csv"
+        else:
+            csv_path = f"eval_summary_{safe_code}.csv"
         if os.path.exists(csv_path):
             csv_files.append(csv_path)
 
@@ -322,24 +385,37 @@ def main():
     aggregated = numeric_df.groupby("strategy").mean().reset_index().sort_values(by="strategy")
 
     print("\n\n" + "=" * 80)
-    print("CROSS-SUBJECT AGGREGATED RESULTS (MEAN ACROSS PROCESSED SUBJECTS)")
+    print(f"CROSS-SUBJECT AGGREGATED RESULTS — {dataset_type.upper()} (MEAN ACROSS PROCESSED SUBJECTS)")
     print("=" * 80)
 
     pd.set_option("display.precision", 5)
     pd.set_option("display.width", 2000)
     pd.set_option("display.max_columns", None)
 
-    cols_to_show = [
-        'strategy', 'n_frames', 'chamfer', 'delta_consistency', 'completeness',
-        'static_comp', 'dyn_comp', 'static_acc', 'dyn_acc', 'motion_gap',
-        'ate', 'rpe', 'rot_error', 'focal_error', 'pp_error',
-        'jitter_mean', 'jitter_std', 'jitter_p95', 'jitter_max',
-        'drift_mean', 'hf_jitter'
-    ]
+    if dataset_type == "hi4d":
+        cols_to_show = [
+            'strategy', 'n_frames', 'chamfer', 'delta_consistency', 'completeness', 'accuracy',
+            'align_frames', 'ate', 'rpe', 'rot_error', 'focal_error', 'pp_error',
+            'jitter_mean', 'jitter_std', 'jitter_p95', 'jitter_max', 'drift_mean', 'hf_jitter'
+        ]
+    else:
+        cols_to_show = [
+            'strategy', 'n_frames', 'chamfer', 'delta_consistency', 'completeness',
+            'static_comp', 'dyn_comp', 'static_acc', 'dyn_acc', 'motion_gap',
+            'ate', 'rpe', 'rot_error', 'focal_error', 'pp_error',
+            'jitter_mean', 'jitter_std', 'jitter_p95', 'jitter_max',
+            'drift_mean', 'hf_jitter'
+        ]
     cols_to_show = [c for c in cols_to_show if c in aggregated.columns]
+    # Add remaining columns
+    remaining = [c for c in aggregated.columns if c not in cols_to_show]
+    cols_to_show += remaining
     print(aggregated[cols_to_show].to_string(index=False))
 
-    out_file = "eval_summary_ALL_SUBJECTS.csv"
+    if dataset_type == "hi4d":
+        out_file = "hi4d_results.csv"
+    else:
+        out_file = "eval_summary_ALL_SUBJECTS.csv"
     aggregated.to_csv(out_file, index=False)
     print(f"\n[INFO] Aggregated results saved to {out_file}")
 
