@@ -27,6 +27,8 @@ try:
     if script_dir not in sys.path:
         sys.path.append(script_dir)
     from eval_config import RERUN_ADDR, RERUN_EYE_UP, SUBJECT_BY_CODE, DATASET_BASE_ROOT
+    from eval_config import get_subject_by_code, get_dataset_root_for_subject, get_view_config, \
+        get_pair_name_for_subject, get_dataset_config
     from utils.rerun_logging import configure_rerun_view_defaults, log_pointcloud, init_recording
 except ImportError:
     RERUN_ADDR = "rerun+http://127.0.0.1:9876/proxy"
@@ -45,8 +47,8 @@ def parse_args():
     parser.add_argument("--model", type=str, default="vggt",
                         help="Name of the base model being refined (e.g. vggt, mast3r, pi3)")
     parser.add_argument("--no_rerun", action="store_true", help="Disable Rerun logging")
-    parser.add_argument("--base_input_dir", type=str, default=os.path.expanduser("~/vggt/ggpt_inputs"),
-                        help="Base directory for inputs")
+    parser.add_argument("--dataset", type=str, choices=["dex-ycb", "hi4d"], default="dex-ycb", help="Dataset to use")
+    parser.add_argument("--base_input_dir", type=str, default=None, help="Base directory for inputs")
     return parser.parse_args()
 
 
@@ -184,7 +186,9 @@ def run_refinement(model, cfg, scene_dir, args, subj_code, n_views):
 
         # Format 2: .npz sequence for 4D_Umeyama.py
         output_model_name = f"{args.model}-refined"
-        full_subject_name = SUBJECT_BY_CODE.get(subj_code, f"subject-{subj_code}")
+        dataset_type = args.dataset
+        subject_map = get_subject_by_code(dataset_type)
+        full_subject_name = subject_map.get(subj_code, f"subject-{subj_code}")
         out_strategy_dir = os.path.join("aligned_outputs", output_model_name, "baseline", full_subject_name,
                                         f"{n_views}views")
         os.makedirs(out_strategy_dir, exist_ok=True)
@@ -200,19 +204,30 @@ def run_refinement(model, cfg, scene_dir, args, subj_code, n_views):
         gt_extri_cpu = scene['gt_extrinsics'].cpu().numpy() if scene.get('gt_extrinsics') is not None else ff_extri_cpu
 
         # Resolve view names and load native GT intrinsics from disk
-        from eval_config import VIEW_CONFIGS, DEFAULT_TARGET_VIEWS
+        pair_name = get_pair_name_for_subject(dataset_type, full_subject_name)
+        raw_view_list = get_view_config(dataset_type, n_views, pair_name=pair_name)
+        if dataset_type == "hi4d":
+            # Hi4D views are just camera IDs like "4", "16"
+            view_name_list = [str(v) for v in raw_view_list]
+        else:
+            from eval_config import VIEW_CONFIGS, DEFAULT_TARGET_VIEWS
+            view_name_list = [f"view_{v}" if not str(v).startswith("view_") else str(v) for v in raw_view_list]
+
+        # Get the dataset root for loading GT intrinsics
+        ds_root = get_dataset_root_for_subject(dataset_type, full_subject_name)
         from utils.gt import load_gt_params as _load_gt_params
-        raw_view_list = VIEW_CONFIGS.get(n_views, DEFAULT_TARGET_VIEWS)
-        view_name_list = [f"view_{v}" if not str(v).startswith("view_") else str(v) for v in raw_view_list]
 
         native_gt_Ks = []
         for vname in view_name_list:
-            view_dir = os.path.join(DATASET_BASE_ROOT, full_subject_name, vname)
-            if os.path.isdir(view_dir):
-                K_native, _ = _load_gt_params(view_dir)
-                native_gt_Ks.append(K_native)
+            if dataset_type == "hi4d":
+                # For Hi4D, view_dir = dataset_root/cam_id
+                view_dir = os.path.join(ds_root, vname)
             else:
-                # print(f"      [DEBUG] View dir NOT found: {view_dir}")
+                view_dir = os.path.join(ds_root, vname)
+            try:
+                K_native, _ = _load_gt_params(view_dir, dataset_type=dataset_type)
+                native_gt_Ks.append(K_native)
+            except Exception:
                 native_gt_Ks.append(ff_intri_cpu[0])  # fallback
         native_gt_Ks = np.array(native_gt_Ks)
 
@@ -253,6 +268,27 @@ def run_refinement(model, cfg, scene_dir, args, subj_code, n_views):
 def main():
     args = parse_args()
 
+    # Resolve base_input_dir if not provided
+    if args.base_input_dir is None:
+        if args.model in ["pi3", "pi3x"]:
+            if args.dataset == "hi4d":
+                args.base_input_dir = os.path.expanduser(f"~/Pi3/ggpt_inputs/hi4d/{args.model}")
+            else:
+                args.base_input_dir = os.path.expanduser(f"~/Pi3/ggpt_inputs/{args.model}")
+        elif args.model == "vggt" and args.dataset == "hi4d":
+            args.base_input_dir = os.path.expanduser("~/vggt/ggpt_inputs/hi4d")
+        elif args.dataset == "hi4d":
+            args.base_input_dir = os.path.expanduser(f"~/{args.model}/ggpt_inputs/hi4d")
+        elif args.model == "vggt4d":
+            args.base_input_dir = os.path.expanduser(f"~/vggt4d/ggpt_inputs")
+        else:
+            args.base_input_dir = os.path.expanduser(f"~/{args.model}/ggpt_inputs")
+    else:
+        args.base_input_dir = os.path.abspath(os.path.expanduser(args.base_input_dir))
+
+    print(f"[INFO] Dataset: {args.dataset}")
+    print(f"[INFO] Base input dir: {args.base_input_dir}")
+
     # 1. Setup Rerun (Removed global init, moved to run_refinement for per-instance tabs)
     # if not args.no_rerun:
     #     print(f"[INFO] Connecting to Rerun at {RERUN_ADDR}...")
@@ -280,7 +316,7 @@ def main():
     # 4. Resolve Subjects
     if args.subject == "all":
         subj_folders = sorted(glob.glob(os.path.join(args.base_input_dir, "subject-*")))
-        subjects = [os.path.basename(f).split("-")[1] for f in subj_folders]
+        subjects = [os.path.basename(f).replace("subject-", "") for f in subj_folders]
         print(f"[INFO] Found {len(subjects)} subjects: {subjects}")
     else:
         subjects = [args.subject]

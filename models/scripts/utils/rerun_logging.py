@@ -6,7 +6,7 @@ import rerun.blueprint as rrb
 import time
 
 from .gt import load_gt_params, build_gt_validity_masks
-from .camera_utils import discover_view_name
+from .camera_utils import discover_view_name, get_rgb_path
 from .umeyama_alignment import apply_similarity_transform
 from eval_config import CONF_PERCENTILE
 
@@ -77,26 +77,18 @@ def configure_rerun_view_defaults(log_root, eye_up):
             continue
 
 
-def log_cameras_rerun(t, view_names, dataset_root, log_root):
+def log_cameras_rerun(t, view_names, dataset_root, log_root, dataset_type="dex-ycb"):
     """
     Logs pinhole cameras with RGB image content.
     Expects dataset_root/{vname}/rgb/{t:05d}.png
     """
     rr.set_time("frame", sequence=t)
     for vname in view_names:
+        if vname is None: continue
         view_dir = os.path.join(dataset_root, vname)
-        K, c2w = load_gt_params(view_dir)
+        K, c2w = load_gt_params(view_dir, dataset_type=dataset_type)
 
-        rgb_dir = os.path.join(view_dir, "rgb")
-        if not os.path.isdir(rgb_dir):
-            rgb_dir = view_dir
-
-        rgb_path = None
-        for ext in (".png", ".jpg", ".jpeg"):
-            p = os.path.join(rgb_dir, f"{t:05d}{ext}")
-            if os.path.exists(p):
-                rgb_path = p
-                break
+        rgb_path = get_rgb_path(view_dir, t, dataset_type=dataset_type)
 
         if rgb_path:
             img_bgr = cv2.imread(rgb_path)
@@ -139,8 +131,15 @@ def log_alignment_results(t, gt_pts, aligned_pts, refined_pts=None, log_root="wo
     time.sleep(0.01)
 
 
-def log_gt_sequence(paths, dataset_root, log_root="4d_eval"):
-    """Logs the GT sequence from a list of NPZ paths."""
+def log_gt_sequence(paths, dataset_root, dataset_type="dex-ycb", log_root="4d_eval"):
+    """Logs the GT sequence from a list of NPZ paths.
+
+    For Hi4D we use the pre-stored gt_pts from the .npz (written by
+    run_ggpt_refinement.py) rather than re-loading from disk.  The stored
+    gt_pts are guaranteed to use the same frame mapping as the model outputs;
+    re-loading with `frame_idx + _get_hi4d_offset()` can be wrong when the
+    GGPT inputs were prepared with a stride or a different start frame.
+    """
     from .gt import load_gt_params, DEPTH_SCALE, DEPTH_MAX_M
     from .camera_utils import discover_view_name
     entity = f"{log_root}/gt"
@@ -148,16 +147,30 @@ def log_gt_sequence(paths, dataset_root, log_root="4d_eval"):
     for p in paths:
         data = np.load(p)
         t = int(data['frame_idx'])
-        gt_pts = data['gt_pts']
-        if np.any(np.linalg.norm(gt_pts, axis=-1) > 10.0):
-            gt_pts = gt_pts / 1000.0
+
+        if dataset_type == "hi4d":
+            # Use the pre-stored gt_pts — correct frame mapping guaranteed.
+            gt_pts = np.array(data['gt_pts'])
+            if gt_pts.ndim > 2:
+                # Stored as (V, H, W, 3) pointmap — flatten valid (non-zero) points.
+                gt_pts = gt_pts.reshape(-1, 3)
+                gt_pts = gt_pts[np.linalg.norm(gt_pts, axis=-1) > 1e-6]
+            if len(gt_pts) == 0:
+                gt_pts = np.zeros((1, 3))
+        else:
+            gt_pts = data['gt_pts']
+            if np.any(np.linalg.norm(gt_pts, axis=-1) > 10.0):
+                gt_pts = gt_pts / 1000.0
+
         log_pointcloud(t, entity, gt_pts, color=[0, 255, 0])
 
-        if 'masks_2d' in data:
-            view_names = [discover_view_name(dataset_root, k) for k in data['Ks']]
+        # Static GT (dex-ycb only — depth-based)
+        if dataset_type != "hi4d" and 'masks_2d' in data:
+            view_names = [discover_view_name(dataset_root, k, dataset_type=dataset_type) for k in data['Ks']]
             static_mask = data['masks_2d']
             all_pts_static = []
             for i, vname in enumerate(view_names):
+                if vname is None: continue
                 view_dir = os.path.join(dataset_root, vname)
                 depth_path = os.path.join(view_dir, "depth", f"{t:05d}.png")
                 if not os.path.exists(depth_path): continue
@@ -173,7 +186,7 @@ def log_gt_sequence(paths, dataset_root, log_root="4d_eval"):
                 keep = (depth_m > 0) & mask_2d
                 ys, xs = np.where(keep)
                 z = depth_m[ys, xs]
-                K, cam2world = load_gt_params(view_dir)
+                K, cam2world = load_gt_params(view_dir, dataset_type=dataset_type)
                 fx, fy = K[0, 0], K[1, 1]
                 cx, cy = K[0, 2], K[1, 2]
                 pts_cam = np.stack([(xs - cx) * z / fx, (ys - cy) * z / fy, z], axis=-1)
@@ -191,9 +204,15 @@ def log_gt_sequence(paths, dataset_root, log_root="4d_eval"):
 
 
 def log_aligned_sequence(paths, frame_transforms, s_glob, R_glob, tr_glob, label, color, dataset_root,
-                         log_root="4d_eval"):
+                         dataset_type="dex-ycb", log_root="4d_eval"):
     """
     Robust 4D pointcloud logger. Handles inter-frame and global alignment composition.
+
+    NOTE: The pointmaps in `paths` are the raw (unfiltered) outputs from the model.
+    We apply only the GT validity mask here (segmentation / depth mask) — we do NOT
+    re-apply confidence thresholding because that was already done in
+    run_baseline_alignment / run_strategy_alignment when selecting correspondence
+    points. Re-applying it here would cause inconsistent filtering frame-to-frame.
     """
     from .alignment_4D import normalize_spatial_dims, normalize_array
 
@@ -205,15 +224,32 @@ def log_aligned_sequence(paths, frame_transforms, s_glob, R_glob, tr_glob, label
             continue
 
         pm = normalize_array(data['pointmaps'], V, H, W).astype(np.float32)
-        conf = normalize_array(data['pointmaps_confs'], V, H, W) if 'pointmaps_confs' in data else None
 
-        t, ks = int(data['frame_idx']), data['Ks']
-        view_names = [discover_view_name(dataset_root, k) for k in ks]
-        vmasks = build_gt_validity_masks(t, view_names, dataset_root, target_hw=(H, W))
+        t = int(data['frame_idx'])
 
-        # Log cameras and images only on the first strategy to avoid redundant writes.
+        # Prefer explicit view_names stored in the .npz.
+        if 'view_names' in data:
+            view_names = [v.decode() if isinstance(v, bytes) else str(v)
+                          for v in data['view_names']]
+        else:
+            ks = data['Ks']
+            view_names = [discover_view_name(dataset_root, k, dataset_type=dataset_type) for k in ks]
+
+        # For Hi4D: use masks_2d from the .npz directly (= geo_msks written by
+        # run_ggpt_refinement.py, correctly frame-indexed).  Re-loading seg masks
+        # via build_gt_validity_masks uses t+offset which can be wrong if the GGPT
+        # inputs were prepared with a stride or different start frame.
+        if dataset_type == "hi4d" and 'masks_2d' in data:
+            from .alignment_4D import normalize_array
+            raw_m = normalize_array(data['masks_2d'], V, H, W, is_mask=True)
+            vmasks = [raw_m[v] if raw_m[v].any() else None for v in range(V)]
+        else:
+            vmasks = build_gt_validity_masks(t, view_names, dataset_root, target_hw=(H, W),
+                                             dataset_type=dataset_type)
+
+        # Log cameras and images only on the first frame to avoid redundant writes.
         if i == 0:
-            log_cameras_rerun(t, view_names, dataset_root, log_root)
+            log_cameras_rerun(t, view_names, dataset_root, log_root, dataset_type=dataset_type)
 
         s_i, R_i, tr_i = frame_transforms[i]
         s_tot = s_glob * s_i
@@ -222,12 +258,10 @@ def log_aligned_sequence(paths, frame_transforms, s_glob, R_glob, tr_glob, label
 
         all_pts_final = []
         for v in range(V):
+            # Apply only the stored validity mask — no confidence re-filtering.
             mask = np.ones((H, W), dtype=bool)
             if vmasks[v] is not None:
                 mask &= vmasks[v]
-            if conf is not None:
-                thr = np.percentile(conf[v], 100 * (1 - CONF_PERCENTILE))
-                mask &= (conf[v] > thr)
             p_v = pm[v][mask]
             if len(p_v) > 0:
                 all_pts_final.append(apply_similarity_transform(p_v, s_tot, R_tot, tr_tot))

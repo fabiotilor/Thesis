@@ -49,8 +49,25 @@ class BaseDataset(torch.utils.data.Dataset):
         if self.mode in ['train', 'val']:
             assert 'gt_pts' in scene
             scene['gt_pts_metric'] = scene['gt_pts'].clone()
-            scene['gt_pts'] = \
-            umeyama_alignment(B=scene['geo_pts'], A=scene['gt_pts'], mask=scene['gt_msks'] & scene['geo_msks'])[0]
+            align_mask = scene['gt_msks'] & scene['geo_msks']
+            if align_mask.sum() < 3:
+                # Fallback: use whichever single mask has more valid points
+                # This is needed for HI4D where GT (person mesh) and geo (SfM)
+                # occupy different pixel regions but share the same (V,H,W) grid.
+                fallback_mask = scene['gt_msks'] if scene['gt_msks'].sum() > scene['geo_msks'].sum() else scene[
+                    'geo_msks']
+                if fallback_mask.sum() >= 3:
+                    print(
+                        f"  [INFO] GT∩geo mask empty, falling back to single-mask alignment ({fallback_mask.sum()} pts)")
+                    align_mask = fallback_mask
+            if align_mask.sum() >= 3:
+                try:
+                    scene['gt_pts'] = \
+                        umeyama_alignment(B=scene['geo_pts'], A=scene['gt_pts'], mask=align_mask)[0]
+                except (ValueError, RuntimeError) as e:
+                    print(f"  [WARN] GT-to-geo alignment failed ({e}), using GT as-is.")
+            else:
+                print(f"  [WARN] GT-to-geo alignment: {align_mask.sum()} valid points, skipping.")
             scene['gt_pts'][~scene['gt_msks']] = 0
 
             if 'tandt' in scene[
@@ -58,11 +75,29 @@ class BaseDataset(torch.utils.data.Dataset):
                 roi_min, roi_max = self.get_bbox(scene)
                 scene['geo_msks'] &= ((scene['geo_pts'] >= roi_min) & (scene['geo_pts'] <= roi_max)).all(dim=-1)
                 scene['ff_msks'] = ((scene['ff_pts'] >= roi_min) & (scene['ff_pts'] <= roi_max)).all(dim=-1)
-            if '4ddress' in scene[
-                'dataset_name']:  # Use human segmentation to filter out non-human points. TODO: Replace the mask with SAM
+            if '4ddress' in scene['dataset_name']:
                 scene['geo_msks'] &= scene['gt_msks']
                 scene['ff_msks'] = scene['gt_msks']
-        # scene['radius'] = torch.std(scene['geo_pts'][scene['geo_msks']], dim=0).mean().item()*3 #a scalar
+
+        # ── NEW: Adaptive Downsampling for Large Scenes (e.g. 4-view HI4D) ────
+        # To prevent CPU OOM during chunking, we stride the grid if points > 1.2M.
+        # This reduces density while preserving the (N, H, W) structure.
+        current_mask = scene.get('ff_msks', torch.ones_like(scene['ff_conf'], dtype=torch.bool))
+        num_valid = current_mask.sum().item()
+
+        if num_valid > 1200000:
+            stride = 2 if num_valid < 4000000 else 3
+            print(f"  [GGPT] Scene too large ({num_valid} valid pts). Striding mask by {stride}x...")
+
+            N, H, W = current_mask.shape
+            grid_mask = torch.zeros((H, W), dtype=torch.bool, device=current_mask.device)
+            grid_mask[::stride, ::stride] = True
+            scene['ff_msks'] = current_mask & grid_mask.unsqueeze(0)
+
+            # Re-verify count
+            num_valid = scene['ff_msks'].sum().item()
+            print(f"  [GGPT] Downsampled to {num_valid} valid points.")
+
         # geo_pts might have outlier we use ff_pts to compute the radius
         if 'ff_msks' in scene:
             scene['radius'] = torch.std(scene['ff_pts'][scene['ff_msks']], dim=0).mean().item() * 3  # a scalar

@@ -151,7 +151,7 @@ def compute_static_jitter(
     nan_result = {
         'jitter_mean': np.nan, 'jitter_std': np.nan, 'jitter_p95': np.nan,
         'jitter_max': np.nan, 'drift_mean': np.nan, 'hf_jitter': np.nan,
-        'per_frame_jitter': np.array([]), 'n_anchors': 0, 'n_frames': 0,
+        'per_frame_jitter': np.array([]),
     }
 
     T = len(pointmaps_per_frame)

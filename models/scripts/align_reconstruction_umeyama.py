@@ -44,12 +44,15 @@ from utils.gt import (
     build_gt_validity_masks,
     DEPTH_MAX_M,
 )
+from vggt.models.vggt import VGGT
 
 # ── configuration ─────────────────────────────────────────────────────────────
 from eval_config import (
     DATASET_BASE_ROOT, SUBJECT_NAMES, SUBJECT_BY_CODE, IMAGE_SIZE, DEVICE, RERUN_ADDR,
     CONF_PERCENTILE, VIEW_CONFIGS, DEFAULT_TARGET_VIEWS, RERUN_EYE_UP
 )
+
+MODEL_NAME = "facebook/vggt"  # Default model name
 
 # NOTE: Import rerun logging lazily inside `run_reconstruction` to avoid
 # circular-import issues when other modules import this file.
