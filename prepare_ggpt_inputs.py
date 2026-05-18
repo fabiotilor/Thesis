@@ -35,13 +35,10 @@ except ImportError:
 
 from eval_config import (
     CONF_PERCENTILE,
-    DATASET_BASE_ROOT,
-    SUBJECT_BY_CODE,
+    DATASETS,
     DEVICE,
     RERUN_ADDR,
     RERUN_EYE_UP,
-    VIEW_CONFIGS,
-    DEFAULT_TARGET_VIEWS,
 )
 
 from pi3.utils.geometry import recover_intrinsic_from_rays_d
@@ -60,15 +57,23 @@ from pi3.utils.gt import (
 PIXEL_LIMIT = 255_000  # Pi3's memory-safe pixel budget
 
 
-def build_views(dataset_root, target_views=None):
+def build_views(dataset_root, target_views=None, dataset_type="dex-ycb"):
     """Discover per-view RGB frame paths."""
     img_exts = {".png", ".jpg", ".jpeg", ".bmp"}
     views = {}
-    dirs = (
-        [os.path.join(dataset_root, f"view_{v}") for v in target_views]
-        if target_views
-        else sorted(glob.glob(os.path.join(dataset_root, "view_*")))
-    )
+
+    if dataset_type == "hi4d":
+        dirs = (
+            [os.path.join(dataset_root, "images", str(v)) for v in target_views]
+            if target_views
+            else sorted(glob.glob(os.path.join(dataset_root, "images", "*")))
+        )
+    else:
+        dirs = (
+            [os.path.join(dataset_root, f"view_{v}") for v in target_views]
+            if target_views
+            else sorted(glob.glob(os.path.join(dataset_root, "view_*")))
+        )
     for vd in dirs:
         if not os.path.isdir(vd):
             continue
@@ -104,13 +109,28 @@ def compute_target_resolution(first_image_path):
     return max(1, k) * 14, max(1, m) * 14  # TARGET_W, TARGET_H
 
 
-def load_images_for_frame(file_paths, target_w, target_h, device):
+def load_images_for_frame(file_paths, target_w, target_h, device, dataset_type="dex-ycb", dataset_root=None, view_names=None, actual_t=None):
     """Load, resize, and return a (1, V, 3, H, W) tensor in [0, 1]."""
     tensors = []
-    for f in file_paths:
+    for i, f in enumerate(file_paths):
         img = Image.open(f).convert("RGB")
         img_resized = img.resize((target_w, target_h), Image.Resampling.LANCZOS)
-        tensors.append(T.ToTensor()(img_resized))
+        img_np = np.array(img_resized)
+
+        # Apply segmentation mask for hi4d to filter out background
+        if dataset_type == "hi4d" and dataset_root and view_names and actual_t is not None:
+            vname = view_names[i]
+            from pi3.utils.gt import _load_hi4d_seg_mask
+            seg_mask = _load_hi4d_seg_mask(dataset_root, vname, actual_t)
+            if seg_mask is not None:
+                mask_resized = cv2.resize(
+                    seg_mask.astype(np.uint8),
+                    (target_w, target_h),
+                    interpolation=cv2.INTER_NEAREST
+                ).astype(bool)
+                img_np[~mask_resized] = 0
+
+        tensors.append(T.ToTensor()(Image.fromarray(img_np)))
     imgs = torch.stack(tensors).to(device)         # (V, 3, H, W)
     return imgs.unsqueeze(0)                        # (1, V, 3, H, W)
 
@@ -195,6 +215,10 @@ def parse_args():
         help="Model variant to use (default: pi3).",
     )
     parser.add_argument(
+        "--data", type=str, choices=["dex-ycb", "hi4d"], default="dex-ycb",
+        help="Dataset to process (default: dex-ycb).",
+    )
+    parser.add_argument(
         "--subject", type=str, default="all",
         help="Subject code (e.g. 01) or 'all'.",
     )
@@ -218,6 +242,17 @@ def parse_args():
 
 def main():
     args = parse_args()
+
+    dataset_name = args.data
+    ds_config = DATASETS[dataset_name]
+    DATASET_BASE_ROOT = ds_config["root"]
+    SUBJECT_NAMES = ds_config["subject_names"]
+
+    # Reconstruct SUBJECT_BY_CODE based on dataset
+    if dataset_name == "dex-ycb":
+        SUBJECT_BY_CODE = {name.split("subject-")[1][:2] if "subject-" in name else name: name for name in SUBJECT_NAMES}
+    elif dataset_name == "hi4d":
+        SUBJECT_BY_CODE = {name.split("/")[-1]: name for name in SUBJECT_NAMES}
 
     # ── Resolve subjects ─────────────────────────────────────────────────
     if args.all or args.subject == "all":
@@ -262,11 +297,17 @@ def main():
         for n_views in args.views:
             print(f"\n[INFO] Processing with {n_views} views...")
 
-            target_view_names = VIEW_CONFIGS.get(n_views)
-            if target_view_names is None:
-                target_view_names = DEFAULT_TARGET_VIEWS
+            if dataset_name == "hi4d":
+                pair_name = subject_full.split("/")[0]
+                vc = ds_config["view_configs"].get(pair_name, ds_config["view_configs"].get("default", {}))
+                target_view_names = vc.get(n_views)
+            else:
+                target_view_names = ds_config["view_configs"].get(n_views)
 
-            views_dict = build_views(dataset_root, target_view_names)
+            if target_view_names is None:
+                target_view_names = ds_config["default_target_views"]
+
+            views_dict = build_views(dataset_root, target_view_names, dataset_type=dataset_name)
             view_names = sorted(views_dict.keys())
             if not view_names:
                 print(f"[ERROR] No views found for target count {n_views}")
@@ -292,11 +333,32 @@ def main():
             all_gt_extrinsics = []
             all_gt_intrinsics = []
 
-            for t in tqdm(range(n_frames), desc=f"Frames ({subj_code} - {n_views}v)"):
+            if dataset_name == "hi4d":
+                start_idx = 21
+                stride = 1
+                max_available = n_frames
+                target_count = 24
+
+                t_indices = []
+                curr = start_idx
+                while len(t_indices) < target_count and curr < max_available:
+                    t_indices.append(curr)
+                    curr += stride
+            else:
+                t_indices = list(range(n_frames))
+
+            for t in tqdm(t_indices, desc=f"Frames ({subj_code} - {n_views}v)"):
                 current_files = [views_dict[v][t] for v in view_names]
 
+                frame_filename = os.path.basename(current_files[0])
+                actual_t = int(os.path.splitext(frame_filename)[0])
+
                 # ── 1. Forward pass ──────────────────────────────────────
-                imgs_tensor = load_images_for_frame(current_files, TARGET_W, TARGET_H, DEVICE)
+                imgs_tensor = load_images_for_frame(
+                    current_files, TARGET_W, TARGET_H, DEVICE,
+                    dataset_type=dataset_name, dataset_root=dataset_root,
+                    view_names=view_names, actual_t=actual_t
+                )
                 res = run_forward_pass(model, model_type, imgs_tensor, DEVICE)
 
                 pts3d_list, confs, est_intrinsics, est_poses = extract_outputs(
@@ -306,7 +368,7 @@ def main():
                 # ── 2. GT validity masks ─────────────────────────────────
                 H_mod, W_mod = confs[0].shape[:2]
                 gt_validity_masks = build_gt_validity_masks(
-                    t, view_names, dataset_root, depth_max_m=DEPTH_MAX_M,
+                    actual_t, view_names, dataset_root, depth_max_m=DEPTH_MAX_M, dataset_type=dataset_name,
                 )
 
                 # ── 3. Per-view filtering & accumulation ─────────────────
@@ -322,7 +384,7 @@ def main():
                     gt_mask = gt_validity_masks[i]
                     if gt_mask is None:
                         gt_mask = np.zeros((H_mod, W_mod), dtype=bool)
-                        print(f"  [WARN] No GT depth for {view_names[i]} at t={t}")
+                        print(f"  [WARN] No GT depth for {view_names[i]} at actual_t={actual_t}")
                     else:
                         if gt_mask.shape != (H_mod, W_mod):
                             gt_mask = cv2.resize(
@@ -352,12 +414,15 @@ def main():
                     all_intrinsics.append(est_intrinsics[i])
 
                     # ── GT data ──────────────────────────────────────────
-                    view_dir = os.path.join(dataset_root, view_names[i])
-                    K_gt, cam2world_gt = load_gt_params(view_dir)
+                    if dataset_name == "hi4d":
+                        view_dir = os.path.join(dataset_root, "images", view_names[i])
+                    else:
+                        view_dir = os.path.join(dataset_root, view_names[i])
+                    K_gt, cam2world_gt = load_gt_params(view_dir, dataset_type=dataset_name)
                     w2c_gt = np.linalg.inv(cam2world_gt)
                     all_gt_extrinsics.append(w2c_gt)
 
-                    depth_path = os.path.join(view_dir, "depth", f"{t:05d}.png")
+                    depth_path = os.path.join(view_dir, "depth", f"{actual_t:05d}.png")
                     if os.path.exists(depth_path):
                         depth_raw = cv2.imread(depth_path, cv2.IMREAD_UNCHANGED).astype(np.float32)
                         depth_m = depth_raw * DEPTH_SCALE
@@ -393,19 +458,22 @@ def main():
                         all_gt_points.append(pts_world_gt)
                         all_gt_masks.append(gt_mask_small)
                     else:
-                        print(f"  [WARN] Missing GT depth: {depth_path}")
+                        if dataset_name != "hi4d":
+                            print(f"  [WARN] Missing GT depth: {depth_path}")
                         all_gt_points.append(np.zeros((H_mod, W_mod, 3), dtype=np.float32))
                         all_gt_masks.append(np.zeros((H_mod, W_mod), dtype=bool))
                         K_small = K_gt.copy()
-                        K_small[0, 0] *= (W_mod / 640)
-                        K_small[1, 1] *= (H_mod / 480)
-                        K_small[0, 2] *= (W_mod / 640)
-                        K_small[1, 2] *= (H_mod / 480)
+                        with Image.open(current_files[i]) as img_gt:
+                            W_orig, H_orig = img_gt.size
+                        K_small[0, 0] *= (W_mod / W_orig)
+                        K_small[1, 1] *= (H_mod / H_orig)
+                        K_small[0, 2] *= (W_mod / W_orig)
+                        K_small[1, 2] *= (H_mod / H_orig)
                         all_gt_intrinsics.append(K_small)
 
                 # ── Rerun logging ────────────────────────────────────────
                 if not args.no_rerun and rr is not None:
-                    rr.set_time("frame", sequence=t)
+                    rr.set_time("frame", sequence=actual_t)
 
                     # Model points (filtered)
                     frame_pts = []
@@ -422,7 +490,7 @@ def main():
                         )
 
                     # GT points
-                    gt_cloud = build_gt_pointcloud(t, view_names, dataset_root)
+                    gt_cloud = build_gt_pointcloud(actual_t, view_names, dataset_root, dataset_type=dataset_name)
                     if gt_cloud is not None:
                         rr.log(
                             f"world/{model_type}/subject_{subj_code}/{n_views}v/gt_points",
@@ -430,8 +498,8 @@ def main():
                         )
 
             # ── Save .bin files ───────────────────────────────────────────
-            # Output goes to: ggpt_inputs/<model>/subject-<code>/<N>views/
-            out_path = os.path.join(args.output_dir, model_type, f"subject-{subj_code}", f"{n_views}views")
+            # Output goes to: ggpt_inputs/<dataset_name>/<model>/subject-<code>/<N>views/
+            out_path = os.path.join(args.output_dir, dataset_name, model_type, f"subject-{subj_code}", f"{n_views}views")
             os.makedirs(out_path, exist_ok=True)
             print(f"[INFO] Saving results to {out_path}...")
 

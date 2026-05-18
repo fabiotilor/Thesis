@@ -34,14 +34,9 @@ def compute_flow_sam2(frames: list[np.ndarray]) -> np.ndarray:
         try:
             from sam2.build_sam import build_sam2
             from sam2.sam2_image_predictor import SAM2ImagePredictor
-        except ImportError as e:
+        except Exception as e:
             print(f"[ERROR] SAM2 import failed: {e}")
             print("[HINT] You may need to install SAM2: cd sam2 && pip install -e .")
-            raise e
-        except RuntimeError as e:
-            if "shadowed by the repository name" in str(e):
-                print(f"[ERROR] SAM2 Shadowing Error: {e}")
-                print("[HINT] Try properly installing SAM2: cd sam2 && pip install -e .")
             raise e
 
     # Use cached predictor if available
@@ -52,10 +47,10 @@ def compute_flow_sam2(frames: list[np.ndarray]) -> np.ndarray:
         checkpoint = "./sam2/checkpoints/sam2.1_hiera_base_plus.pt"
         model_cfg = "configs/sam2.1/sam2.1_hiera_b+.yaml"
         import torch
-        device = "cuda" if torch.cuda.is_available() else "cpu"
+        device = "cuda" if torch.cuda.is_available() else ("mps" if torch.backends.mps.is_available() else "cpu")
 
         if not os.path.exists(checkpoint):
-            print(f"[WARN] SAM2 checkpoint not found at {checkpoint}! Falling back to static mask.")
+            print(f"[WARN] SAM2 checkpoint not found at {checkpoint}! Falling back to all-static mask.")
             H, W = frames[0].shape[:2]
             return np.ones((H, W), dtype=bool)
 
@@ -150,12 +145,35 @@ def compute_flow_sam2(frames: list[np.ndarray]) -> np.ndarray:
     return static_mask
 
 
-def compute_static_mask(rgb_paths):
+def compute_static_mask(rgb_paths, dataset_type="dex-ycb"):
     """
     Returns a boolean mask (H, W) where True = static across all frame transitions.
-    SAM2 based high-fidelity segmentation.
     """
-    # Load all frames
+    # For Hi4D, check if we can load pre-existing masks
+    if dataset_type == "hi4d" and len(rgb_paths) > 0:
+        first_path = rgb_paths[0]
+        # Path structure: images/{cam_id}/{frame_id}.jpg
+        # Mask structure: seg/img_seg_mask/{cam_id}/all/{frame_id}.png
+        if "images" in first_path:
+            parts = first_path.split(os.sep)
+            try:
+                # Find the index of "images" to resolve relative paths correctly
+                img_idx = parts.index("images")
+                subject_root = os.sep.join(parts[:img_idx])
+                cam_id = parts[img_idx + 1]
+                frame_id = os.path.splitext(parts[img_idx + 2])[0]
+
+                mask_path = os.path.join(subject_root, "seg", "img_seg_mask", cam_id, "all", f"{frame_id}.png")
+                if os.path.exists(mask_path):
+                    m = cv2.imread(mask_path, cv2.IMREAD_GRAYSCALE)
+                    if m is not None:
+                        # Hi4D masks: 255 for person, 0 for background
+                        # We want True for static (background), False for dynamic (person)
+                        return (m == 0)
+            except (ValueError, IndexError):
+                pass
+
+    # Fallback to compute from frames
     frames = []
     for p in rgb_paths:
         img = cv2.imread(p)

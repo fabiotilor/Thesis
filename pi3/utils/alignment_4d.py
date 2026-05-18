@@ -2,7 +2,7 @@ import os
 import numpy as np
 import cv2
 from .umeyama_alignment import estimate_similarity_transform, apply_similarity_transform
-from .gt import build_gt_validity_masks, DEPTH_MAX_M, load_gt_params
+from .gt import DEPTH_MAX_M, load_gt_params
 from .camera_utils import discover_view_name
 from .temporal_metrics import compute_static_jitter
 from eval_config import CONF_PERCENTILE
@@ -46,81 +46,47 @@ def normalize_array(arr, V, H, W, is_mask=False):
     return arr
 
 
-def extract_clean_gt_correspondences(data, dataset_root, n_samples=2000, vmasks=None, use_static_mask=True):
+def extract_clean_gt_correspondences(data, dataset_root, n_samples=2000, use_static_mask=True, dataset_type="dex-ycb"):
     """
-    Implements the robust GT projection logic from align_reconstruction_umeyama.py.
-    Matches pointmap pixels to GT back-projected world points using scaled intrinsics.
+    Refactored to use the centralized logic in gt.py for dataset-specific handling.
     """
-    V, H_mod, W_mod = normalize_spatial_dims(data)
-    if H_mod == 0: return None
+    from .gt import get_static_correspondences
 
-    pm_est = normalize_array(data['pointmaps'], V, H_mod, W_mod).astype(np.float32)
-    conf_est = normalize_array(data['pointmaps_confs'], V, H_mod, W_mod) if 'pointmaps_confs' in data else None
-    m_static = normalize_array(data['masks_2d'], V, H_mod, W_mod, is_mask=True)
+    # Standardize data inputs
+    V, H, W = normalize_spatial_dims(data)
+    if H == 0: return None
 
-    t, ks_gt = int(data['frame_idx']), data['Ks']
-    view_names = [discover_view_name(dataset_root, k) for k in ks_gt]
-    if vmasks is None:
-        vmasks = build_gt_validity_masks(t, view_names, dataset_root, target_hw=(H_mod, W_mod))
+    pm_est = normalize_array(data['pointmaps'], V, H, W)
+    conf_est = normalize_array(data['pointmaps_confs'], V, H, W) if 'pointmaps_confs' in data else None
+    m_static = normalize_array(data['masks_2d'], V, H, W, is_mask=True)
 
-    # ── Global threshold for the whole frame ──
-    if conf_est is not None:
-        frame_thr = np.quantile(conf_est, 1.0 - CONF_PERCENTILE)
-    else:
-        frame_thr = 0.0
+    t, ks = int(data['frame_idx']), data['Ks']
+    view_names = [discover_view_name(dataset_root, k, dataset_type=dataset_type) for k in ks]
 
-    all_src, all_dst = [], []
-    rng = np.random.default_rng(42)
+    # We pass the precomputed masks if available
+    precomputed_masks = {vname: m_static[i] for i, vname in enumerate(view_names)}
 
-    for v in range(V):
-        if view_names[v] is None or vmasks[v] is None: continue
-        view_dir = os.path.join(dataset_root, view_names[v])
+    src, dst = get_static_correspondences(
+        t, view_names, pm_est, conf_est, dataset_root,
+        conf_percentile=CONF_PERCENTILE,
+        precomputed_masks=precomputed_masks,
+        use_static_mask=use_static_mask,
+        dataset_type=dataset_type
+    )
 
-        # Load GT depth at sensor resolution
-        depth_path = os.path.join(view_dir, "depth", f"{t:05d}.png")
-        if not os.path.exists(depth_path): continue
-        d_img_gt = cv2.imread(depth_path, cv2.IMREAD_UNCHANGED).astype(np.float32) / 1000.0
-        H_gt, W_gt = d_img_gt.shape
+    if src is None: return None
 
-        # Exact scaling logic from gt.py
-        K, c2w = load_gt_params(view_dir)
-        scale_x, scale_y = W_mod / W_gt, H_mod / H_gt
-        fx_s, fy_s, cx_s, cy_s = K[0, 0] * scale_x, K[1, 1] * scale_y, K[0, 2] * scale_x, K[1, 2] * scale_y
+    # Subsample if requested
+    if len(src) > n_samples:
+        rng = np.random.default_rng(42)
+        idx = rng.choice(len(src), size=n_samples, replace=False)
+        src, dst = src[idx], dst[idx]
 
-        # Downsample GT depth to model resolution
-        d_mod_gt = cv2.resize(d_img_gt, (W_mod, H_mod), interpolation=cv2.INTER_NEAREST)
-
-        # Build total mask for this view
-        valid = (d_mod_gt > 0) & vmasks[v]
-        if use_static_mask:
-            valid &= m_static[v]
-        if conf_est is not None:
-            valid &= (conf_est[v] > frame_thr)
-
-        ys, xs = np.where(valid)
-        if len(ys) < 6: continue
-
-        # Sample
-        idx = rng.choice(len(ys), size=min(len(ys), n_samples), replace=False)
-        ys, xs = ys[idx], xs[idx]
-
-        # GT Point World
-        z_gt = d_mod_gt[ys, xs]
-        pts_cam_gt = np.stack([(xs - cx_s) * z_gt / fx_s, (ys - cy_s) * z_gt / fy_s, z_gt], axis=-1)
-        pts_world_gt = (c2w[:3, :3] @ pts_cam_gt.T).T + c2w[:3, 3]
-
-        # Est Point (already in its own system)
-        pts_est = pm_est[v][ys, xs]
-
-        all_src.append(pts_est)
-        all_dst.append(pts_world_gt)
-
-    if not all_src: return None
-    return np.concatenate(all_src), np.concatenate(all_dst)
+    return src, dst
 
 
-def get_pointmap_correspondences(path_a, path_b, dataset_root, vmasks_a=None, vmasks_b=None):
-    """Inter-frame alignment using only static/valid pixels."""
+def get_pointmap_correspondences(path_a, path_b, dataset_root, dataset_type="dex-ycb"):
+    """Inter-frame alignment using only static pixels existing in both frames."""
     data_a, data_b = np.load(path_a), np.load(path_b)
     V, H, W = normalize_spatial_dims(data_a)
     if H == 0: return None
@@ -135,16 +101,6 @@ def get_pointmap_correspondences(path_a, path_b, dataset_root, vmasks_a=None, vm
     m_a = normalize_array(data_a['masks_2d'], V, H, W, is_mask=True)
     m_b = normalize_array(data_b['masks_2d'], V, H, W, is_mask=True)
 
-    # We use vmasks to ensure we only align on high-quality regions (hand/table)
-    if vmasks_a is None:
-        vmasks_a = build_gt_validity_masks(int(data_a['frame_idx']),
-                                           [discover_view_name(dataset_root, k) for k in data_a['Ks']], dataset_root,
-                                           target_hw=(H, W))
-    if vmasks_b is None:
-        vmasks_b = build_gt_validity_masks(int(data_b['frame_idx']),
-                                           [discover_view_name(dataset_root, k) for k in data_b['Ks']], dataset_root,
-                                           target_hw=(H, W))
-
     src_list, dst_list = [], []
 
     # ── Global thresholds ──
@@ -152,9 +108,8 @@ def get_pointmap_correspondences(path_a, path_b, dataset_root, vmasks_a=None, vm
     thr_b = np.quantile(conf_b, 1.0 - CONF_PERCENTILE) if conf_b is not None else 0.0
 
     for v in range(V):
-        if vmasks_a[v] is None or vmasks_b[v] is None: continue
-        # Intersection of static and valid
-        mask = m_a[v] & m_b[v] & vmasks_a[v] & vmasks_b[v]
+        # Intersection of static masks from both frames
+        mask = m_a[v] & m_b[v]
         if conf_a is not None:
             mask &= (conf_a[v] > thr_a)
         if conf_b is not None:
@@ -169,9 +124,8 @@ def get_pointmap_correspondences(path_a, path_b, dataset_root, vmasks_a=None, vm
     return np.concatenate(src_list), np.concatenate(dst_list)
 
 
-def estimate_interframe_transform_pointmap(path_a, path_b, dataset_root, return_error=False, vmasks_a=None,
-                                           vmasks_b=None):
-    res = get_pointmap_correspondences(path_a, path_b, dataset_root, vmasks_a=vmasks_a, vmasks_b=vmasks_b)
+def estimate_interframe_transform_pointmap(path_a, path_b, dataset_root, return_error=False, dataset_type="dex-ycb"):
+    res = get_pointmap_correspondences(path_a, path_b, dataset_root, dataset_type=dataset_type)
     if res is None:
         return (None, None) if return_error else None
 
@@ -184,35 +138,20 @@ def estimate_interframe_transform_pointmap(path_a, path_b, dataset_root, return_
     return (s, R, tr), err
 
 
-def strategy1_reference(frame_npz_paths, dataset_root):
+def strategy1_reference(frame_npz_paths, dataset_root, dataset_type="dex-ycb"):
     n_frames = len(frame_npz_paths)
-    vmask_cache = {}
-    for path in frame_npz_paths:
-        data = np.load(path)
-        t, V, H, W = int(data['frame_idx']), *normalize_spatial_dims(data)
-        vmask_cache[path] = build_gt_validity_masks(t, [discover_view_name(dataset_root, k) for k in data['Ks']],
-                                                    dataset_root, target_hw=(H, W))
-
     transforms = [(1.0, np.eye(3), np.zeros(3))]
     for i in range(1, n_frames):
         res = estimate_interframe_transform_pointmap(
             frame_npz_paths[0], frame_npz_paths[i], dataset_root,
-            vmasks_a=vmask_cache[frame_npz_paths[0]],
-            vmasks_b=vmask_cache[frame_npz_paths[i]]
+            dataset_type=dataset_type
         )
         transforms.append(res if res else (1.0, np.eye(3), np.zeros(3)))
     return transforms
 
 
-def strategy2_hierarchical(frame_npz_paths, dataset_root):
+def strategy2_hierarchical(frame_npz_paths, dataset_root, dataset_type="dex-ycb"):
     n_frames = len(frame_npz_paths)
-    vmask_cache = {}
-    for path in frame_npz_paths:
-        data = np.load(path)
-        t, V, H, W = int(data['frame_idx']), *normalize_spatial_dims(data)
-        vmask_cache[path] = build_gt_validity_masks(t, [discover_view_name(dataset_root, k) for k in data['Ks']],
-                                                    dataset_root, target_hw=(H, W))
-
     groups = [[(i, (1.0, np.eye(3), np.zeros(3)))] for i in range(n_frames)]
     while len(groups) > 1:
         new_groups = []
@@ -221,8 +160,7 @@ def strategy2_hierarchical(frame_npz_paths, dataset_root):
             path_a, path_b = frame_npz_paths[g_a[0][0]], frame_npz_paths[g_b[0][0]]
             res = estimate_interframe_transform_pointmap(
                 path_a, path_b, dataset_root,
-                vmasks_a=vmask_cache[path_a],
-                vmasks_b=vmask_cache[path_b]
+                dataset_type=dataset_type
             )
             s_ba, R_ba, tr_ba = res if res else (1.0, np.eye(3), np.zeros(3))
             merged = list(g_a)
@@ -250,7 +188,7 @@ def rotation_average(R_list, weights, max_iters=50, tol=1e-6):
                 continue
 
             v = theta * np.array([R_rel[2, 1] - R_rel[1, 2], R_rel[0, 2] - R_rel[2, 0], R_rel[1, 0] - R_rel[0, 1]]) / (
-                        2 * np.sin(theta))
+                    2 * np.sin(theta))
 
             # Weiszfeld re-weighting
             norm_v = np.linalg.norm(v)
@@ -308,17 +246,8 @@ def compose_similarity_transform(a, b):
     return s_c, R_c, t_c
 
 
-def strategy3_pgo(frame_npz_paths, dataset_root, num_iters=50):
+def strategy3_pgo(frame_npz_paths, dataset_root, num_iters=50, dataset_type="dex-ycb"):
     n_frames = len(frame_npz_paths)
-    print("    [PGO] Precomputing shared validity masks (O(T) disk I/O)...")
-    vmask_cache = {}
-    for path in frame_npz_paths:
-        data = np.load(path)
-        t = int(data['frame_idx'])
-        V, H, W = normalize_spatial_dims(data)
-        view_names = [discover_view_name(dataset_root, k) for k in data['Ks']]
-        vmask_cache[path] = build_gt_validity_masks(t, view_names, dataset_root, target_hw=(H, W))
-
     print("    [PGO] Computing T(T-1)/2 pairwise edges...")
     edges = {}
 
@@ -327,8 +256,7 @@ def strategy3_pgo(frame_npz_paths, dataset_root, num_iters=50):
             res = estimate_interframe_transform_pointmap(
                 frame_npz_paths[i], frame_npz_paths[j], dataset_root,
                 return_error=True,
-                vmasks_a=vmask_cache[frame_npz_paths[i]],
-                vmasks_b=vmask_cache[frame_npz_paths[j]]
+                dataset_type=dataset_type
             )
             if res[0] is not None:
                 (s, R, t), err = res
@@ -338,7 +266,7 @@ def strategy3_pgo(frame_npz_paths, dataset_root, num_iters=50):
     print(f"    [PGO] Found {len(edges)} valid edges. Initializing loops...")
 
     # Initialize with strategy 1
-    T_global = strategy1_reference(frame_npz_paths, dataset_root)
+    T_global = strategy1_reference(frame_npz_paths, dataset_root, dataset_type=dataset_type)
     T_global = [list(val) for val in T_global]
 
     print("    [PGO] Optimizing...")
@@ -400,19 +328,14 @@ def strategy3_pgo(frame_npz_paths, dataset_root, num_iters=50):
     return [(val[0], val[1], val[2]) for val in T_global]
 
 
-def solve_final_gt_registration(frame_npz_paths, frame_transforms, dataset_root, use_static_mask=True):
-    print("    [4D-GT] Registration: Precomputing shared validity masks...")
-    vmask_cache = {}
-    for path in frame_npz_paths:
-        data = np.load(path)
-        t, V, H, W = int(data['frame_idx']), *normalize_spatial_dims(data)
-        vmask_cache[path] = build_gt_validity_masks(t, [discover_view_name(dataset_root, k) for k in data['Ks']],
-                                                    dataset_root, target_hw=(H, W))
-
+def solve_final_gt_registration(frame_npz_paths, frame_transforms, dataset_root, use_static_mask=True,
+                                dataset_type="dex-ycb"):
+    print("    [4D-GT] Registration: Building correspondences...")
     all_src, all_dst = [], []
     for i, path in enumerate(frame_npz_paths):
         data = np.load(path)
-        res = extract_clean_gt_correspondences(data, dataset_root, vmasks=vmask_cache[path], use_static_mask=use_static_mask)
+        res = extract_clean_gt_correspondences(data, dataset_root, use_static_mask=use_static_mask,
+                                               dataset_type=dataset_type)
         if res is None: continue
         src, dst = res
         # Apply inter-frame transform to bring to unified space
@@ -431,7 +354,8 @@ def solve_final_gt_registration(frame_npz_paths, frame_transforms, dataset_root,
     return s_glob, R_glob, tr_glob
 
 
-def compute_4d_jitter_complete(frame_npz_paths, frame_transforms, s_glob, R_glob, tr_glob, dataset_root):
+def compute_4d_jitter_complete(frame_npz_paths, frame_transforms, s_glob, R_glob, tr_glob, dataset_root,
+                               dataset_type="dex-ycb"):
     all_pm_mv, all_masks_mv = [], []
     for i, path in enumerate(frame_npz_paths):
         data = np.load(path)
@@ -445,13 +369,8 @@ def compute_4d_jitter_complete(frame_npz_paths, frame_transforms, s_glob, R_glob
             [apply_similarity_transform(pm[v].reshape(-1, 3), s_tot, R_tot, tr_tot).reshape(H, W, 3) for v in range(V)])
         all_pm_mv.append(aligned_pm)
 
-        # Stricter static+valid mask for jitter
+        # Use static masks for jitter computation
         m = normalize_array(data['masks_2d'], V, H, W, is_mask=True)
-        # Use simple build_gt_validity_masks here as jitter isn't O(N^2)
-        vms = build_gt_validity_masks(int(data['frame_idx']), [discover_view_name(dataset_root, k) for k in data['Ks']],
-                                      dataset_root, target_hw=(H, W))
-        for v in range(V):
-            if vms[v] is not None: m[v] &= vms[v]
         all_masks_mv.append(m)
 
     return compute_static_jitter(all_pm_mv, all_masks_mv)

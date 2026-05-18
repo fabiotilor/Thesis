@@ -10,7 +10,6 @@ import cv2
 import rerun as rr
 
 from pi3.utils.umeyama_alignment import apply_similarity_transform
-from pi3.utils.gt import build_gt_validity_masks
 from pi3.utils.camera_utils import discover_view_name
 from pi3.utils.alignment_4d import (
     strategy1_reference,
@@ -23,7 +22,7 @@ from pi3.utils.alignment_4d import (
 
 from eval_config import (
     DATASET_BASE_ROOT, SUBJECT_NAMES, SUBJECT_BY_CODE,
-    CONF_PERCENTILE, RERUN_ADDR, RERUN_EYE_UP
+    CONF_PERCENTILE, RERUN_ADDR, RERUN_EYE_UP, DATASETS
 )
 # ── camera discovery ───────────────────────────────────────────────────────────
 # Moved to utils.camera_utils
@@ -68,12 +67,13 @@ def save_aligned_results(
     out_dir=None,
     method_label=None,
     skip_existing_frames=True,
+    dataset_type="dex-ycb",
 ):
     """Saves evaluation-ready .npz files for each frame (method-namespaced output optional)."""
     if out_dir is None:
         if strategy_label is None:
             raise ValueError("save_aligned_results: either out_dir or strategy_label must be provided.")
-        out_dir = os.path.join("aligned_outputs", subject_name, strategy_label)
+        out_dir = os.path.join("aligned_outputs", dataset_type, subject_name, strategy_label)
 
     os.makedirs(out_dir, exist_ok=True)
     print(f"  [SAVE] Exporting aligned frames to {out_dir}...")
@@ -104,19 +104,10 @@ def save_aligned_results(
                 if "pointmaps_confs" in data
                 else None
             )
-            t, ks = int(data["frame_idx"]), data["Ks"]
-            view_names = [discover_view_name(dataset_root, k) for k in ks]
-            vmasks = build_gt_validity_masks(t, view_names, dataset_root, target_hw=(H, W))
-
+            # Note: Background is already removed via input image masking,
+            # so we only filter by confidence threshold here.
             for v in range(V):
                 mask = np.ones((H, W), dtype=bool)
-                if vmasks[v] is not None:
-                    mask &= vmasks[v]
-                elif view_names[v] is not None:
-                    print(f"    [WARN] Frame {t} view {v} ({view_names[v]}): Depth mask missing.")
-                else:
-                    print(f"    [WARN] Frame {t} view {v}: Could not discover view name for K.")
-
                 if conf is not None:
                     if 'min_conf_thr' in data:
                         thr = data['min_conf_thr']
@@ -129,17 +120,18 @@ def save_aligned_results(
                     all_pts.append(apply_similarity_transform(p_v, s_tot, R_tot, tr_tot))
 
             n_pts = sum(len(p) for p in all_pts)
+            frame_idx = int(data.get('frame_idx', i))
             if n_pts == 0:
                 print(
-                    f"    [ERROR] Frame {t}: No points survived filtering "
-                    f"(Conf Percentile {CONF_PERCENTILE} + GT Masks)."
+                    f"    [ERROR] Frame {frame_idx}: No points survived confidence filtering "
+                    f"(Conf Percentile {CONF_PERCENTILE})."
                 )
 
             aligned_pts = np.concatenate(all_pts, axis=0) if all_pts else np.zeros((0, 3))
 
             # 3. Save bundled NPZ
             if skip_existing_frames:
-                out_path = os.path.join(out_dir, f"frame_{t:04d}.npz")
+                out_path = os.path.join(out_dir, f"frame_{frame_idx:04d}.npz")
                 if os.path.exists(out_path):
                     print(f"  [SKIP] Existing {os.path.basename(out_path)} found in {out_dir}")
                     continue
@@ -147,8 +139,8 @@ def save_aligned_results(
             save_dict = {
                 "gt_pts": gt_pts,
                 "aligned_pts": aligned_pts,
-                "frame_idx": int(t),
-                "Ks": ks,
+                "frame_idx": frame_idx,
+                "Ks": data["Ks"],
                 "R_ts": data["R_ts"],
                 "masks_2d": data["masks_2d"],
                 "est_poses": data.get("est_poses"),
@@ -160,7 +152,7 @@ def save_aligned_results(
                 "tr": tr_tot,
             }
 
-            out_path = os.path.join(out_dir, f"frame_{t:04d}.npz")
+            out_path = os.path.join(out_dir, f"frame_{frame_idx:04d}.npz")
             np.savez_compressed(out_path, **save_dict)
         except Exception as e:
             print(f"    [ERROR] Strategy save failed for frame={i} ({path}): {e}")
@@ -182,8 +174,8 @@ def save_timing(out_dir, strategy_label, n_frames, total_seconds):
 
 # ── main ──────────────────────────────────────────────────────────────────────
 
-def evaluate_subject(subject_name, selected_views=None, pgo_only=False):
-    base_dir = os.path.join("aligned_outputs", subject_name)
+def evaluate_subject(subject_name, selected_views=None, pgo_only=False, dataset_type="dex-ycb"):
+    base_dir = os.path.join("aligned_outputs", dataset_type, subject_name) if os.path.exists(os.path.join("aligned_outputs", dataset_type, subject_name)) else os.path.join("aligned_outputs", subject_name)
     if not os.path.exists(base_dir): return
 
     view_dir_pattern = re.compile(r"^\d+views$")
@@ -199,13 +191,15 @@ def evaluate_subject(subject_name, selected_views=None, pgo_only=False):
             print(f"[WARN] No matching view folders found for {subject_name} and views {selected_views}")
             return
 
+    dataset_config = DATASETS.get(dataset_type, {})
+    dataset_root = os.path.join(dataset_config.get("root", DATASET_BASE_ROOT), subject_name)
+
     for vdir in view_dirs:
         in_dir = os.path.join(base_dir, vdir)
         paths = sorted(glob.glob(os.path.join(in_dir, "frame_*.npz")),
                        key=lambda x: int(os.path.basename(x).split('_')[1].split('.')[0]))
         if len(paths) < 2: continue
 
-        dataset_root = os.path.join(DATASET_BASE_ROOT, subject_name)
         log_root = f"4d_eval_{vdir}"
         initialize_rerun_session(f"4d_eval_{subject_name}_{vdir}", RERUN_ADDR, log_root)
 
@@ -217,15 +211,15 @@ def evaluate_subject(subject_name, selected_views=None, pgo_only=False):
             # 1. Strategy 1 (Reference Frame 0)
             print(f"\n--- [Strategy 1] Reference Frame Alignment ({vdir}) ---")
             start_s1 = time.perf_counter()
-            tf_s1 = strategy1_reference(paths, dataset_root)
-            s_g1, R_g1, tr_g1 = solve_final_gt_registration(paths, tf_s1, dataset_root, use_static_mask=False)
+            tf_s1 = strategy1_reference(paths, dataset_root, dataset_type=dataset_type)
+            s_g1, R_g1, tr_g1 = solve_final_gt_registration(paths, tf_s1, dataset_root, use_static_mask=False, dataset_type=dataset_type)
 
             strat1_label = f"Strategy_1_{vdir}"
-            save_aligned_results(paths, tf_s1, s_g1, R_g1, tr_g1, subject_name, strat1_label, dataset_root)
+            save_aligned_results(paths, tf_s1, s_g1, R_g1, tr_g1, subject_name, strat1_label, dataset_root, dataset_type=dataset_type)
             log_aligned_sequence(paths, tf_s1, s_g1, R_g1, tr_g1, "Strategy_1", [0, 0, 255], dataset_root,
-                                 log_root=log_root)
+                                 log_root=log_root, dataset_type=dataset_type)
             save_timing(
-                os.path.join("aligned_outputs", subject_name, strat1_label),
+                os.path.join("aligned_outputs", dataset_type, subject_name, strat1_label),
                 strat1_label,
                 len(paths),
                 time.perf_counter() - start_s1,
@@ -234,15 +228,15 @@ def evaluate_subject(subject_name, selected_views=None, pgo_only=False):
             # 2. Strategy 2 (Hierarchical)
             print(f"\n--- [Strategy 2] Hierarchical Alignment ({vdir}) ---")
             start_s2 = time.perf_counter()
-            tf_s2 = strategy2_hierarchical(paths, dataset_root)
-            s_g2, R_g2, tr_g2 = solve_final_gt_registration(paths, tf_s2, dataset_root, use_static_mask=False)
+            tf_s2 = strategy2_hierarchical(paths, dataset_root, dataset_type=dataset_type)
+            s_g2, R_g2, tr_g2 = solve_final_gt_registration(paths, tf_s2, dataset_root, use_static_mask=False, dataset_type=dataset_type)
 
             strat2_label = f"Strategy_2_{vdir}"
-            save_aligned_results(paths, tf_s2, s_g2, R_g2, tr_g2, subject_name, strat2_label, dataset_root)
+            save_aligned_results(paths, tf_s2, s_g2, R_g2, tr_g2, subject_name, strat2_label, dataset_root, dataset_type=dataset_type)
             log_aligned_sequence(paths, tf_s2, s_g2, R_g2, tr_g2, "Strategy_2", [255, 0, 0], dataset_root,
-                                 log_root=log_root)
+                                 log_root=log_root, dataset_type=dataset_type)
             save_timing(
-                os.path.join("aligned_outputs", subject_name, strat2_label),
+                os.path.join("aligned_outputs", dataset_type, subject_name, strat2_label),
                 strat2_label,
                 len(paths),
                 time.perf_counter() - start_s2,
@@ -251,15 +245,15 @@ def evaluate_subject(subject_name, selected_views=None, pgo_only=False):
         # 3. Strategy 3 (PGO)
         print(f"\n--- [Strategy 3] Pose Graph Optimization ({vdir}) ---")
         start_s3 = time.perf_counter()
-        tf_s3 = strategy3_pgo(paths, dataset_root, num_iters=50)
-        s_g3, R_g3, tr_g3 = solve_final_gt_registration(paths, tf_s3, dataset_root, use_static_mask=False)
+        tf_s3 = strategy3_pgo(paths, dataset_root, num_iters=50, dataset_type=dataset_type)
+        s_g3, R_g3, tr_g3 = solve_final_gt_registration(paths, tf_s3, dataset_root, use_static_mask=False, dataset_type=dataset_type)
 
         strat3_label = f"Strategy_3_{vdir}"
-        save_aligned_results(paths, tf_s3, s_g3, R_g3, tr_g3, subject_name, strat3_label, dataset_root)
+        save_aligned_results(paths, tf_s3, s_g3, R_g3, tr_g3, subject_name, strat3_label, dataset_root, dataset_type=dataset_type)
         log_aligned_sequence(paths, tf_s3, s_g3, R_g3, tr_g3, "Strategy_3", [0, 255, 0], dataset_root,
-                             log_root=log_root)
+                             log_root=log_root, dataset_type=dataset_type)
         save_timing(
-            os.path.join("aligned_outputs", subject_name, strat3_label),
+            os.path.join("aligned_outputs", dataset_type, subject_name, strat3_label),
             strat3_label,
             len(paths),
             time.perf_counter() - start_s3,
@@ -270,13 +264,26 @@ def evaluate_subject(subject_name, selected_views=None, pgo_only=False):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
+    parser.add_argument("--data", type=str, choices=["dex-ycb", "hi4d"], default="dex-ycb")
     parser.add_argument("--all", action="store_true")
     parser.add_argument("--pgo", action="store_true", help="Run only Strategy 3 (Pose Graph Optimization).")
     parser.add_argument("--views", nargs="+", type=int, help="Optional view counts to process (e.g. --views 2 3 4).")
-    for code in SUBJECT_BY_CODE.keys(): parser.add_argument(f"--{code}", action="store_true")
+    parser.add_argument("--subjects", nargs="+", type=str, help="Specific subject codes to run.")
     args = parser.parse_args()
 
-    selected = [v for k, v in SUBJECT_BY_CODE.items() if getattr(args, k)]
-    if args.all: selected = SUBJECT_NAMES
+    dataset_config = DATASETS[args.data]
+    subject_names = dataset_config["subject_names"]
+    subject_by_code = {name.split("subject-")[1][:2] if "subject-" in name else name: name for name in subject_names}
+
+    if args.all:
+        selected = subject_names
+    elif args.subjects:
+        selected = [subject_by_code[c] for c in args.subjects]
+    else:
+        # Fallback to checking for flags like --01
+        selected = [v for k, v in subject_by_code.items() if getattr(args, f"subject_{k}", False)]
+        if not selected:
+             selected = [subject_names[0]]
+
     for s in selected:
-        evaluate_subject(s, selected_views=args.views, pgo_only=args.pgo)
+        evaluate_subject(s, selected_views=args.views, pgo_only=args.pgo, dataset_type=args.data)

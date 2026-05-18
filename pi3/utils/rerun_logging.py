@@ -76,17 +76,16 @@ def configure_rerun_view_defaults(log_root, eye_up):
             continue
 
 
-def log_cameras_rerun(t, view_names, dataset_root, log_root):
+def log_cameras_rerun(t, view_names, dataset_root, log_root, dataset_type="dex-ycb"):
     """
     Logs pinhole cameras with RGB image content.
-    Expects dataset_root/{vname}/rgb/{t:05d}.png
     """
     rr.set_time("frame", sequence=t)
     for vname in view_names:
         view_dir = os.path.join(dataset_root, vname)
-        K, c2w = load_gt_params(view_dir)
+        K, c2w = load_gt_params(view_dir, dataset_type=dataset_type)
 
-        rgb_path = get_rgb_path(view_dir, t)
+        rgb_path = get_rgb_path(view_dir, t, dataset_type=dataset_type)
         if rgb_path:
             img_bgr = cv2.imread(rgb_path)
             if img_bgr is not None:
@@ -147,7 +146,7 @@ def log_gt_sequence(paths, log_root="4d_eval"):
 
 
 def log_aligned_sequence(paths, frame_transforms, s_glob, R_glob, tr_glob, label, color, dataset_root,
-                         log_root="4d_eval"):
+                         log_root="4d_eval", dataset_type="dex-ycb"):
     """
     Robust 4D pointcloud logger. Handles inter-frame and global alignment composition.
     """
@@ -164,12 +163,12 @@ def log_aligned_sequence(paths, frame_transforms, s_glob, R_glob, tr_glob, label
         conf = normalize_array(data['pointmaps_confs'], V, H, W) if 'pointmaps_confs' in data else None
 
         t, ks = int(data['frame_idx']), data['Ks']
-        view_names = [discover_view_name(dataset_root, k) for k in ks]
-        vmasks = build_gt_validity_masks(t, view_names, dataset_root, target_hw=(H, W))
+        view_names = [discover_view_name(dataset_root, k, dataset_type=dataset_type) for k in ks]
+        vmasks = build_gt_validity_masks(t, view_names, dataset_root, target_hw=(H, W), dataset_type=dataset_type)
 
         # Log cameras and images only on the first strategy to avoid redundant writes.
         if i == 0:
-            log_cameras_rerun(t, view_names, dataset_root, log_root)
+            log_cameras_rerun(t, view_names, dataset_root, log_root, dataset_type=dataset_type)
 
         s_i, R_i, tr_i = frame_transforms[i]
         s_tot = s_glob * s_i

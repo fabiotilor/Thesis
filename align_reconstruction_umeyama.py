@@ -30,13 +30,13 @@ from pi3.utils.gt import (
     build_static_gt_pointcloud,
     get_static_correspondences,
     get_camera_correspondences,
-    build_gt_validity_masks,
     DEPTH_MAX_M,
+    _load_hi4d_seg_mask,
 )
 
 # ── configuration ─────────────────────────────────────────────────────────────
 from eval_config import (
-    DATASET_BASE_ROOT, SUBJECT_NAMES, SUBJECT_BY_CODE,
+    DATASETS, DATASET_BASE_ROOT, SUBJECT_NAMES, SUBJECT_BY_CODE,
     DEVICE, RERUN_ADDR,
     CONF_PERCENTILE, VIEW_CONFIGS, DEFAULT_TARGET_VIEWS, RERUN_EYE_UP
 )
@@ -52,21 +52,40 @@ def get_masked_image(t, vname, rgb_path, cache_dir, dataset_root):
     return rgb_path
 
 
-def build_views(dataset_root, target_views=None):
+def build_views(dataset_root, target_views=None, dataset_type="dex-ycb"):
     img_exts = {".png", ".jpg", ".jpeg", ".bmp"}
     views = defaultdict(list)
-    dirs = ([os.path.join(dataset_root, f"view_{v}") for v in target_views]
-            if target_views else sorted(glob.glob(os.path.join(dataset_root, "view_*"))))
-    for vd in dirs:
-        if not os.path.isdir(vd):
-            continue
-        vname = os.path.basename(vd)
-        rgb_dir = os.path.join(vd, "rgb")
-        search = rgb_dir if os.path.isdir(rgb_dir) else vd
-        frames = sorted(f for f in glob.glob(os.path.join(search, "*"))
-                        if os.path.splitext(f.lower())[1] in img_exts)
-        if frames:
-            views[vname] = frames
+
+    if dataset_type == "dex-ycb":
+        dirs = ([os.path.join(dataset_root, f"view_{v}") for v in target_views]
+                if target_views else sorted(glob.glob(os.path.join(dataset_root, "view_*"))))
+        for vd in dirs:
+            if not os.path.isdir(vd):
+                continue
+            vname = os.path.basename(vd)
+            rgb_dir = os.path.join(vd, "rgb")
+            search = rgb_dir if os.path.isdir(rgb_dir) else vd
+            frames = sorted(f for f in glob.glob(os.path.join(search, "*"))
+                            if os.path.splitext(f.lower())[1] in img_exts)
+            if frames:
+                views[vname] = frames
+    elif dataset_type == "hi4d":
+        # images/XX/000XXX.jpg
+        img_dir = os.path.join(dataset_root, "images")
+        if target_views:
+            cam_ids = [str(v) for v in target_views]
+        else:
+            cam_ids = sorted(os.listdir(img_dir))
+
+        for cid in cam_ids:
+            cid_dir = os.path.join(img_dir, cid)
+            if not os.path.isdir(cid_dir):
+                continue
+            frames = sorted(f for f in glob.glob(os.path.join(cid_dir, "*"))
+                            if os.path.splitext(f.lower())[1] in img_exts)
+            if frames:
+                views[cid] = frames
+
     return dict(views)
 
 
@@ -93,6 +112,8 @@ def run_reconstruction(
         skip_rerun_init=False,
         skip_existing_frames=True,
         no_rerun=False,
+        limit_frames=None,
+        dataset_type="dex-ycb",
 ):
     rerun_stream = f"pi3_stabilisation_{run_tag}"
     if not skip_rerun_init and not no_rerun:
@@ -114,9 +135,11 @@ def run_reconstruction(
     log_root = f"{run_tag}"
     if not skip_rerun_init and not no_rerun:
         rr.log(log_root, rr.ViewCoordinates.RIGHT_HAND_Y_UP, static=True)
-        configure_rerun_view_defaults(log_root, RERUN_EYE_UP)
+        eye_up = DATASETS[dataset_type].get("eye_up", RERUN_EYE_UP)
+        print(f"[RERUN] Using eye_up={eye_up} for dataset={dataset_type}")
+        configure_rerun_view_defaults(log_root, eye_up)
 
-    views = build_views(dataset_root, target_views=target_views)
+    views = build_views(dataset_root, target_views=target_views, dataset_type=dataset_type)
     view_names = sorted(views.keys())
     if not view_names:
         print(f"[WARN] No valid views found for target_views={target_views}; skipping run.")
@@ -124,6 +147,9 @@ def run_reconstruction(
     print(f"[INFO] Using views: {view_names}")
 
     n_frames = len(views[view_names[0]])
+    if limit_frames:
+        n_frames = min(n_frames, limit_frames)
+
     run_cache_root = os.path.join(cache_root, run_tag)
     os.makedirs(run_cache_root, exist_ok=True)
     os.makedirs(out_dir, exist_ok=True)
@@ -131,18 +157,39 @@ def run_reconstruction(
     frame_times_sec = []
     mask_base_dir = os.path.join(out_dir, "flow_masks")
 
-    for t in range(n_frames):
-        out_frame_path = os.path.join(out_dir, f"frame_{t:02d}.npz")
+    t_indices = range(n_frames)
+    if dataset_type == "hi4d":
+        # Start from frame 22 (index 21) with step size 1, process 24 frames
+        start_idx = 21
+        stride = 1
+        max_available = len(views[view_names[0]])
+
+        # Determine how many frames we actually want
+        target_count = limit_frames if limit_frames else 24
+
+        t_indices = []
+        curr = start_idx
+        while len(t_indices) < target_count and curr < max_available:
+            t_indices.append(curr)
+            curr += stride
+
+    for i, t in enumerate(t_indices):
+        # Extract actual frame index from filename if possible
+        first_view_path = views[view_names[0]][t]
+        frame_filename = os.path.basename(first_view_path)
+        actual_t = int(os.path.splitext(frame_filename)[0])
+
+        out_frame_path = os.path.join(out_dir, f"frame_{actual_t:06d}.npz")
         if skip_existing_frames and os.path.exists(out_frame_path):
             print(f"  [SKIP] {run_tag}: existing {os.path.basename(out_frame_path)} found.")
             continue
 
         frame_start = time.perf_counter()
         try:
-            print(f"── t={t:02d} / {n_frames - 1} ──────────────────────────────────────")
+            print(f"── t={actual_t:06d} ({i:02d} / {len(t_indices) - 1}) ──────────────────────────────────────")
 
             if not no_rerun:
-                log_cameras_rerun(t, view_names, dataset_root, log_root)
+                log_cameras_rerun(actual_t, view_names, dataset_root, log_root, dataset_type=dataset_type)
 
             masked_current_files = [
                 get_masked_image(t, v, views[v][t], cache_root, dataset_root)
@@ -165,17 +212,45 @@ def run_reconstruction(
                     m -= 1
             TARGET_W, TARGET_H = max(1, k) * 14, max(1, m) * 14
 
-            for f in masked_current_files:
+            for i, f in enumerate(masked_current_files):
                 img = Image.open(f).convert('RGB')
                 img_resized = img.resize((TARGET_W, TARGET_H), Image.Resampling.LANCZOS)
-                imgs_list.append(T.ToTensor()(img_resized))
+                img_np = np.array(img_resized)  # (H, W, 3)
+
+                # Apply segmentation mask for hi4d to filter out background
+                if dataset_type == "hi4d":
+                    vname = view_names[i]
+                    seg_mask = _load_hi4d_seg_mask(dataset_root, vname, actual_t)
+                    if seg_mask is not None:
+                        # Resize mask to match target resolution
+                        mask_resized = cv2.resize(
+                            seg_mask.astype(np.uint8),
+                            (TARGET_W, TARGET_H),
+                            interpolation=cv2.INTER_NEAREST
+                        ).astype(bool)
+                        # Set background pixels to black
+                        img_np[~mask_resized] = 0
+
+                imgs_list.append(T.ToTensor()(Image.fromarray(img_np)))
 
             imgs_tensor = torch.stack(imgs_list).to(DEVICE)
             imgs_tensor = imgs_tensor.unsqueeze(0)  # (1, V, 3, H, W)
 
-            dtype = torch.bfloat16 if torch.cuda.get_device_capability()[0] >= 8 else torch.float16
+            if DEVICE == "cuda" and torch.cuda.is_available():
+                dtype = torch.bfloat16 if torch.cuda.get_device_capability()[0] >= 8 else torch.float16
+                autocast_kwargs = {"device_type": "cuda", "dtype": dtype}
+            else:
+                # MPS and CPU: run in float32 — half-precision SVD fallback crashes on CPU
+                autocast_kwargs = None
+
             with torch.no_grad():
-                with torch.amp.autocast('cuda', dtype=dtype):
+                if autocast_kwargs:
+                    with torch.autocast(**autocast_kwargs):
+                        if model_type == "pi3":
+                            res = model(imgs_tensor)
+                        else:
+                            res = model(imgs=imgs_tensor, intrinsics=None, poses=None, depths=None)
+                else:
                     if model_type == "pi3":
                         res = model(imgs_tensor)
                     else:
@@ -187,6 +262,22 @@ def run_reconstruction(
             confs_np = torch.sigmoid(res['conf'][0, ..., 0]).float().cpu().numpy()
             confs = [confs_np[i] for i in range(confs_np.shape[0])]
 
+            # Apply segmentation masks to output pointmaps for hi4d
+            # This zeros out background points that the model may still output
+            if dataset_type == "hi4d":
+                for i, vname in enumerate(view_names):
+                    seg_mask = _load_hi4d_seg_mask(dataset_root, vname, actual_t)
+                    if seg_mask is not None:
+                        H, W = confs[i].shape[:2]
+                        # Resize mask to match model output resolution
+                        mask_resized = cv2.resize(
+                            seg_mask.astype(np.uint8), (W, H),
+                            interpolation=cv2.INTER_NEAREST
+                        ).astype(bool)
+                        # Zero out background points in both pointmap and confidence
+                        pts3d_list[i][~mask_resized] = 0
+                        confs[i][~mask_resized] = 0
+
             rays_d = torch.nn.functional.normalize(res['local_points'], dim=-1)
             K_est = recover_intrinsic_from_rays_d(rays_d, force_center_principal_point=True)
             est_intrinsics_all = K_est[0].float().cpu().numpy()
@@ -194,7 +285,7 @@ def run_reconstruction(
             # ── Compute Global Confidence Threshold for this Frame ─────────────
             all_confs = np.concatenate([c.ravel() for c in confs])
             frame_thr = np.quantile(all_confs, 1.0 - CONF_PERCENTILE)
-            print(f"  [CONF] Global Frame Threshold (top {100*CONF_PERCENTILE:.0f}%): {frame_thr:.4f}")
+            print(f"  [CONF] Global Frame Threshold (top {100 * CONF_PERCENTILE:.0f}%): {frame_thr:.4f}")
 
             est_poses_all = np.zeros((imgs_tensor.shape[1], 4, 4))
             for i in range(imgs_tensor.shape[1]):
@@ -214,34 +305,37 @@ def run_reconstruction(
             precomputed_masks = {}
             for i, vname in enumerate(view_names):
                 view_dir_v = os.path.join(dataset_root, vname)
-                rgb_t_v = get_rgb_path(view_dir_v, t)
-                rgb_adj_v = get_rgb_path(view_dir_v, t + 1) or get_rgb_path(view_dir_v, t - 1)
+                rgb_t_v = get_rgb_path(view_dir_v, actual_t, dataset_type=dataset_type)
+                rgb_adj_v = get_rgb_path(view_dir_v, actual_t + 1, dataset_type=dataset_type) or get_rgb_path(
+                    view_dir_v, actual_t - 1, dataset_type=dataset_type)
                 rgb_paths_v = [p for p in [rgb_t_v, rgb_adj_v] if p is not None]
                 if len(rgb_paths_v) >= 2:
-                    precomputed_masks[vname] = compute_static_mask(rgb_paths_v)
+                    precomputed_masks[vname] = compute_static_mask(rgb_paths_v, dataset_type=dataset_type)
                 else:
                     precomputed_masks[vname] = None
 
             # ── Full GT ─────────────────────────────────────────────────────────
             gt_pts = build_gt_pointcloud(
-                t, view_names, dataset_root
+                actual_t, view_names, dataset_root, dataset_type=dataset_type
             )
 
             # ── Static GT ───────────────────────────────────────────────────────
             gt_static_pts = build_static_gt_pointcloud(
-                t, view_names, dataset_root,
-                precomputed_masks=precomputed_masks
+                actual_t, view_names, dataset_root,
+                precomputed_masks=precomputed_masks,
+                dataset_type=dataset_type
             )
             if gt_pts is None:
-                print(f"  [WARN] No GT pointcloud at t={t}; skipping frame.")
+                print(f"  [WARN] No GT pointcloud at actual_t={actual_t}; skipping frame.")
                 continue
 
             # ── Correspondences ─────────────────────────────────────────────────
             src_corr, dst_corr = get_static_correspondences(
-                t, view_names, pts3d_list, confs, dataset_root,
+                actual_t, view_names, pts3d_list, confs, dataset_root,
                 conf_percentile=CONF_PERCENTILE,
                 precomputed_masks=precomputed_masks,
-                use_static_mask=False
+                use_static_mask=False,
+                dataset_type=dataset_type
             )
 
             if src_corr is not None and len(src_corr) >= 3:
@@ -252,47 +346,28 @@ def run_reconstruction(
                       f"({len(src_corr) if src_corr is not None else 0}), falling back to camera-based")
 
                 est_cam, gt_cam = get_camera_correspondences(
-                    t, view_names, est_poses_all, dataset_root
+                    actual_t, view_names, est_poses_all, dataset_root, dataset_type=dataset_type
                 )
                 s, R, tr = estimate_similarity_transform(est_cam, gt_cam)
                 print(f"  ✓ t={t:02d}  scale={s:.4f} (camera fallback)")
 
             # ── Filter estimated points ─────────────────────────────────────────
-            gt_validity_masks = build_gt_validity_masks(
-                t, view_names, dataset_root,
-                depth_max_m=DEPTH_MAX_M,
-                target_hw=None,  # handled per-view below
-            )
-
+            # Note: Background is already removed via input image masking,
+            # so we only filter by confidence threshold here.
             est_pts_parts = []
             for i, vname in enumerate(view_names):
                 pts_i = pts3d_list[i].reshape(-1, 3)
                 conf_i = confs[i].ravel()
                 conf_ok = conf_i > frame_thr
+                est_pts_parts.append(pts_i[conf_ok])
 
-                gt_mask = gt_validity_masks[i]
-                if gt_mask is None:
-                    print(f"  [WARN] no GT depth for {vname} at t={t}, skipping view")
-                    continue
-
-                # Use confs[i].shape — NOT pts3d_list[i].shape[:2] —
-                H, W = confs[i].shape[:2]
-                if gt_mask.shape != (H, W):
-                    gt_mask = cv2.resize(
-                        gt_mask.astype(np.uint8), (W, H),
-                        interpolation=cv2.INTER_NEAREST,
-                    ).astype(bool)
-
-                valid = conf_ok & gt_mask.ravel()
-                est_pts_parts.append(pts_i[valid])
-
-            est_pts = np.concatenate(est_pts_parts, axis=0)
+            est_pts = np.concatenate(est_pts_parts, axis=0) if est_pts_parts else np.empty((0, 3))
             aligned_pts = apply_similarity_transform(est_pts, s, R, tr)
 
             # ── Logging ─────────────────────────────────────────────────────────
             if not no_rerun:
                 log_alignment_results(
-                    t, gt_pts, aligned_pts,
+                    actual_t, gt_pts, aligned_pts,
                     gt_static_pts=gt_static_pts,
                     log_root=log_root,
                 )
@@ -310,13 +385,19 @@ def run_reconstruction(
             # ── Per-view flow masks ────────────────────────────────────────────
             for i, vname in enumerate(view_names):
                 view_dir = os.path.join(dataset_root, vname)
-                K, cam2world = load_gt_params(view_dir)
+                K, cam2world = load_gt_params(view_dir, dataset_type=dataset_type)
                 R_t = np.linalg.inv(cam2world)
 
                 flow_mask = precomputed_masks.get(vname)
                 if flow_mask is None:
-                    print(f"  [WARN] {vname} t={t}: not enough frames or flow mask failed, skipping view")
-                    continue
+                    if dataset_type == "hi4d":
+                        # Hi4D uses seg masks loaded in compute_static_mask; if unavailable, use all-True
+                        H_mod, W_mod = confs[i].shape[:2]
+                        flow_mask = np.ones((H_mod, W_mod), dtype=bool)
+                    else:
+                        print(
+                            f"  [WARN] {vname} actual_t={actual_t}: not enough frames or flow mask failed, skipping view")
+                        continue
 
                 H_mod, W_mod = confs[i].shape[:2]
                 flow_mask_mod = (
@@ -329,21 +410,9 @@ def run_reconstruction(
                 view_mask_out = os.path.join(mask_base_dir, vname)
                 os.makedirs(view_mask_out, exist_ok=True)
                 cv2.imwrite(
-                    os.path.join(view_mask_out, f"static_mask_{t:02d}.png"),
+                    os.path.join(view_mask_out, f"static_mask_{actual_t:06d}.png"),
                     flow_mask_mod.astype(np.uint8) * 255,
                 )
-
-                gt_mask = gt_validity_masks[i]
-                if gt_mask is not None:
-                    if gt_mask.shape != (H_mod, W_mod):
-                        gt_mask = cv2.resize(
-                            gt_mask.astype(np.uint8), (W_mod, H_mod),
-                            interpolation=cv2.INTER_NEAREST,
-                        ).astype(bool)
-                    cv2.imwrite(
-                        os.path.join(view_mask_out, f"gt_mask_{t:02d}.png"),
-                        gt_mask.astype(np.uint8) * 255,
-                    )
 
                 valid_masks.append(flow_mask_mod)
                 valid_Ks.append(K)
@@ -359,7 +428,7 @@ def run_reconstruction(
                 'tr': tr,
                 'pointmaps': np.stack(pts3d_list),
                 'pointmaps_confs': np.stack(confs),
-                'frame_idx': int(t),
+                'frame_idx': int(actual_t),
                 'Ks': np.array(valid_Ks),
                 'R_ts': np.array(valid_R_ts),
                 'est_poses': np.array(valid_est_poses),
@@ -373,6 +442,8 @@ def run_reconstruction(
             np.savez(out_frame_path, **save_dict)
             frame_times_sec.append(time.perf_counter() - frame_start)
         except Exception as e:
+            import traceback
+            traceback.print_exc()
             print(f"  [ERROR] Frame t={t} failed: {e}")
             continue
 
