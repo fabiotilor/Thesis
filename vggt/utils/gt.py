@@ -2,30 +2,175 @@ import numpy as np
 import os
 import cv2
 import torch
+import pickle
+from .camera_utils import get_rgb_path
 
 DEPTH_MAX_M = 1.5
 DEPTH_SCALE = 0.001  # mm → metres
 
+_MODEL_TARGET_SIZE = 518  # Must match load_and_preprocess_images target_size
+_MODEL_PATCH_SIZE = 14  # ViT patch size, height rounded to multiples of this
 
-def load_gt_params(view_dir):
-    data = np.load(os.path.join(view_dir, "intrinsics_extrinsics.npz"))
-    K = data['intrinsics'].astype(np.float64)[:3, :3]
-    cam2world = np.linalg.inv(data['extrinsics'].astype(np.float64))
-    return K, cam2world
+
+def _compute_crop_aware_transform(W_orig, H_orig, h_mod, w_mod):
+    """
+    Compute the correct K scaling + crop offset that matches the image
+    preprocessing in load_and_preprocess_images(mode='crop').
+
+    That function does:
+      1. Resize width → 518, height → round(H * 518/W / 14) * 14
+      2. If resized height > 518: center crop to 518
+
+    Returns
+    -------
+    scale_x, scale_y : float
+        Pixel scale factors from original to resized (before crop).
+    crop_y_offset : int
+        Number of pixels cropped from the top (0 if no crop).
+    """
+    target = _MODEL_TARGET_SIZE
+    # Step 1: resize (matches load_and_preprocess_images logic)
+    resize_scale = target / W_orig
+    new_height = round(H_orig * resize_scale / _MODEL_PATCH_SIZE) * _MODEL_PATCH_SIZE
+    new_width = target
+
+    scale_x = new_width / W_orig
+    scale_y = new_height / H_orig
+
+    # Step 2: center crop if height exceeds target
+    crop_y_offset = 0
+    if new_height > target:
+        crop_y_offset = (new_height - target) // 2
+
+    return scale_x, scale_y, crop_y_offset
+
+
+def _resize_mask_crop_aware(mask, W_orig, H_orig, h_mod, w_mod):
+    """
+    Resize a mask from original image resolution to the model's output
+    resolution, applying the same resize + center-crop as the model's
+    image preprocessing.
+
+    Parameters
+    ----------
+    mask : np.ndarray (H_orig, W_orig) bool or uint8
+    W_orig, H_orig : original image dimensions
+    h_mod, w_mod : model output dimensions (typically 518, 518)
+
+    Returns
+    -------
+    np.ndarray (h_mod, w_mod) bool
+    """
+    target = _MODEL_TARGET_SIZE
+    resize_scale = target / W_orig
+    new_height = round(H_orig * resize_scale / _MODEL_PATCH_SIZE) * _MODEL_PATCH_SIZE
+    new_width = target
+
+    # Step 1: resize to (new_width, new_height) preserving aspect ratio
+    resized = cv2.resize(
+        mask.astype(np.uint8), (new_width, new_height),
+        interpolation=cv2.INTER_NEAREST
+    )
+
+    # Step 2: center crop if taller than target
+    if new_height > target:
+        crop_y = (new_height - target) // 2
+        resized = resized[crop_y:crop_y + target, :]
+
+    # Step 3: if shorter than target, center-pad (shouldn't happen for portrait)
+    if resized.shape[0] < h_mod or resized.shape[1] < w_mod:
+        padded = np.zeros((h_mod, w_mod), dtype=np.uint8)
+        y_off = (h_mod - resized.shape[0]) // 2
+        x_off = (w_mod - resized.shape[1]) // 2
+        padded[y_off:y_off + resized.shape[0], x_off:x_off + resized.shape[1]] = resized
+        resized = padded
+
+    return resized.astype(bool)
+
+
+def load_gt_params(view_dir, dataset_type="dex-ycb"):
+    if dataset_type == "dex-ycb":
+        data = np.load(os.path.join(view_dir, "intrinsics_extrinsics.npz"))
+        K = data['intrinsics'].astype(np.float64)[:3, :3]
+        cam2world = np.linalg.inv(data['extrinsics'].astype(np.float64))
+        return K, cam2world
+    elif dataset_type == "hi4d":
+        # For Hi4D, view_dir is usually .../pairXX/actionXX/ID
+        # The cameras are in .../pairXX/actionXX/cameras/rgb_cameras.npz
+        action_dir = os.path.dirname(view_dir)
+        cam_id = os.path.basename(view_dir)
+        cam_path = os.path.join(action_dir, "cameras", "rgb_cameras.npz")
+        if not os.path.exists(cam_path):
+            # Try one level higher if needed
+            action_dir = os.path.dirname(action_dir)
+            cam_path = os.path.join(action_dir, "cameras", "rgb_cameras.npz")
+
+        data = np.load(cam_path)
+        ids = list(data['ids'])
+        try:
+            idx = ids.index(int(cam_id))
+        except ValueError:
+            # Fallback for string comparison
+            idx = ids.index(str(cam_id))
+
+        K = data['intrinsics'][idx].astype(np.float64)
+        ext = data['extrinsics'][idx].astype(np.float64)  # 3x4
+        # Hi4D extrinsics are world-to-camera [R|t]
+        # We need cam2world
+        R = ext[:3, :3]
+        t = ext[:3, 3]
+        c2w = np.eye(4)
+        c2w[:3, :3] = R.T
+        c2w[:3, 3] = -R.T @ t
+        return K, c2w
+    else:
+        raise ValueError(f"Unknown dataset type: {dataset_type}")
 
 
 def backproject(depth_m, K):
     H, W = depth_m.shape
     fx, fy = K[0, 0], K[1, 1]
-    cx, cy = K[0, 2], K[1, 2]
     v, u = np.meshgrid(np.arange(H), np.arange(W), indexing='ij')
     mask = (depth_m > 0) & (depth_m < DEPTH_MAX_M)
     z = depth_m[mask]
-    pts = np.stack([(u[mask] - cx) * z / fx, (v[mask] - cy) * z / fy, z], axis=-1)
+    pts = np.stack([(u[mask] - K[0, 2]) * z / fx, (v[mask] - K[1, 2]) * z / fy, z], axis=-1)
     return pts, mask
 
 
-def build_gt_pointcloud(t, view_names, dataset_root):
+def _load_hi4d_mesh_gt(dataset_root, t):
+    """Load raw mesh scan from frames_vis as GT pointcloud for Hi4D."""
+    pkl_path = os.path.join(dataset_root, "frames_vis", f"mesh-f{t:05d}.pkl")
+    if os.path.exists(pkl_path):
+        with open(pkl_path, 'rb') as f:
+            mesh = pickle.load(f)
+        return mesh['vertices']  # (42930, 3) float32
+
+    # Fallback to SMPL if mesh not available
+    smpl_path = os.path.join(dataset_root, "smpl", f"{t:06d}.npz")
+    if os.path.exists(smpl_path):
+        data = np.load(smpl_path)
+        verts = data['verts']  # 2 x 6890 x 3
+        return verts.reshape(-1, 3)
+
+    return None
+
+
+def _load_hi4d_seg_mask(dataset_root, cam_id, t):
+    """Load the combined (all-subject) segmentation mask for a Hi4D camera+frame.
+    Returns a bool mask where True = person pixel, False = background.
+    """
+    mask_path = os.path.join(dataset_root, "seg", "img_seg_mask", str(cam_id), "all", f"{t:06d}.png")
+    if os.path.exists(mask_path):
+        m = cv2.imread(mask_path, cv2.IMREAD_GRAYSCALE)
+        if m is not None:
+            return m > 0  # person pixels = True
+    return None
+
+
+def build_gt_pointcloud(t, view_names, dataset_root, dataset_type="dex-ycb"):
+    if dataset_type == "hi4d":
+        return _load_hi4d_mesh_gt(dataset_root, t)
+
     all_pts = []
     for vname in view_names:
         view_dir = os.path.join(dataset_root, vname)
@@ -36,7 +181,7 @@ def build_gt_pointcloud(t, view_names, dataset_root):
         depth_raw = cv2.imread(depth_path, cv2.IMREAD_UNCHANGED).astype(np.float32)
         depth_m = depth_raw * DEPTH_SCALE
 
-        K, cam2world = load_gt_params(view_dir)
+        K, cam2world = load_gt_params(view_dir, dataset_type=dataset_type)
         pts_cam, _ = backproject(depth_m, K)
 
         pts_world = (cam2world[:3, :3] @ pts_cam.T).T + cam2world[:3, 3]
@@ -45,7 +190,7 @@ def build_gt_pointcloud(t, view_names, dataset_root):
     return np.concatenate(all_pts, axis=0) if all_pts else None
 
 
-def get_camera_correspondences(t, view_names, est_poses, dataset_root):
+def get_camera_correspondences(t, view_names, est_poses, dataset_root, dataset_type="dex-ycb"):
     """
     Build (estimated, GT) camera center correspondences.
 
@@ -57,13 +202,18 @@ def get_camera_correspondences(t, view_names, est_poses, dataset_root):
         c2w_est = est_poses[i] if isinstance(est_poses, np.ndarray) else est_poses[i].cpu().numpy()
         est_positions.append(c2w_est[:3, 3])
         view_dir = os.path.join(dataset_root, vname)
-        _, cam2world_gt = load_gt_params(view_dir)
+        _, cam2world_gt = load_gt_params(view_dir, dataset_type=dataset_type)
         gt_positions.append(cam2world_gt[:3, 3])
     return np.array(est_positions), np.array(gt_positions)
 
 
 def build_static_gt_pointcloud(t, view_names, dataset_root,
-                               flow_threshold=2.0, use_sam2=True):
+                               flow_threshold=2.0, use_sam2=True, dataset_type="dex-ycb"):
+    if dataset_type == "hi4d":
+        # Hi4D has no static background in GT — return the full mesh GT
+        # (used for temporal alignment in strategies 1-3)
+        return build_gt_pointcloud(t, view_names, dataset_root, dataset_type=dataset_type)
+
     all_pts = []
 
     for vname in view_names:
@@ -76,19 +226,9 @@ def build_static_gt_pointcloud(t, view_names, dataset_root,
         depth_m = depth_raw * DEPTH_SCALE
         H, W = depth_m.shape
 
-        rgb_dir = os.path.join(view_dir, "rgb")
-        if not os.path.isdir(rgb_dir):
-            rgb_dir = view_dir
-
-        def _rgb_path(frame_t):
-            for ext in (".png", ".jpg", ".jpeg"):
-                p = os.path.join(rgb_dir, f"{frame_t:05d}{ext}")
-                if os.path.exists(p):
-                    return p
-            return None
-
-        rgb_t   = _rgb_path(t)
-        rgb_adj = _rgb_path(t + 1) or _rgb_path(t - 1)
+        rgb_t = get_rgb_path(view_dir, t, dataset_type=dataset_type)
+        rgb_adj = get_rgb_path(view_dir, t + 1, dataset_type=dataset_type) or get_rgb_path(view_dir, t - 1,
+                                                                                           dataset_type=dataset_type)
 
         static_mask = np.ones((H, W), dtype=bool)
         if rgb_t is not None and rgb_adj is not None:
@@ -103,7 +243,7 @@ def build_static_gt_pointcloud(t, view_names, dataset_root,
                     else:
                         static_mask = sam2_mask
             else:
-                f0 = cv2.imread(rgb_t,   cv2.IMREAD_GRAYSCALE).astype(np.float32)
+                f0 = cv2.imread(rgb_t, cv2.IMREAD_GRAYSCALE).astype(np.float32)
                 f1 = cv2.imread(rgb_adj, cv2.IMREAD_GRAYSCALE).astype(np.float32)
                 if f0.shape == f1.shape:
                     flow = cv2.calcOpticalFlowFarneback(
@@ -123,58 +263,37 @@ def build_static_gt_pointcloud(t, view_names, dataset_root,
         cv2.imwrite(os.path.join(_dbg_out, f"gt_mask_used_{t:05d}.png"),
                     static_mask.astype(np.uint8) * 255)
 
-        K, cam2world = load_gt_params(view_dir)
+        K, cam2world = load_gt_params(view_dir, dataset_type=dataset_type)
         keep = (depth_m > 0) & static_mask
         ys, xs = np.where(keep)
         z = depth_m[ys, xs]
         fx, fy = K[0, 0], K[1, 1]
         cx, cy = K[0, 2], K[1, 2]
-        pts_cam   = np.stack([(xs - cx) * z / fx, (ys - cy) * z / fy, z], axis=-1)
+        pts_cam = np.stack([(xs - cx) * z / fx, (ys - cy) * z / fy, z], axis=-1)
         pts_world = (cam2world[:3, :3] @ pts_cam.T).T + cam2world[:3, 3]
         all_pts.append(pts_world)
 
     return np.concatenate(all_pts, axis=0) if all_pts else None
 
+
 from eval_config import CONF_PERCENTILE
+
+
 def get_static_correspondences(t, view_names, pts3d_list, confs, dataset_root,
                                flow_threshold=2.0,
                                conf_percentile=CONF_PERCENTILE, use_sam2=True,
-                               use_static_mask=True):
+                               use_static_mask=True, dataset_type="dex-ycb"):
     """
     Build (estimated, GT) 3-D point correspondences for static regions.
-
-    Changed for VGGT: accepts pts3d_list and confs arrays directly instead of
-    a MASt3R scene object.  The caller is responsible for extracting these from
-    the model prediction dict and converting to numpy.
-
-    Parameters
-    ----------
-    pts3d_list : list[np.ndarray] or np.ndarray
-        Per-view 3D pointmaps.  Each entry can be (H, W, 3) or (N, 3).
-        If a single array of shape (V, H, W, 3), it will be indexed by view.
-    confs : list[np.ndarray] or np.ndarray
-        Per-view confidence maps.  Each entry can be (H, W) or (N,).
-
-    Strategy — work at native model pointmap resolution to avoid interpolating
-    3-D points:
-
-      1. Get pointmap  p3d[h_mod, w_mod, 3]  and conf[h_mod, w_mod].
-         These are already at the model's internal resolution — no resize needed.
-
-      2. Downsample GT depth  (H, W) → (h_mod, w_mod)  with INTER_NEAREST so
-         depth values are never blended, and scale K accordingly.
-
-      3. Downsample the Farneback static mask the same way.
-
-      4. Backproject the downsampled GT depth at every valid pixel using the
-         scaled K  →  GT pointmap at model resolution.
-
-      5. Read the model pointmap at the same pixels  →  estimated pointmap.
-
-      6. The paired (estimated, GT) 3-D points are the correspondences.
     """
+    if dataset_type == "hi4d":
+        return _get_correspondences_hi4d(
+            t, view_names, pts3d_list, confs, dataset_root,
+            conf_percentile=conf_percentile,
+        )
+
     all_est = []
-    all_gt  = []
+    all_gt = []
 
     # Normalise inputs to indexable lists of numpy arrays
     if isinstance(pts3d_list, torch.Tensor):
@@ -193,12 +312,12 @@ def get_static_correspondences(t, view_names, pts3d_list, confs, dataset_root,
         if not os.path.exists(depth_path):
             continue
         depth_raw = cv2.imread(depth_path, cv2.IMREAD_UNCHANGED).astype(np.float32)
-        depth_gt  = depth_raw * DEPTH_SCALE
-        H, W      = depth_gt.shape
+        depth_gt = depth_raw * DEPTH_SCALE
+        H, W = depth_gt.shape
 
         # ── Model outputs at native model resolution ──────────────────────────
-        p3d_model = pts3d_list[i]   # (h_mod, w_mod, 3) or (N, 3)
-        conf_mod  = confs[i]        # (h_mod, w_mod)    or (N,)
+        p3d_model = pts3d_list[i]  # (h_mod, w_mod, 3) or (N, 3)
+        conf_mod = confs[i]  # (h_mod, w_mod)    or (N,)
 
         # Recover 2-D spatial shape
         if conf_mod.ndim == 1:
@@ -212,7 +331,7 @@ def get_static_correspondences(t, view_names, pts3d_list, confs, dataset_root,
         conf_mod = conf_mod.reshape(h_mod, w_mod)
 
         # ── Scale K to match the model resolution ─────────────────────────────
-        K, cam2world = load_gt_params(view_dir)
+        K, cam2world = load_gt_params(view_dir, dataset_type=dataset_type)
         scale_x = w_mod / W
         scale_y = h_mod / H
         fx_s = K[0, 0] * scale_x
@@ -225,19 +344,9 @@ def get_static_correspondences(t, view_names, pts3d_list, confs, dataset_root,
                                  interpolation=cv2.INTER_NEAREST)
 
         # ── Farneback static mask, downsampled to model resolution ─────────────
-        rgb_dir = os.path.join(view_dir, "rgb")
-        if not os.path.isdir(rgb_dir):
-            rgb_dir = view_dir
-
-        def _rgb_path(frame_t):
-            for ext in (".png", ".jpg", ".jpeg"):
-                p = os.path.join(rgb_dir, f"{frame_t:05d}{ext}")
-                if os.path.exists(p):
-                    return p
-            return None
-
-        rgb_t   = _rgb_path(t)
-        rgb_adj = _rgb_path(t + 1) or _rgb_path(t - 1)
+        rgb_t = get_rgb_path(view_dir, t, dataset_type=dataset_type)
+        rgb_adj = get_rgb_path(view_dir, t + 1, dataset_type=dataset_type) or get_rgb_path(view_dir, t - 1,
+                                                                                           dataset_type=dataset_type)
 
         static_small = np.ones((h_mod, w_mod), dtype=bool)
         if rgb_t is not None and rgb_adj is not None:
@@ -249,7 +358,7 @@ def get_static_correspondences(t, view_names, pts3d_list, confs, dataset_root,
                         sam2_mask.astype(np.uint8), (w_mod, h_mod),
                         interpolation=cv2.INTER_NEAREST).astype(bool)
             else:
-                f0 = cv2.imread(rgb_t,   cv2.IMREAD_GRAYSCALE).astype(np.float32)
+                f0 = cv2.imread(rgb_t, cv2.IMREAD_GRAYSCALE).astype(np.float32)
                 f1 = cv2.imread(rgb_adj, cv2.IMREAD_GRAYSCALE).astype(np.float32)
                 if f0.shape == f1.shape:
                     flow = cv2.calcOpticalFlowFarneback(
@@ -262,9 +371,9 @@ def get_static_correspondences(t, view_names, pts3d_list, confs, dataset_root,
                         interpolation=cv2.INTER_NEAREST).astype(bool)
 
         # ── Valid pixel mask (all criteria at model resolution) ────────────────
-        valid = (conf_mod   > frame_thr) \
-              & (depth_small > 0) \
-              & (depth_small < DEPTH_MAX_M)
+        valid = (conf_mod > frame_thr) \
+                & (depth_small > 0) \
+                & (depth_small < DEPTH_MAX_M)
 
         if use_static_mask:
             valid &= static_small
@@ -276,9 +385,9 @@ def get_static_correspondences(t, view_names, pts3d_list, confs, dataset_root,
 
         # ── GT pointmap: backproject downsampled depth with scaled K ───────────
         z_gt = depth_small[ys, xs]
-        pts_cam_gt  = np.stack([(xs - cx_s) * z_gt / fx_s,
-                                 (ys - cy_s) * z_gt / fy_s,
-                                 z_gt], axis=-1)
+        pts_cam_gt = np.stack([(xs - cx_s) * z_gt / fx_s,
+                               (ys - cy_s) * z_gt / fy_s,
+                               z_gt], axis=-1)
         pts_world_gt = (cam2world[:3, :3] @ pts_cam_gt.T).T + cam2world[:3, 3]
 
         # ── Estimated pointmap: read directly — no resize, no interpolation ────
@@ -292,33 +401,145 @@ def get_static_correspondences(t, view_names, pts3d_list, confs, dataset_root,
 
     return np.concatenate(all_est, axis=0), np.concatenate(all_gt, axis=0)
 
+
+def _get_correspondences_hi4d(t, view_names, pts3d_list, confs, dataset_root,
+                              conf_percentile=CONF_PERCENTILE):
+    """
+    Hi4D correspondence extraction without depth maps.
+
+    Project GT mesh into the 2D image plane to establish 2D-3D correspondences
+    with the model estimated points.
+    """
+    # ── GT mesh vertices ──
+    gt_pts = _load_hi4d_mesh_gt(dataset_root, t)
+    if gt_pts is None or len(gt_pts) == 0:
+        return None, None
+
+    # ── Global confidence threshold ──
+    all_confs = np.concatenate([c.ravel() for c in confs])
+    frame_thr = np.quantile(all_confs, 1.0 - conf_percentile)
+
+    src_pts = []
+    dst_pts = []
+
+    for i, vname in enumerate(view_names):
+        view_dir = os.path.join(dataset_root, vname)
+        pts = pts3d_list[i]
+        conf = confs[i]
+
+        # Recover spatial shape
+        if conf.ndim == 1:
+            side = int(np.sqrt(len(conf)))
+            h_mod, w_mod = side, side
+        else:
+            h_mod, w_mod = conf.shape
+
+        if pts.ndim == 2:
+            pts = pts.reshape(h_mod, w_mod, 3)
+        conf = conf.reshape(h_mod, w_mod)
+
+        # Load segmentation mask to keep only person pixels
+        seg_mask = _load_hi4d_seg_mask(dataset_root, vname, t)
+
+        # Get original image size (needed for crop-aware transforms)
+        rgb_path = get_rgb_path(view_dir, t, dataset_type="hi4d")
+        if rgb_path and os.path.exists(rgb_path):
+            img = cv2.imread(rgb_path)
+            H_orig, W_orig = img.shape[:2]
+        else:
+            H_orig, W_orig = 1280, 940  # Common Hi4D fallback (portrait)
+
+        if seg_mask is not None:
+            seg_small = _resize_mask_crop_aware(seg_mask, W_orig, H_orig, h_mod, w_mod)
+        else:
+            seg_small = np.ones((h_mod, w_mod), dtype=bool)
+
+        # Apply confidence threshold AND minimum absolute threshold to filter noise
+        # Even at 100% confidence, require at least 0.01 confidence to avoid near-zero values
+        min_conf_abs = 0.01
+        valid = (conf > frame_thr) & (conf > min_conf_abs) & seg_small
+        if not np.any(valid):
+            continue
+
+        # Get camera parameters
+        K, cam2world = load_gt_params(view_dir, dataset_type="hi4d")
+
+        # Compute crop-aware K scaling that matches load_and_preprocess_images(mode='crop')
+        scale_x, scale_y, crop_y_offset = _compute_crop_aware_transform(
+            W_orig, H_orig, h_mod, w_mod)
+        K_scaled = np.array([
+            [K[0, 0] * scale_x, 0, K[0, 2] * scale_x],
+            [0, K[1, 1] * scale_y, K[1, 2] * scale_y - crop_y_offset],
+            [0, 0, 1]
+        ])
+
+        # Project GT mesh to camera coordinates
+        world2cam = np.linalg.inv(cam2world)
+        pts_cam_gt = (world2cam[:3, :3] @ gt_pts.T).T + world2cam[:3, 3]
+
+        # Filter points behind camera
+        valid_z_mask = pts_cam_gt[:, 2] > 0
+        pts_cam_gt_valid = pts_cam_gt[valid_z_mask]
+        gt_pts_valid = gt_pts[valid_z_mask]
+
+        if len(pts_cam_gt_valid) == 0:
+            continue
+
+        # Project to 2D
+        uvz = (K_scaled @ pts_cam_gt_valid.T).T
+        u = np.round(uvz[:, 0] / uvz[:, 2]).astype(int)
+        v = np.round(uvz[:, 1] / uvz[:, 2]).astype(int)
+        z = pts_cam_gt_valid[:, 2]
+
+        # Create depth buffer to handle occlusions
+        depth_buffer = np.full((h_mod, w_mod), np.inf)
+        index_buffer = np.full((h_mod, w_mod), -1, dtype=int)
+
+        # Fast vectorised filtering for bounds
+        in_bounds = (u >= 0) & (u < w_mod) & (v >= 0) & (v < h_mod)
+        u_in = u[in_bounds]
+        v_in = v[in_bounds]
+        z_in = z[in_bounds]
+        idx_in = np.arange(len(u))[in_bounds]
+
+        # Iterative update for occlusion handling (closest z)
+        for ui, vi, zi, idxi in zip(u_in, v_in, z_in, idx_in):
+            if zi < depth_buffer[vi, ui]:
+                depth_buffer[vi, ui] = zi
+                index_buffer[vi, ui] = idxi
+
+        # Final filtering: find valid pixels that have both model estimation and GT projection
+        ys, xs = np.where(valid & (index_buffer != -1))
+
+        if len(ys) < 3:
+            continue
+
+        src_pts.append(pts[ys, xs])
+        dst_pts.append(gt_pts_valid[index_buffer[ys, xs]])
+
+    if not src_pts:
+        return None, None
+
+    src_cat = np.concatenate(src_pts, axis=0)
+    dst_cat = np.concatenate(dst_pts, axis=0)
+
+    return src_cat, dst_cat
+
+
 def get_single_view_correspondences(t, vname, pts3d, conf, dataset_root,
-                                     static_mask=None, conf_percentile=CONF_PERCENTILE,
-                                     use_static_mask=True):
+                                    static_mask=None, conf_percentile=CONF_PERCENTILE,
+                                    use_static_mask=True, dataset_type="dex-ycb"):
     """
     Build (estimated, GT) 3-D point correspondences for ONE view.
-
-    Like get_static_correspondences() but for a single view — used when each
-    view's pointmap is in a different coordinate frame (VGGT4D per-view
-    temporal processing).
-
-    Parameters
-    ----------
-    t : int — frame index
-    vname : str — view folder name (e.g. "view_01")
-    pts3d : np.ndarray (H, W, 3) — model pointmap for this view
-    conf : np.ndarray (H, W) — confidence map
-    dataset_root : str — path to subject root
-    static_mask : np.ndarray (H, W) bool, optional
-        True = static pixel (from VGGT4D dynamic mask, inverted).
-        If None, all pixels are considered static.
-    conf_percentile : float
-
-    Returns
-    -------
-    # Threshold for this frame/view
-    # Since this is single-view, we use the local quantile
     """
+    if dataset_type == "hi4d":
+        # HI4D single view correspondence
+        res_est, res_gt = _get_correspondences_hi4d(
+            t, [vname], [pts3d], [conf], dataset_root,
+            conf_percentile=conf_percentile
+        )
+        return res_est, res_gt
+
     thr = np.quantile(conf, 1.0 - conf_percentile)
 
     view_dir = os.path.join(dataset_root, vname)
@@ -343,7 +564,7 @@ def get_single_view_correspondences(t, vname, pts3d, conf, dataset_root,
     conf = conf.reshape(h_mod, w_mod)
 
     # Scale K to match model resolution
-    K, cam2world = load_gt_params(view_dir)
+    K, cam2world = load_gt_params(view_dir, dataset_type=dataset_type)
     scale_x = w_mod / W_gt
     scale_y = h_mod / H_gt
     fx_s = K[0, 0] * scale_x
@@ -368,8 +589,8 @@ def get_single_view_correspondences(t, vname, pts3d, conf, dataset_root,
 
     # Valid pixel mask
     valid = (conf.reshape(h_mod, w_mod) > thr) \
-          & (depth_small > 0) \
-          & (depth_small < DEPTH_MAX_M)
+            & (depth_small > 0) \
+            & (depth_small < DEPTH_MAX_M)
 
     if use_static_mask:
         valid &= static_small
@@ -395,13 +616,31 @@ def get_single_view_correspondences(t, vname, pts3d, conf, dataset_root,
     return pts_model, pts_world_gt
 
 
-def build_gt_validity_masks(t, view_names, dataset_root, depth_max_m=1.5, target_hw=None):
+def build_gt_validity_masks(t, view_names, dataset_root, depth_max_m=1.5, target_hw=None, dataset_type="dex-ycb"):
     """
-    Returns a list of boolean 2D masks (one per view), True where the GT depth
-    is valid (> 0) and within depth_max_m.  Optionally resized to target_hw=(H,W)
-    to match the MASt3R output pointmap resolution.
+    Returns a list of boolean 2D masks (one per view).
     """
     masks = []
+
+    if dataset_type == "hi4d":
+        # Hi4D has no depth maps — use segmentation masks instead.
+        # Person pixels = valid (since GT is person mesh).
+        for vname in view_names:
+            seg_mask = _load_hi4d_seg_mask(dataset_root, vname, t)
+            if seg_mask is not None:
+                if target_hw is not None and seg_mask.shape != tuple(target_hw):
+                    # Use crop-aware resize to match model preprocessing
+                    H_orig, W_orig = seg_mask.shape[:2]
+                    seg_mask = _resize_mask_crop_aware(
+                        seg_mask, W_orig, H_orig,
+                        target_hw[0], target_hw[1],
+                    )
+                masks.append(seg_mask)
+            else:
+                # No seg mask — accept all pixels
+                masks.append(None)
+        return masks
+
     for vname in view_names:
         view_dir = os.path.join(dataset_root, vname)
         depth_path = os.path.join(view_dir, "depth", f"{t:05d}.png")
@@ -412,14 +651,14 @@ def build_gt_validity_masks(t, view_names, dataset_root, depth_max_m=1.5, target
 
         # DexYCB depths are uint16, stored in millimetres
         depth_raw = cv2.imread(depth_path, cv2.IMREAD_UNCHANGED)
-        depth_m   = depth_raw.astype(np.float32) / 1000.0  # mm → m
+        depth_m = depth_raw.astype(np.float32) / 1000.0  # mm → m
 
-        mask = (depth_m > 0) & (depth_m <= depth_max_m)   # (H, W) bool
+        mask = (depth_m > 0) & (depth_m <= depth_max_m)  # (H, W) bool
 
         if target_hw is not None and mask.shape != tuple(target_hw):
             mask = cv2.resize(
                 mask.astype(np.uint8),
-                (target_hw[1], target_hw[0]),          # cv2 wants (W, H)
+                (target_hw[1], target_hw[0]),  # cv2 wants (W, H)
                 interpolation=cv2.INTER_NEAREST,
             ).astype(bool)
 

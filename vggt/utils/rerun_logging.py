@@ -132,13 +132,35 @@ def log_cameras_rerun(t, view_names, dataset_root, log_root):
                 H, W = img_rgb.shape[:2]
 
                 entity = f"{log_root}/cameras/{vname}"
-                rr.log(entity, rr.Pinhole(image_from_camera=K, width=W, height=H, image_plane_distance=0.2))
+                rr.log(entity, rr.Pinhole(image_from_camera=K, width=W, height=H, image_plane_distance=1.0))
                 rr.log(entity, rr.Transform3D(translation=c2w[:3, 3], mat3x3=c2w[:3, :3]))
                 rr.log(f"{entity}/rgb", rr.Image(img_rgb))
             else:
                 print(f"  [WARN] Failed to read image: {rgb_path}")
         else:
             print(f"  [WARN] Image not found for {vname} at t={t}")
+
+
+def log_estimated_cameras_rerun(t, view_names, est_poses, est_intrinsics, s, R, tr, log_root):
+    """
+    Logs the model's estimated cameras, transformed into the GT world frame.
+    """
+    rr.set_time("frame", sequence=t)
+    for i, vname in enumerate(view_names):
+        c2w = est_poses[i]
+        K = est_intrinsics[i]
+
+        # Apply global Umeyama transform to the camera pose
+        center = c2w[:3, 3]
+        rot = c2w[:3, :3]
+
+        center_aligned = s * (R @ center) + tr
+        rot_aligned = R @ rot
+
+        entity = f"{log_root}/est_cameras/{vname}"
+        # Log the frustum (we use fixed H,W for the frustum visualization)
+        rr.log(entity, rr.Pinhole(image_from_camera=K, width=1280, height=940, image_plane_distance=1.0))
+        rr.log(entity, rr.Transform3D(translation=center_aligned, mat3x3=rot_aligned))
 
 
 def log_pointcloud(t, entity, positions, color=None, radii=0.002, max_points=50000):

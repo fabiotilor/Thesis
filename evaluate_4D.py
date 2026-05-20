@@ -62,6 +62,9 @@ from eval_config import (
     DATASET_BASE_ROOT,
     CONF_PERCENTILE,
     RERUN_ADDR,
+    DATASETS,
+    get_dataset_config,
+    get_subject_by_code,
 )
 
 
@@ -75,33 +78,10 @@ def _compute_metrics_for_alignment(
         per_frame_transforms=None,
         gt_registration=None,
         out_plot_dir=None,
+        dataset_type="dex-ycb",
 ):
     """
     Compute the full metric suite for one alignment mode.
-
-    Parameters
-    ----------
-    files : list[str]
-        Sorted paths to frame NPZ files.
-    strategy_label : str
-        Label for this row.
-    dataset_root : str
-        Path to the GT subject directory.
-    global_transform : tuple(s, R, tr) or None
-        If None  → use pre-aligned `aligned_pts` from each NPZ  (per-frame).
-        If given → re-align raw `pointmaps` with this single transform.
-    per_frame_transforms : list of (s, R, tr) or None
-        If given → Strategy 1/2/3 mode.  Each tuple maps frame i's native
-        model space into the unified reference frame.  Then gt_registration
-        (s_g, R_g, tr_g) maps the unified space to GT world space.
-    gt_registration : tuple(s, R, tr) or None
-        The final GT Umeyama applied on top of per_frame_transforms.
-    out_plot_dir : str or None
-        Directory for per-frame Chamfer plots.
-
-    Returns
-    -------
-    (dict, list[float])  — metric row and per-frame Chamfer values
     """
     if not files:
         return None
@@ -109,9 +89,10 @@ def _compute_metrics_for_alignment(
     first_data = np.load(files[0], allow_pickle=True)
     V, H, W = normalize_spatial_dims(first_data)
     ks0 = first_data["Ks"]
-    view_names = [discover_view_name(dataset_root, k) for k in ks0]
+    view_names = [discover_view_name(dataset_root, k, dataset_type=dataset_type) for k in ks0]
 
-    cham_dist, comp_score, s_acc_list, d_acc_list = [], [], [], []
+    cham_dist, comp_score, acc_score = [], [], []
+    s_acc_list, d_acc_list = [], []
     s_comp_list, d_comp_list = [], []
     ate_list, rpe_list, rot_err_list, focal_err_list, pp_err_list = [], [], [], [], []
     all_pointmaps_mv, all_masks_mv = [], []
@@ -120,7 +101,7 @@ def _compute_metrics_for_alignment(
         data = np.load(f, allow_pickle=True)
         gt_pts = data["gt_pts"]
         ks, rts = data["Ks"], data["R_ts"]
-        m_2d = data["masks_2d"]
+        m_2d = data.get("masks_2d")
 
         # ── Obtain aligned point cloud ───────────────────────────────────
         if per_frame_transforms is not None and gt_registration is not None:
@@ -143,6 +124,7 @@ def _compute_metrics_for_alignment(
             vmasks = build_gt_validity_masks(
                 t_idx, view_names, dataset_root,
                 depth_max_m=DEPTH_MAX_M, target_hw=(H, W),
+                dataset_type=dataset_type,
             )
 
             parts = []
@@ -177,6 +159,7 @@ def _compute_metrics_for_alignment(
             vmasks = build_gt_validity_masks(
                 t_idx, view_names, dataset_root,
                 depth_max_m=DEPTH_MAX_M, target_hw=(H, W),
+                dataset_type=dataset_type,
             )
 
             parts = []
@@ -210,21 +193,25 @@ def _compute_metrics_for_alignment(
         if len(est_pts) > 0 and len(gt_pts) > 0:
             cham_dist.append(compute_chamfer_distance(est_pts, gt_pts))
             comp_score.append(compute_completeness(est_pts, gt_pts, tau=0.01))
+            acc_score.append(compute_accuracy(est_pts, gt_pts, tau=0.01))
 
-            s_p, d_p = split_points_by_mask(est_pts, m_2d, ks, rts)
-            g_s, g_d = split_points_by_mask(gt_pts, m_2d, ks, rts)
+            if dataset_type == "dex-ycb" and m_2d is not None:
+                s_p, d_p = split_points_by_mask(est_pts, m_2d, ks, rts)
+                g_s, g_d = split_points_by_mask(gt_pts, m_2d, ks, rts)
 
-            s_acc_list.append(compute_accuracy(s_p, g_s, tau=0.01) if len(s_p) > 0 else np.nan)
-            d_acc_list.append(compute_accuracy(d_p, g_d, tau=0.01) if len(d_p) > 0 else np.nan)
-            s_comp_list.append(compute_completeness(s_p, g_s, tau=0.01) if len(g_s) > 0 else np.nan)
-            d_comp_list.append(compute_completeness(d_p, g_d, tau=0.01) if len(g_d) > 0 else np.nan)
+                s_acc_list.append(compute_accuracy(s_p, g_s, tau=0.01) if len(s_p) > 0 else np.nan)
+                d_acc_list.append(compute_accuracy(d_p, g_d, tau=0.01) if len(d_p) > 0 else np.nan)
+                s_comp_list.append(compute_completeness(s_p, g_s, tau=0.01) if len(g_s) > 0 else np.nan)
+                d_comp_list.append(compute_completeness(d_p, g_d, tau=0.01) if len(g_d) > 0 else np.nan)
         else:
             cham_dist.append(np.nan)
             comp_score.append(np.nan)
-            s_acc_list.append(np.nan)
-            d_acc_list.append(np.nan)
-            s_comp_list.append(np.nan)
-            d_comp_list.append(np.nan)
+            acc_score.append(np.nan)
+            if dataset_type == "dex-ycb":
+                s_acc_list.append(np.nan)
+                d_acc_list.append(np.nan)
+                s_comp_list.append(np.nan)
+                d_comp_list.append(np.nan)
 
         # ── Camera metrics ───────────────────────────────────────────────
         if "est_poses" in data and data["est_poses"] is not None and data["est_poses"].ndim >= 3:
@@ -242,7 +229,8 @@ def _compute_metrics_for_alignment(
         # ── Jitter data collection ───────────────────────────────────────
         if "pointmaps" in data:
             pm_j = normalize_array(data["pointmaps"], V, H, W)
-            m_norm = normalize_array(m_2d, V, H, W, is_mask=True)
+            m_norm = normalize_array(m_2d, V, H, W, is_mask=True) if m_2d is not None else np.ones((V, H, W),
+                                                                                                   dtype=bool)
             aligned_pm = np.empty_like(pm_j)
             for vi in range(V):
                 aligned_pm[vi] = apply_similarity_transform(
@@ -253,20 +241,25 @@ def _compute_metrics_for_alignment(
 
     # ── Aggregate metrics ────────────────────────────────────────────────
     chamfer_mean = float(np.nanmean(cham_dist))
-    m_static = float(np.nanmean(s_acc_list))
-    m_dyn = float(np.nanmean(d_acc_list))
 
     metrics = {
         "strategy": strategy_label,
         "n_frames": len(files),
-        "chamfer_3d": chamfer_mean,
+        "chamfer": chamfer_mean,
         "completeness": float(np.nanmean(comp_score)),
-        "static_comp": float(np.nanmean(s_comp_list)),
-        "dyn_comp": float(np.nanmean(d_comp_list)),
-        "static_acc": m_static,
-        "dyn_acc": m_dyn,
-        "motion_gap": (m_static - m_dyn) if not (np.isnan(m_static) or np.isnan(m_dyn)) else np.nan,
+        "accuracy": float(np.nanmean(acc_score)),
     }
+
+    if dataset_type == "dex-ycb" and s_acc_list:
+        m_static = float(np.nanmean(s_acc_list))
+        m_dyn = float(np.nanmean(d_acc_list))
+        metrics.update({
+            "static_comp": float(np.nanmean(s_comp_list)),
+            "dyn_comp": float(np.nanmean(d_comp_list)),
+            "static_acc": m_static,
+            "dyn_acc": m_dyn,
+            "motion_gap": (m_static - m_dyn) if not (np.isnan(m_static) or np.isnan(m_dyn)) else np.nan,
+        })
 
     # ── Camera metrics ───────────────────────────────────────────────────
     if ate_list:
@@ -315,7 +308,8 @@ def _compute_metrics_for_alignment(
 # ═══════════════════════════════════════════════════════════════════════════════
 
 
-def evaluate_multi_strategy(baseline_dir, dataset_root, view_label, subject_full, no_rerun=False):
+def evaluate_multi_strategy(baseline_dir, dataset_root, view_label, subject_full, no_rerun=False,
+                            dataset_type="dex-ycb"):
     """
     Evaluate the model output for:
       1. baseline_per_frame — Computes an independent Umeyama registration per frame to GT.
@@ -328,7 +322,7 @@ def evaluate_multi_strategy(baseline_dir, dataset_root, view_label, subject_full
 
     print(f"\\n  ── Evaluating {view_label} ({len(files)} frames) ──")
 
-    plot_root = os.path.join("plots", subject_full, view_label)
+    plot_root = os.path.join("plots", dataset_type, subject_full, view_label)
     all_rows = []
     all_chs = []
 
@@ -336,9 +330,6 @@ def evaluate_multi_strategy(baseline_dir, dataset_root, view_label, subject_full
         from vggt.utils.rerun_logging import initialize_rerun_session
         log_root = f"4d_eval_{view_label}"
         initialize_rerun_session(f"4d_eval_{subject_full}_{view_label}", RERUN_ADDR, log_root)
-
-        print(f"  [RERUN] Logging GT for {view_label}...")
-        # Note: log_gt_sequence were removed during refactoring as we focus on per-frame vs global comparison.
 
     # ── Tier 1: Global 4D Output ───────────────────────────
     print(f"  [TIER 1] Global 4D Alignment (Native 4D consistency) ...")
@@ -348,12 +339,13 @@ def evaluate_multi_strategy(baseline_dir, dataset_root, view_label, subject_full
         files, global_label, dataset_root,
         global_transform=None,
         out_plot_dir=os.path.join(plot_root, "global_4d"),
+        dataset_type=dataset_type,
     )
     if global_row is not None:
         global_row["subject"] = subject_full
         all_rows.append(global_row)
         all_chs.append((global_label, global_ch))
-        chamfer_4d = global_row["chamfer_3d"]
+        chamfer_4d = global_row["chamfer"]
     else:
         chamfer_4d = float("nan")
 
@@ -373,12 +365,12 @@ def evaluate_multi_strategy(baseline_dir, dataset_root, view_label, subject_full
         data = np.load(file, allow_pickle=True)
         pm = normalize_array(data["pointmaps"], V, H, W)
         conf = normalize_array(data["pointmaps_confs"], V, H, W)
-        m_2d = data["masks_2d"]
+        m_2d = data.get("masks_2d")
         gt_pts = data["gt_pts"]
 
         t_idx = int(data["frame_idx"])
         ks = data["Ks"]
-        view_names = [discover_view_name(dataset_root, k) for k in ks]
+        view_names = [discover_view_name(dataset_root, k, dataset_type=dataset_type) for k in ks]
 
         # ── Global threshold for the whole frame ──
         frame_thr = np.quantile(conf, 1.0 - CONF_PERCENTILE) if conf is not None else 0.0
@@ -386,6 +378,7 @@ def evaluate_multi_strategy(baseline_dir, dataset_root, view_label, subject_full
         vmasks = build_gt_validity_masks(
             t_idx, view_names, dataset_root,
             depth_max_m=DEPTH_MAX_M, target_hw=(H, W),
+            dataset_type=dataset_type,
         )
 
         all_src, all_dst = [], []
@@ -393,11 +386,12 @@ def evaluate_multi_strategy(baseline_dir, dataset_root, view_label, subject_full
         for v in range(V):
             pts_flat = pm[v].reshape(-1, 3)
             conf_flat = conf[v].ravel()
-            static = m_2d[v].ravel() if m_2d.ndim == 3 else m_2d.ravel()
+            static = m_2d[v].ravel() if (m_2d is not None and m_2d.ndim == 3) else (
+                m_2d.ravel() if m_2d is not None else None)
             src, dst = get_single_view_correspondences(
                 t_idx, view_names[v], pm[v], conf[v], dataset_root,
                 static_mask=static, conf_percentile=CONF_PERCENTILE,
-                use_static_mask=False
+                use_static_mask=False, dataset_type=dataset_type,
             )
             if src is not None and len(src) > 0:
                 all_src.append(src)
@@ -421,14 +415,15 @@ def evaluate_multi_strategy(baseline_dir, dataset_root, view_label, subject_full
         per_frame_transforms=per_frame_T,
         gt_registration=identity_gt,
         out_plot_dir=os.path.join(plot_root, "baseline_per_frame"),
+        dataset_type=dataset_type,
     )
     if baseline_row is not None:
         baseline_row["chamfer_4d"] = chamfer_4d
-        baseline_row["delta_consistency"] = chamfer_4d - baseline_row["chamfer_3d"]
+        baseline_row["delta_consistency"] = chamfer_4d - baseline_row["chamfer"]
         baseline_row["subject"] = subject_full
         all_rows.append(baseline_row)
         all_chs.append((baseline_label, baseline_ch))
-        chamfer_3d = baseline_row["chamfer_3d"]
+        chamfer_3d = baseline_row["chamfer"]
     else:
         chamfer_3d = float("nan")
 
@@ -437,7 +432,7 @@ def evaluate_multi_strategy(baseline_dir, dataset_root, view_label, subject_full
     print(f"    │ Chamfer₃D (per-frame):  {chamfer_3d:.6f}")
     if global_row is not None:
         lbl = global_row.get("strategy", "")
-        c3d = global_row.get("chamfer_3d", float("nan"))
+        c3d = global_row.get("chamfer", float("nan"))
         dc = global_row.get("delta_consistency", float("nan")) if global_row == baseline_row else (c3d - chamfer_3d)
         if global_row != baseline_row: global_row["delta_consistency"] = dc
         print(f"    │ {lbl:<24}  Chamfer={c3d:.6f}  Δ={dc:+.6f}")
@@ -480,8 +475,8 @@ def print_metrics_summary(results_df, label):
 
     cols_to_show = [
         "strategy", "n_frames",
-        "chamfer_3d", "chamfer_4d", "delta_consistency",
-        "completeness", "static_comp", "dyn_comp", "static_acc", "dyn_acc", "motion_gap",
+        "chamfer", "chamfer_4d", "delta_consistency",
+        "completeness", "accuracy", "static_comp", "dyn_comp", "static_acc", "dyn_acc", "motion_gap",
         "ate", "rpe", "rot_error", "focal_error", "pp_error",
         "jitter_mean", "jitter_std", "jitter_p95", "jitter_max",
         "drift_mean", "hf_jitter",
@@ -495,36 +490,51 @@ def main():
     parser = argparse.ArgumentParser(
         description="VGGT4D Native 4D Evaluation — Dual-Tier Alignment"
     )
+    parser.add_argument("--data", type=str, choices=["dex-ycb", "hi4d"], default="dex-ycb", help="Dataset to evaluate.")
     parser.add_argument("--all", action="store_true")
+    parser.add_argument("--subjects", nargs="+", type=str, help="Specific subject codes to evaluate.")
     parser.add_argument("--views", nargs="+", type=int,
                         help="View counts to evaluate (e.g. --views 2 3 4).")
     parser.add_argument("--no-rerun", action="store_true", help="Disable Rerun logging.")
+
+    # Legacy flags for DexYCB
     for code in SUBJECT_BY_CODE.keys():
         parser.add_argument(f"--{code}", action="store_true")
+
     args = parser.parse_args()
+    dataset_type = args.data
+    subj_map = get_subject_by_code(dataset_type)
+    dataset_config = get_dataset_config(dataset_type)
 
-    selected = [k for k in SUBJECT_BY_CODE.keys() if getattr(args, k)]
-    subjects = selected if not args.all else list(SUBJECT_BY_CODE.keys())
-    if not subjects:
-        subjects = ["01"]
+    if args.all:
+        subjects = list(subj_map.keys())
+    elif args.subjects:
+        subjects = args.subjects
+    else:
+        # Legacy flag check
+        import sys
+        subjects = [a.lstrip('-') for a in sys.argv if a.startswith('--') and a.lstrip('-') in subj_map]
+        if not subjects:
+            print(f"[WARN] No subject selection provided; defaulting to first subject.")
+            subjects = [list(subj_map.keys())[0]]
 
-    view_set = set(args.views) if args.views else {2, 3, 4}
+    view_set = set(args.views) if args.views else None
 
     for scode in subjects:
-        subject_full = SUBJECT_BY_CODE.get(scode)
+        subject_full = subj_map.get(scode)
         if not subject_full:
             continue
 
-        dataset_root = os.path.join(DATASET_BASE_ROOT, subject_full)
+        dataset_root = os.path.join(dataset_config["root"], subject_full)
         subject_results = []
 
         print(f"\n{'━' * 80}")
-        print(f"  Subject: {subject_full}")
+        print(f"  Subject: {subject_full}  Dataset: {dataset_type}")
         print(f"{'━' * 80}")
 
-        subject_dir = os.path.join("aligned_outputs", "baseline", subject_full)
+        subject_dir = os.path.join("aligned_outputs", "baseline", dataset_type, subject_full)
         if not os.path.isdir(subject_dir):
-            print(f"[WARN] No baseline outputs for {subject_full}")
+            print(f"[WARN] No baseline outputs for {subject_full} in {subject_dir}")
             continue
 
         # Find available view directories
@@ -533,7 +543,8 @@ def main():
             if re.match(r"^\d+views$", d) and os.path.isdir(os.path.join(subject_dir, d))
         ])
         # Filter by requested views
-        view_dirs = [d for d in view_dirs if int(d.split("views")[0]) in view_set]
+        if view_set:
+            view_dirs = [d for d in view_dirs if int(d.split("views")[0]) in view_set]
 
         if not view_dirs:
             print(f"[WARN] No matching view directories for {subject_full}")
@@ -542,14 +553,16 @@ def main():
         for view_dir in view_dirs:
             baseline_dir = os.path.join(subject_dir, view_dir)
             rows = evaluate_multi_strategy(
-                baseline_dir, dataset_root, view_dir, subject_full, no_rerun=args.no_rerun
+                baseline_dir, dataset_root, view_dir, subject_full,
+                no_rerun=args.no_rerun, dataset_type=dataset_type
             )
             subject_results.extend(rows)
 
         if subject_results:
             df = pd.DataFrame(subject_results)
             print_metrics_summary(df, subject_full)
-            out_csv = f"eval_summary_{scode}.csv"
+            safe_code = scode.replace("/", "_")
+            out_csv = f"eval_summary_{dataset_type}_{safe_code}.csv"
             df.to_csv(out_csv, index=False)
             print(f"[INFO] Saved report to {out_csv}")
 
