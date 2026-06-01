@@ -46,11 +46,12 @@ def normalize_array(arr, V, H, W, is_mask=False):
     return arr
 
 
-def extract_clean_gt_correspondences(data, dataset_root, n_samples=2000, vmasks=None, use_static_mask=True):
+def extract_clean_gt_correspondences(data, dataset_root, n_samples=2048, use_static_mask=True, vmasks=None, **kwargs):
     """
-    Implements the robust GT projection logic from align_reconstruction_umeyama.py.
-    Matches pointmap pixels to GT back-projected world points using scaled intrinsics.
+    Extracts cleaner correspondences for GT registration.
+    Branches between DexYCB (depth-based) and Hi4D (mesh-projection based).
     """
+    dataset_type = kwargs.get('dataset_type', 'dex-ycb')
     V, H_mod, W_mod = normalize_spatial_dims(data)
     if H_mod == 0: return None
 
@@ -59,15 +60,67 @@ def extract_clean_gt_correspondences(data, dataset_root, n_samples=2000, vmasks=
     m_static = normalize_array(data['masks_2d'], V, H_mod, W_mod, is_mask=True)
 
     t, ks_gt = int(data['frame_idx']), data['Ks']
-    view_names = [discover_view_name(dataset_root, k) for k in ks_gt]
+
+    # Use view names directly from NPZ data if available, otherwise discover them
+    if 'view_names' in data:
+        view_names = data['view_names'].tolist() if hasattr(data['view_names'], 'tolist') else list(data['view_names'])
+    else:
+        # Fallback to discovering view names from intrinsics
+        view_names = [discover_view_name(dataset_root, k) for k in ks_gt]
+
     if vmasks is None:
-        vmasks = build_gt_validity_masks(t, view_names, dataset_root, target_hw=(H_mod, W_mod))
+        vmasks = build_gt_validity_masks(t, view_names, dataset_root, target_hw=(H_mod, W_mod),
+                                         dataset_type=dataset_type)
 
     all_src, all_dst = [], []
     rng = np.random.default_rng(42)
 
     for v in range(V):
         if view_names[v] is None or vmasks[v] is None: continue
+
+        if dataset_type == "hi4d":
+            # Hi4D: Mesh-to-2D projection logic
+            from .gt import _load_hi4d_mesh_gt
+            from .camera_utils import get_rgb_path
+            vertices = _load_hi4d_mesh_gt(dataset_root, t)
+            if vertices is None: continue
+
+            view_dir = os.path.join(dataset_root, "images", view_names[v])
+            K_orig, cam2world = load_gt_params(view_dir, dataset_type=dataset_type)
+            world2cam = np.linalg.inv(cam2world)
+            v_cam = (world2cam[:3, :3] @ vertices.T).T + world2cam[:3, 3]
+            valid_z = v_cam[:, 2] > 0
+            if not np.any(valid_z): continue
+            v_cam = v_cam[valid_z];
+            v_world = vertices[valid_z]
+
+            # Scale K
+            rgb_path = get_rgb_path(view_dir, t)
+            sc_x, sc_y = W_mod / (1280 if not rgb_path else cv2.imread(rgb_path).shape[1]), H_mod / (
+                940 if not rgb_path else cv2.imread(rgb_path).shape[0])
+            fx_s, fy_s = K_orig[0, 0] * sc_x, K_orig[1, 1] * sc_y
+            cx_s, cy_s = K_orig[0, 2] * sc_x, K_orig[1, 2] * sc_y
+
+            u = np.round((v_cam[:, 0] * fx_s / v_cam[:, 2]) + cx_s).astype(int)
+            vp = np.round((v_cam[:, 1] * fy_s / v_cam[:, 2]) + cy_s).astype(int)
+
+            ib = np.full((H_mod, W_mod), -1, dtype=int)
+            valid_uv = (u >= 0) & (u < W_mod) & (vp >= 0) & (vp < H_mod)
+            u_v, v_v, z_v = u[valid_uv], vp[valid_uv], v_cam[:, 2][valid_uv]
+            indices = np.arange(len(u))[valid_uv]
+            sort_idx = np.argsort(z_v)[::-1]
+            ib[v_v[sort_idx], u_v[sort_idx]] = indices[sort_idx]
+
+            mask_final = (ib >= 0) & vmasks[v]
+            if conf_est is not None:
+                thr = np.percentile(conf_est[v], 100 * (1 - CONF_PERCENTILE))
+                mask_final &= (conf_est[v] > thr)
+
+            ys, xs = np.where(mask_final)
+            all_src.append(pm_est[v][ys, xs])
+            all_dst.append(v_world[ib[ys, xs]])
+            continue
+
         view_dir = os.path.join(dataset_root, view_names[v])
 
         # Load GT depth at sensor resolution
@@ -77,7 +130,7 @@ def extract_clean_gt_correspondences(data, dataset_root, n_samples=2000, vmasks=
         H_gt, W_gt = d_img_gt.shape
 
         # Exact scaling logic from gt.py
-        K, c2w = load_gt_params(view_dir)
+        K, c2w = load_gt_params(view_dir, dataset_type=dataset_type)
         scale_x, scale_y = W_mod / W_gt, H_mod / H_gt
         fx_s, fy_s, cx_s, cy_s = K[0, 0] * scale_x, K[1, 1] * scale_y, K[0, 2] * scale_x, K[1, 2] * scale_y
 
@@ -116,8 +169,9 @@ def extract_clean_gt_correspondences(data, dataset_root, n_samples=2000, vmasks=
     return np.concatenate(all_src), np.concatenate(all_dst)
 
 
-def get_pointmap_correspondences(path_a, path_b, dataset_root, vmasks_a=None, vmasks_b=None):
+def get_pointmap_correspondences(path_a, path_b, dataset_root, vmasks_a=None, vmasks_b=None, **kwargs):
     """Inter-frame alignment using only static/valid pixels."""
+    dataset_type = kwargs.get('dataset_type', 'dex-ycb')
     data_a, data_b = np.load(path_a), np.load(path_b)
     V, H, W = normalize_spatial_dims(data_a)
     if H == 0: return None
@@ -131,13 +185,23 @@ def get_pointmap_correspondences(path_a, path_b, dataset_root, vmasks_a=None, vm
 
     # We use vmasks to ensure we only align on high-quality regions (hand/table)
     if vmasks_a is None:
-        vmasks_a = build_gt_validity_masks(int(data_a['frame_idx']),
-                                           [discover_view_name(dataset_root, k) for k in data_a['Ks']], dataset_root,
-                                           target_hw=(H, W))
+        # Use view names directly from NPZ data if available, otherwise discover them
+        if 'view_names' in data_a:
+            view_names_a = data_a['view_names'].tolist() if hasattr(data_a['view_names'], 'tolist') else list(
+                data_a['view_names'])
+        else:
+            view_names_a = [discover_view_name(dataset_root, k) for k in data_a['Ks']]
+        vmasks_a = build_gt_validity_masks(int(data_a['frame_idx']), view_names_a, dataset_root,
+                                           target_hw=(H, W), dataset_type=dataset_type)
     if vmasks_b is None:
-        vmasks_b = build_gt_validity_masks(int(data_b['frame_idx']),
-                                           [discover_view_name(dataset_root, k) for k in data_b['Ks']], dataset_root,
-                                           target_hw=(H, W))
+        # Use view names directly from NPZ data if available, otherwise discover them
+        if 'view_names' in data_b:
+            view_names_b = data_b['view_names'].tolist() if hasattr(data_b['view_names'], 'tolist') else list(
+                data_b['view_names'])
+        else:
+            view_names_b = [discover_view_name(dataset_root, k) for k in data_b['Ks']]
+        vmasks_b = build_gt_validity_masks(int(data_b['frame_idx']), view_names_b, dataset_root,
+                                           target_hw=(H, W), dataset_type=dataset_type)
 
     conf_a = normalize_array(data_a['pointmaps_confs'], V, H, W) if 'pointmaps_confs' in data_a else None
     conf_b = normalize_array(data_b['pointmaps_confs'], V, H, W) if 'pointmaps_confs' in data_b else None
@@ -146,7 +210,14 @@ def get_pointmap_correspondences(path_a, path_b, dataset_root, vmasks_a=None, vm
     for v in range(V):
         if vmasks_a[v] is None or vmasks_b[v] is None: continue
         # Intersection of static and valid
-        mask = m_a[v] & m_b[v] & vmasks_a[v] & vmasks_b[v]
+        if dataset_type == "hi4d":
+            # For Hi4D, we MUST align on the STATIC BACKGROUND (the floor).
+            # If we align on the moving person, the sequence becomes person-centric,
+            # which fails to match the global motion of the GT mesh.
+            mask = m_a[v] & m_b[v]
+        else:
+            # DexYCB: Align on static background + valid region (within 1.5m)
+            mask = m_a[v] & m_b[v] & vmasks_a[v] & vmasks_b[v]
 
         if conf_a is not None:
             thr_a = np.percentile(conf_a[v], 100 * (1 - CONF_PERCENTILE))
@@ -164,8 +235,8 @@ def get_pointmap_correspondences(path_a, path_b, dataset_root, vmasks_a=None, vm
 
 
 def estimate_interframe_transform_pointmap(path_a, path_b, dataset_root, return_error=False, vmasks_a=None,
-                                           vmasks_b=None):
-    res = get_pointmap_correspondences(path_a, path_b, dataset_root, vmasks_a=vmasks_a, vmasks_b=vmasks_b)
+                                           vmasks_b=None, **kwargs):
+    res = get_pointmap_correspondences(path_a, path_b, dataset_root, vmasks_a=vmasks_a, vmasks_b=vmasks_b, **kwargs)
     if res is None:
         return (None, None) if return_error else None
 
@@ -178,35 +249,22 @@ def estimate_interframe_transform_pointmap(path_a, path_b, dataset_root, return_
     return (s, R, tr), err
 
 
-def strategy1_reference(frame_npz_paths, dataset_root):
+def strategy1_reference(frame_npz_paths, dataset_root, dataset_type="dex-ycb"):
     n_frames = len(frame_npz_paths)
-    vmask_cache = {}
-    for path in frame_npz_paths:
-        data = np.load(path)
-        t, V, H, W = int(data['frame_idx']), *normalize_spatial_dims(data)
-        vmask_cache[path] = build_gt_validity_masks(t, [discover_view_name(dataset_root, k) for k in data['Ks']],
-                                                    dataset_root, target_hw=(H, W))
-
     transforms = [(1.0, np.eye(3), np.zeros(3))]
     for i in range(1, n_frames):
         res = estimate_interframe_transform_pointmap(
             frame_npz_paths[0], frame_npz_paths[i], dataset_root,
-            vmasks_a=vmask_cache[frame_npz_paths[0]],
-            vmasks_b=vmask_cache[frame_npz_paths[i]]
+            vmasks_a=None,
+            vmasks_b=None,
+            dataset_type=dataset_type
         )
         transforms.append(res if res else (1.0, np.eye(3), np.zeros(3)))
     return transforms
 
 
-def strategy2_hierarchical(frame_npz_paths, dataset_root):
+def strategy2_hierarchical(frame_npz_paths, dataset_root, dataset_type="dex-ycb"):
     n_frames = len(frame_npz_paths)
-    vmask_cache = {}
-    for path in frame_npz_paths:
-        data = np.load(path)
-        t, V, H, W = int(data['frame_idx']), *normalize_spatial_dims(data)
-        vmask_cache[path] = build_gt_validity_masks(t, [discover_view_name(dataset_root, k) for k in data['Ks']],
-                                                    dataset_root, target_hw=(H, W))
-
     groups = [[(i, (1.0, np.eye(3), np.zeros(3)))] for i in range(n_frames)]
     while len(groups) > 1:
         new_groups = []
@@ -215,8 +273,9 @@ def strategy2_hierarchical(frame_npz_paths, dataset_root):
             path_a, path_b = frame_npz_paths[g_a[0][0]], frame_npz_paths[g_b[0][0]]
             res = estimate_interframe_transform_pointmap(
                 path_a, path_b, dataset_root,
-                vmasks_a=vmask_cache[path_a],
-                vmasks_b=vmask_cache[path_b]
+                vmasks_a=None,
+                vmasks_b=None,
+                dataset_type=dataset_type
             )
             s_ba, R_ba, tr_ba = res if res else (1.0, np.eye(3), np.zeros(3))
             merged = list(g_a)
@@ -244,7 +303,7 @@ def rotation_average(R_list, weights, max_iters=50, tol=1e-6):
                 continue
 
             v = theta * np.array([R_rel[2, 1] - R_rel[1, 2], R_rel[0, 2] - R_rel[2, 0], R_rel[1, 0] - R_rel[0, 1]]) / (
-                        2 * np.sin(theta))
+                    2 * np.sin(theta))
 
             # Weiszfeld re-weighting
             norm_v = np.linalg.norm(v)
@@ -302,17 +361,8 @@ def compose_similarity_transform(a, b):
     return s_c, R_c, t_c
 
 
-def strategy3_pgo(frame_npz_paths, dataset_root, num_iters=50):
+def strategy3_pgo(frame_npz_paths, dataset_root, num_iters=50, dataset_type="dex-ycb"):
     n_frames = len(frame_npz_paths)
-    print("    [PGO] Precomputing shared validity masks (O(T) disk I/O)...")
-    vmask_cache = {}
-    for path in frame_npz_paths:
-        data = np.load(path)
-        t = int(data['frame_idx'])
-        V, H, W = normalize_spatial_dims(data)
-        view_names = [discover_view_name(dataset_root, k) for k in data['Ks']]
-        vmask_cache[path] = build_gt_validity_masks(t, view_names, dataset_root, target_hw=(H, W))
-
     print("    [PGO] Computing T(T-1)/2 pairwise edges...")
     edges = {}
 
@@ -321,8 +371,9 @@ def strategy3_pgo(frame_npz_paths, dataset_root, num_iters=50):
             res = estimate_interframe_transform_pointmap(
                 frame_npz_paths[i], frame_npz_paths[j], dataset_root,
                 return_error=True,
-                vmasks_a=vmask_cache[frame_npz_paths[i]],
-                vmasks_b=vmask_cache[frame_npz_paths[j]]
+                vmasks_a=None,
+                vmasks_b=None,
+                dataset_type=dataset_type
             )
             if res[0] is not None:
                 (s, R, t), err = res
@@ -332,7 +383,7 @@ def strategy3_pgo(frame_npz_paths, dataset_root, num_iters=50):
     print(f"    [PGO] Found {len(edges)} valid edges. Initializing loops...")
 
     # Initialize with strategy 1
-    T_global = strategy1_reference(frame_npz_paths, dataset_root)
+    T_global = strategy1_reference(frame_npz_paths, dataset_root, dataset_type=dataset_type)
     T_global = [list(val) for val in T_global]
 
     print("    [PGO] Optimizing...")
@@ -394,19 +445,30 @@ def strategy3_pgo(frame_npz_paths, dataset_root, num_iters=50):
     return [(val[0], val[1], val[2]) for val in T_global]
 
 
-def solve_final_gt_registration(frame_npz_paths, frame_transforms, dataset_root, use_static_mask=True):
+def solve_final_gt_registration(frame_npz_paths, frame_transforms, dataset_root, use_static_mask=True,
+                                dataset_type="dex-ycb"):
     print("    [4D-GT] Registration: Precomputing shared validity masks...")
     vmask_cache = {}
     for path in frame_npz_paths:
         data = np.load(path)
         t, V, H, W = int(data['frame_idx']), *normalize_spatial_dims(data)
-        vmask_cache[path] = build_gt_validity_masks(t, [discover_view_name(dataset_root, k) for k in data['Ks']],
-                                                    dataset_root, target_hw=(H, W))
+
+        # Use view names directly from NPZ data if available, otherwise discover them
+        if 'view_names' in data:
+            view_names = data['view_names'].tolist() if hasattr(data['view_names'], 'tolist') else list(
+                data['view_names'])
+        else:
+            # Fallback to discovering view names from intrinsics
+            view_names = [discover_view_name(dataset_root, k) for k in data['Ks']]
+
+        vmask_cache[path] = build_gt_validity_masks(t, view_names,
+                                                    dataset_root, target_hw=(H, W), dataset_type=dataset_type)
 
     all_src, all_dst = [], []
     for i, path in enumerate(frame_npz_paths):
         data = np.load(path)
-        res = extract_clean_gt_correspondences(data, dataset_root, vmasks=vmask_cache[path], use_static_mask=use_static_mask)
+        res = extract_clean_gt_correspondences(data, dataset_root, vmasks=vmask_cache[path],
+                                               use_static_mask=use_static_mask, dataset_type=dataset_type)
         if res is None: continue
         src, dst = res
         # Apply inter-frame transform to bring to unified space
@@ -431,7 +493,8 @@ def solve_final_gt_registration(frame_npz_paths, frame_transforms, dataset_root,
     return s_glob, R_glob, tr_glob
 
 
-def compute_4d_jitter_complete(frame_npz_paths, frame_transforms, s_glob, R_glob, tr_glob, dataset_root):
+def compute_4d_jitter_complete(frame_npz_paths, frame_transforms, s_glob, R_glob, tr_glob, dataset_root,
+                               dataset_type="dex-ycb"):
     all_pm_mv, all_masks_mv = [], []
     for i, path in enumerate(frame_npz_paths):
         data = np.load(path)
@@ -449,7 +512,7 @@ def compute_4d_jitter_complete(frame_npz_paths, frame_transforms, s_glob, R_glob
         m = normalize_array(data['masks_2d'], V, H, W, is_mask=True)
         # Use simple build_gt_validity_masks here as jitter isn't O(N^2)
         vms = build_gt_validity_masks(int(data['frame_idx']), [discover_view_name(dataset_root, k) for k in data['Ks']],
-                                      dataset_root, target_hw=(H, W))
+                                      dataset_root, target_hw=(H, W), dataset_type=dataset_type)
         for v in range(V):
             if vms[v] is not None: m[v] &= vms[v]
         all_masks_mv.append(m)

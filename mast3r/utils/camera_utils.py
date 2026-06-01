@@ -14,10 +14,23 @@ def build_camera_intrinsics_cache(dataset_root):
         return _CAMERA_CACHE[subject_name]
 
     cache = {}
+    # Try Hi4D-style multi-camera NPZ first
+    hi4d_cameras = os.path.join(dataset_root, "cameras", "rgb_cameras.npz")
+    if os.path.exists(hi4d_cameras):
+        data = np.load(hi4d_cameras)
+        # Hi4D: intrinsics are (3, 3) in 'intrinsic' key, one per camera
+        intrinsics = data['intrinsic']  # (C, 3, 3)
+        cam_ids = [str(cid) for cid in data['ids']]
+        for i, cid in enumerate(cam_ids):
+            key = tuple(np.round(intrinsics[i].flatten(), decimals=3))
+            cache[key] = cid
+        _CAMERA_CACHE[subject_name] = cache
+        return cache
+
     view_dirs = sorted([os.path.join(dataset_root, d) for d in os.listdir(dataset_root)
                         if os.path.isdir(os.path.join(dataset_root, d))])
     for subdir in view_dirs:
-        # Check if the folder contains the necessary GT metadata
+        # Check if the folder contains the necessary GT metadata (DexYCB style)
         if not os.path.exists(os.path.join(subdir, "intrinsics_extrinsics.npz")):
             continue
         # Try to find any frame NPZ to get the K
@@ -56,7 +69,31 @@ def get_rgb_path(view_dir: str, frame_t: int) -> str | None:
     """
     rgb_dir = os.path.join(view_dir, "rgb") if os.path.isdir(os.path.join(view_dir, "rgb")) else view_dir
     for ext in (".png", ".jpg", ".jpeg"):
-        p = os.path.join(rgb_dir, f"{frame_t:05d}{ext}")
-        if os.path.exists(p):
-            return p
-    return None
+        for pad in (5, 6):
+            p = os.path.join(rgb_dir, f"{frame_t:0{pad}d}{ext}")
+            if os.path.exists(p):
+                return p
+def remove_outliers(pts, nb_neighbors=20, std_ratio=1.0, return_mask=False):
+    """
+    Removes sparse noise/floaters using statistical outlier removal.
+    """
+    if pts is None or len(pts) < nb_neighbors:
+        if return_mask:
+             return pts, np.ones(len(pts), dtype=bool) if pts is not None else None
+        return pts
+    try:
+        from scipy.spatial import cKDTree
+        import numpy as np
+        tree = cKDTree(pts)
+        dists, _ = tree.query(pts, k=nb_neighbors)
+        mean_dists = dists[:, 1:].mean(axis=1)
+        avg = np.mean(mean_dists)
+        std = np.std(mean_dists)
+        mask = mean_dists < (avg + std_ratio * std)
+        if return_mask:
+            return pts[mask], mask
+        return pts[mask]
+    except ImportError:
+        if return_mask:
+            return pts, np.ones(len(pts), dtype=bool)
+        return pts

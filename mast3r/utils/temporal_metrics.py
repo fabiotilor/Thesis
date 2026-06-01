@@ -88,7 +88,7 @@ def split_points_by_mask(est_points, masks_2d, Ks, R_ts):
         is_dynamic |= view_dynamic
 
     static_pts = est_points[~is_dynamic & is_visible_in_any]
-    dynamic_pts = est_points[is_dynamic]
+    dynamic_pts = est_points[is_dynamic & is_visible_in_any]
 
     return static_pts, dynamic_pts
 

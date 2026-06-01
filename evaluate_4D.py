@@ -10,7 +10,7 @@ import matplotlib.pyplot as plt
 import pandas as pd
 
 # Path setup for MASt3R/DUSt3R
-import mast3r.utils.path_to_dust3r # noqa
+import mast3r.utils.path_to_dust3r  # noqa
 
 from mast3r.utils.umeyama_alignment import apply_similarity_transform
 from mast3r.utils.temporal_metrics import (
@@ -22,7 +22,8 @@ from mast3r.utils.temporal_metrics import (
     compute_camera_metrics
 )
 from mast3r.utils.alignment_4d import normalize_spatial_dims, normalize_array
-from eval_config import SUBJECT_NAMES, SUBJECT_BY_CODE
+from eval_config import DATASETS, get_subject_by_code
+
 
 def print_metrics_summary(results_df, label):
     """Prints a comparison table for all strategies."""
@@ -33,7 +34,10 @@ def print_metrics_summary(results_df, label):
     cols_to_show = [
         'strategy', 'n_frames',
         'align_frames',
-        'chamfer', 'delta_consistency', 'completeness', 'static_comp', 'dyn_comp', 'static_acc', 'dyn_acc', 'motion_gap',
+        'chamfer', 'delta_consistency', 'completeness', 'static_comp', 'dyn_comp', 'static_acc', 'dyn_acc',
+        'motion_gap',
+        # For Hi4D: overall metrics (no static/dynamic split)
+        'overall_acc', 'overall_comp',
         'ate', 'rpe', 'rot_error', 'focal_error', 'pp_error',
         'jitter_mean', 'jitter_std', 'jitter_p95', 'jitter_max',
         'drift_mean', 'hf_jitter'
@@ -43,15 +47,24 @@ def print_metrics_summary(results_df, label):
     print(results_df[cols_to_show].to_string(index=False))
     print("=" * (len(label) + 25))
 
-def evaluate_strategy_dir(in_dir, out_plot_dir, strategy_label=""):
-    files = sorted(glob.glob(os.path.join(in_dir, "frame_*.npz")))
+
+def evaluate_strategy_dir(in_dir, out_plot_dir, strategy_label="", start=0, step=1, limit=None, dataset_type="dex-ycb"):
+    files = sorted(glob.glob(os.path.join(in_dir, "frame_*.npz")),
+                   key=lambda x: int(os.path.basename(x).split('_')[1].split('.')[0]))
     if not files:
         return None
+
+    # Apply slicing
+    files = files[start::step]
+    if limit:
+        files = files[:limit]
 
     print(f"  [EVAL] {strategy_label}: {len(files)} frames...")
 
     cham_dist, comp_score, s_acc_list, d_acc_list = [], [], [], []
     s_comp_list, d_comp_list = [], []
+    # For Hi4D: overall accuracy (no static/dynamic split)
+    overall_acc_list, overall_comp_list = [], []
     all_est_poses, all_est_intrinsics = [], []
     all_gt_poses, all_gt_intrinsics = [], []
     # For Jitter
@@ -71,12 +84,24 @@ def evaluate_strategy_dir(in_dir, out_plot_dir, strategy_label=""):
         if len(est_pts) > 0 and len(gt_pts) > 0:
             cham_dist.append(compute_chamfer_distance(est_pts, gt_pts))
             comp_score.append(compute_completeness(est_pts, gt_pts, tau=0.01))
-            s_p, d_p = split_points_by_mask(est_pts, m_2d, ks, rts)
-            g_s, g_d = split_points_by_mask(gt_pts, m_2d, ks, rts)
-            s_acc_list.append(compute_accuracy(s_p, g_s, tau=0.01) if len(s_p) > 0 else np.nan)
-            d_acc_list.append(compute_accuracy(d_p, g_d, tau=0.01) if len(d_p) > 0 else np.nan)
-            s_comp_list.append(compute_completeness(s_p, g_s, tau=0.01) if len(g_s) > 0 else np.nan)
-            d_comp_list.append(compute_completeness(d_p, g_d, tau=0.01) if len(g_d) > 0 else np.nan)
+            # Skip static/dynamic split for Hi4D - evaluate full point cloud instead
+            if dataset_type == "hi4d":
+                # For Hi4D, no static/dynamic split - evaluate everything together
+                s_acc_list.append(np.nan)
+                d_acc_list.append(np.nan)
+                s_comp_list.append(np.nan)
+                d_comp_list.append(np.nan)
+                overall_acc_list.append(compute_accuracy(est_pts, gt_pts, tau=0.01))
+                overall_comp_list.append(compute_completeness(est_pts, gt_pts, tau=0.01))
+            else:
+                s_p, d_p = split_points_by_mask(est_pts, m_2d, ks, rts)
+                g_s, g_d = split_points_by_mask(gt_pts, m_2d, ks, rts)
+                s_acc_list.append(compute_accuracy(s_p, g_s, tau=0.01) if len(s_p) > 0 else np.nan)
+                d_acc_list.append(compute_accuracy(d_p, g_d, tau=0.01) if len(d_p) > 0 else np.nan)
+                s_comp_list.append(compute_completeness(s_p, g_s, tau=0.01) if len(g_s) > 0 else np.nan)
+                d_comp_list.append(compute_completeness(d_p, g_d, tau=0.01) if len(g_d) > 0 else np.nan)
+                overall_acc_list.append(np.nan)
+                overall_comp_list.append(np.nan)
         else:
             cham_dist.append(np.nan)
             comp_score.append(np.nan)
@@ -84,6 +109,8 @@ def evaluate_strategy_dir(in_dir, out_plot_dir, strategy_label=""):
             d_acc_list.append(np.nan)
             s_comp_list.append(np.nan)
             d_comp_list.append(np.nan)
+            overall_acc_list.append(np.nan)
+            overall_comp_list.append(np.nan)
 
         s_val, R_val, tr_val = data['scale'], data['R'], data['tr']
         if 'est_poses' in data and data['est_poses'] is not None and data['est_poses'].ndim >= 3:
@@ -122,7 +149,10 @@ def evaluate_strategy_dir(in_dir, out_plot_dir, strategy_label=""):
         'dyn_comp': np.nanmean(d_comp_list),
         'static_acc': m_static,
         'dyn_acc': m_dyn,
-        'motion_gap': m_static - m_dyn if not np.isnan(m_static) and not np.isnan(m_dyn) else np.nan
+        'motion_gap': m_static - m_dyn if not np.isnan(m_static) and not np.isnan(m_dyn) else np.nan,
+        # For Hi4D: overall metrics (no static/dynamic split)
+        'overall_acc': np.nanmean(overall_acc_list) if any(~np.isnan(overall_acc_list)) else np.nan,
+        'overall_comp': np.nanmean(overall_comp_list) if any(~np.isnan(overall_comp_list)) else np.nan
     }
 
     timing_path = os.path.join(in_dir, "timing.json")
@@ -160,6 +190,7 @@ def evaluate_strategy_dir(in_dir, out_plot_dir, strategy_label=""):
     plt.savefig(os.path.join(out_plot_dir, f'chamfer_{strategy_label}.png'))
     plt.close()
     return metrics
+
 
 def add_delta_consistency(results_df):
     """
@@ -203,36 +234,44 @@ def add_delta_consistency(results_df):
         df.at[idx, "delta_consistency"] = row["chamfer"] - baseline_chamfer
     return df
 
+
 def main():
+    from mast3r.utils.rerun_logging import add_dataset_args, get_selected_subjects
     parser = argparse.ArgumentParser()
-    parser.add_argument("--all", action="store_true")
+    add_dataset_args(parser)
     parser.add_argument("--pgo", action="store_true", help="Evaluate only Strategy 3 outputs.")
+    parser.add_argument("--opt", action="store_true", help="Evaluate only Temporal Optimization outputs.")
     parser.add_argument("--views", nargs="+", type=int, help="Optional view counts to evaluate (e.g. --views 2 3 4).")
-    for code in SUBJECT_BY_CODE.keys(): parser.add_argument(f"--{code}", action="store_true")
     args = parser.parse_args()
 
-    selected = [k for k in SUBJECT_BY_CODE.keys() if getattr(args, k)]
-    subjects = selected if not args.all else [s.split("-subject-")[1][:2] for s in SUBJECT_NAMES]
-    if not subjects: subjects = ["01"]  # Default
+    dataset_type = args.data
+    subjects, codes = get_selected_subjects(args)
+    subject_by_code = get_subject_by_code(dataset_type)
 
-    method_roots = ["baseline", "strategy1", "strategy2", "strategy3"]
+    method_roots = ["baseline", "opt", "strategy1", "strategy2", "strategy3"]
     if args.pgo:
         method_roots = ["strategy3"]
+    elif args.opt:
+        method_roots = ["opt"]
 
     view_set = set(args.views) if args.views else None
 
     def _is_view_dir(name: str) -> bool:
         return re.match(r"^\d+views$", name) is not None
 
-    for scode in subjects:
-        subject_full = SUBJECT_BY_CODE.get(scode)
+    for scode in codes:
+        subject_full = subject_by_code.get(scode)
         if not subject_full: continue
 
         subject_results = []
-        # New layout: aligned_outputs/{method}/{subject_full}/{Nviews}/
+        # New layout: aligned_outputs/{dataset_type}/{method}/{subject_full}/{Nviews}/
         any_new_found = False
         for method in method_roots:
-            subject_dir = os.path.join("aligned_outputs", method, subject_full)
+            subject_dir = os.path.join("aligned_outputs", dataset_type, method, subject_full)
+            if not os.path.exists(subject_dir):
+                # Try without dataset_type for legacy compatibility
+                subject_dir = os.path.join("aligned_outputs", method, subject_full)
+
             if not os.path.exists(subject_dir):
                 print(f"[WARN] No outputs for method={method} subject={subject_full}")
                 continue
@@ -252,7 +291,9 @@ def main():
                 in_dir = os.path.join(subject_dir, view_dir)
                 plot_dir = os.path.join("plots", subject_full, method, view_dir)
                 strategy_label = f"{method}_{view_dir}"
-                res = evaluate_strategy_dir(in_dir, plot_dir, strategy_label=strategy_label)
+                res = evaluate_strategy_dir(in_dir, plot_dir, strategy_label=strategy_label,
+                                            start=0, step=args.step, limit=args.limit,
+                                            dataset_type=dataset_type)
                 if res:
                     res["subject"] = subject_full
                     subject_results.append(res)
@@ -260,8 +301,20 @@ def main():
         if subject_results:
             df = add_delta_consistency(pd.DataFrame(subject_results))
             print_metrics_summary(df, subject_full)
-            out_csv = f"eval_summary_{scode}.csv"
-            df.to_csv(out_csv, index=False)
+            out_csv = f"eval_summary_{dataset_type}_{scode.replace('/', '_')}.csv"
+
+            if os.path.exists(out_csv):
+                existing_df = pd.read_csv(out_csv)
+                # Update existing rows or append new ones. Match by 'strategy'.
+                # A strategy string looks like 'opt_3views' or 'Strategy_2_4views'
+                merged_df = pd.concat([existing_df[~existing_df['strategy'].isin(df['strategy'])], df],
+                                      ignore_index=True)
+                merged_df = merged_df.sort_values(by="strategy").reset_index(drop=True)
+                merged_df.to_csv(out_csv, index=False)
+                print(f"[INFO] Updated existing CSV: {out_csv}")
+            else:
+                df.to_csv(out_csv, index=False)
+                print(f"[INFO] Created new CSV: {out_csv}")
             print(f"[INFO] Saved combined report to {out_csv}")
             continue
 
@@ -290,7 +343,7 @@ def main():
         for strat in strategies:
             in_dir = os.path.join(base_dir, strat)
             plot_dir = os.path.join(plot_root, strat)
-            res = evaluate_strategy_dir(in_dir, plot_dir, strategy_label=strat)
+            res = evaluate_strategy_dir(in_dir, plot_dir, strategy_label=strat, dataset_type=dataset_type)
             if res:
                 res["subject"] = subject_full
                 subject_results.append(res)
@@ -301,6 +354,7 @@ def main():
             out_csv = f"eval_summary_{scode}.csv"
             df.to_csv(out_csv, index=False)
             print(f"[INFO] Saved combined report to {out_csv}")
+
 
 if __name__ == "__main__":
     main()
