@@ -42,7 +42,8 @@ def print_metrics_summary(results_df, label, dataset_type="dex-ycb"):
         cols_to_show = [
             'strategy', 'n_frames',
             'align_frames',
-            'chamfer', 'delta_consistency', 'completeness', 'static_comp', 'dyn_comp', 'static_acc', 'dyn_acc', 'motion_gap',
+            'chamfer', 'delta_consistency', 'completeness', 'static_comp', 'dyn_comp', 'static_acc', 'dyn_acc',
+            'motion_gap',
             'ate', 'rpe', 'rot_error', 'focal_error', 'pp_error',
             'jitter_mean', 'jitter_std', 'jitter_p95', 'jitter_max',
             'drift_mean', 'hf_jitter'
@@ -258,6 +259,7 @@ def main():
     parser.add_argument("--all", action="store_true")
     parser.add_argument("--subjects", nargs="+", type=str, help="Specific subject codes to run.")
     parser.add_argument("--pgo", action="store_true", help="Evaluate only Strategy 3 outputs.")
+    parser.add_argument("--opt", action="store_true", help="Evaluate only Temporal Optimization outputs.")
     parser.add_argument("--views", nargs="+", type=int, help="Optional view counts to evaluate (e.g. --views 2 3 4).")
     parser.add_argument("--pair", type=str, default=None, help="Specific pair/action for hi4d (e.g. pair00/dance00)")
     args, unknown = parser.parse_known_args()
@@ -280,13 +282,15 @@ def main():
         if not subjects:
             subjects = [list(subject_by_code.keys())[0]]
 
-    method_roots = ["baseline", "strategy1", "strategy2", "strategy3"]
+    method_roots = ["baseline", "strategy1", "strategy2", "strategy3", "opt"]
     if dataset_type == "dex-ycb":
         method_roots += ["baseline_gt_focal", "strategy1_gt_focal", "strategy2_gt_focal", "strategy3_gt_focal"]
     if args.pgo:
         method_roots = ["strategy3"]
         if dataset_type == "dex-ycb":
             method_roots.append("strategy3_gt_focal")
+    elif args.opt:
+        method_roots = ["opt"]
 
     view_set = set(args.views) if args.views else None
 
@@ -336,8 +340,18 @@ def main():
                 out_csv = f"hi4d_eval_summary_{safe_code}.csv"
             else:
                 out_csv = f"eval_summary_{safe_code}.csv"
-            df.to_csv(out_csv, index=False)
-            print(f"[INFO] Saved combined report to {out_csv}")
+
+            if os.path.exists(out_csv):
+                existing_df = pd.read_csv(out_csv)
+                merged_df = pd.concat([existing_df[~existing_df['strategy'].isin(df['strategy'])], df],
+                                      ignore_index=True)
+                merged_df = merged_df.sort_values(by="strategy").reset_index(drop=True)
+                merged_df.to_csv(out_csv, index=False)
+                print(f"[INFO] Updated existing CSV: {out_csv}")
+            else:
+                df.to_csv(out_csv, index=False)
+                print(f"[INFO] Created new CSV: {out_csv}")
+
             continue
 
         # Legacy fallback: aligned_outputs/<subject_full>/<Strategy_*/2views/...>

@@ -7,7 +7,58 @@ import rerun.blueprint as rrb
 from .gt import load_gt_params, build_gt_validity_masks, _load_hi4d_seg_mask
 from .camera_utils import discover_view_name, get_rgb_path
 from .umeyama_alignment import apply_similarity_transform
-from eval_config import CONF_PERCENTILE
+from eval_config import CONF_PERCENTILE, RERUN_ADDR, RERUN_EYE_UP, DATASETS, get_subject_by_code
+
+
+def add_dataset_args(parser):
+    """Add standard dataset and subject selection flags to an ArgumentParser."""
+    parser.add_argument("--data", type=str, choices=["dex-ycb", "hi4d"], default="dex-ycb", help="Dataset to use")
+    parser.add_argument("--all", action="store_true", help="Run all subjects in the dataset.")
+    parser.add_argument("--subjects", nargs="+", type=str, help="Specific subject codes to run.")
+    parser.add_argument("--start", type=int, default=22, help="Starting frame index (for evaluation slicing)")
+    parser.add_argument("--step", type=int, default=1, help="Frame step size")
+    parser.add_argument("--limit", type=int, default=24, help="Max number of frames to process")
+    parser.add_argument("--mask_subjects", action="store_true",
+                        help="Apply segmentation masks to isolate subjects during reconstruction.")
+    return parser
+
+
+def get_selected_subjects(args):
+    """
+    Resolve the selected subjects from the parsed arguments.
+    Returns (subject_full_names, subject_codes).
+    """
+    dataset_type = args.data
+    subject_by_code = get_subject_by_code(dataset_type)
+
+    if args.all:
+        codes = sorted(subject_by_code.keys())
+    elif args.subjects:
+        codes = args.subjects
+    else:
+        # Check for legacy flags like --01, --02... (mostly for Dex-YCB)
+        import sys
+        codes = [a.lstrip('-') for a in sys.argv if a.startswith('--') and a.lstrip('-') in subject_by_code]
+        if not codes:
+            codes = [sorted(subject_by_code.keys())[0]]
+
+    unique_names = []
+    unique_codes = []
+    seen_names = set()
+
+    missing = [c for c in codes if c not in subject_by_code]
+    if missing:
+        print(f"[WARN] Subjects not found in {dataset_type}: {missing}")
+
+    for c in codes:
+        if c in subject_by_code:
+            name = subject_by_code[c]
+            if name not in seen_names:
+                unique_names.append(name)
+                unique_codes.append(c)
+                seen_names.add(name)
+
+    return unique_names, unique_codes
 
 
 def init_recording(subject_code: str, n_views: int) -> None:

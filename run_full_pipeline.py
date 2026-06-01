@@ -75,6 +75,29 @@ def _parse_args():
         help="Experiment: Use Ground Truth intrinsics to rescale VGGT pointmaps and poses.",
     )
     parser.add_argument("--limit-frames", type=int, default=None, help="Limit number of frames to process")
+    parser.add_argument(
+        "--opt",
+        action="store_true",
+        help="Run temporal optimization on base strategy frames and evaluate exclusively.",
+    )
+    parser.add_argument(
+        "--opt-base",
+        type=str,
+        default="strategy2",
+        help="Base alignment strategy to smooth (default: strategy2).",
+    )
+    parser.add_argument(
+        "--opt-sigma",
+        type=float,
+        default=4.0,
+        help="Gaussian temporal window size for smoothing.",
+    )
+    parser.add_argument(
+        "--opt-alpha",
+        type=float,
+        default=0.5,
+        help="Blending factor for smoothing (0.0=original, 1.0=fully smoothed).",
+    )
 
     return parser.parse_known_args()[0]
 
@@ -149,12 +172,14 @@ def _target_views_for_nviews(nviews: int, dataset_config, subject_name=None):
     return target_views
 
 
-def _run_eval(code: str, view_counts: list[int], dataset_type: str):
+def _run_eval(code: str, view_counts: list[int], dataset_type: str, opt=False):
     cmd = [sys.executable, "evaluate_4D.py", "--data", dataset_type, "--views"] + [str(v) for v in view_counts]
     if dataset_type == "hi4d":
         cmd += ["--pair", code]
     else:
         cmd += ["--subjects", code]
+    if opt:
+        cmd.append("--opt")
     print(f"\nRUNNING: {' '.join(cmd)}")
     subprocess.run(cmd, check=True)
 
@@ -198,7 +223,7 @@ def main():
         else:
             csv_path = f"eval_summary_{safe_code}.csv"
 
-        if os.path.exists(csv_path):
+        if os.path.exists(csv_path) and not args.opt and not args.views:
             print(f"[INFO] {csv_path} already exists, skipping subject {code}.")
             continue
 
@@ -212,24 +237,36 @@ def main():
             if not args.no_rerun and rr is not None:
                 init_recording(code, nviews)
             view_root = f"vggt_{dataset_type}_{code}_{nviews}views"
-
             suffix = "_gt_focal" if args.use_gt_intrinsics else ""
-            baseline_dir = os.path.join("aligned_outputs", "vggt", dataset_type, f"baseline{suffix}", subject_full, f"{nviews}views")
-            s1_dir = os.path.join("aligned_outputs", "vggt", dataset_type, f"strategy1{suffix}", subject_full, f"{nviews}views")
-            s2_dir = os.path.join("aligned_outputs", "vggt", dataset_type, f"strategy2{suffix}", subject_full, f"{nviews}views")
-            s3_dir = os.path.join("aligned_outputs", "vggt", dataset_type, f"strategy3{suffix}", subject_full, f"{nviews}views")
+
+            # Determine base output directories, handling both VGGT-specific layout and legacy flat layout
+            def _resolve_dir(base_name: str) -> str:
+                # Preferred layout: aligned_outputs/vggt/<dataset_type>/[base_name][suffix]/<subject>/<nviews>views
+                pref = os.path.join(
+                    "aligned_outputs",
+                    "vggt",
+                    dataset_type,
+                    f"{base_name}{suffix}",
+                    subject_full,
+                    f"{nviews}views",
+                )
+                if os.path.isdir(pref) and any(
+                        os.path.isfile(os.path.join(pref, f)) for f in os.listdir(pref) if f.endswith('.npz')):
+                    return pref
+                # Legacy layout fallback
+                return os.path.join("aligned_outputs", subject_full, f"{nviews}views")
+
+            baseline_dir = _resolve_dir("baseline")
+            s1_dir = _resolve_dir("strategy1")
+            s2_dir = _resolve_dir("strategy2")
+            s3_dir = _resolve_dir("strategy3")
 
             for d in (baseline_dir, s1_dir, s2_dir, s3_dir):
                 os.makedirs(d, exist_ok=True)
 
-            if not args.no_rerun and rr is not None:
-                eye_up = dataset_config.get("eye_up", RERUN_EYE_UP)
-                configure_rerun_view_defaults(view_root, eye_up)
-
-            frame_paths = []
-
-            if not args.pgo:
-                print(f"\n[STAGE] Baseline: subject={code} views={nviews}")
+            # Run baseline alignment if needed
+            if not args.pgo and not args.opt:
+                view_root = f"vggt_{dataset_type}_{code}_{nviews}views"
                 target_views = _target_views_for_nviews(nviews, dataset_config, subject_full)
                 run_tag = view_root
                 baseline_run_reconstruction(
@@ -255,15 +292,17 @@ def main():
             # Log GT sequence only if baseline was skipped.
             if args.pgo and not args.no_rerun:
                 try:
-                    log_gt_sequence(frame_paths, dataset_root=dataset_root, log_root=view_root, dataset_type=dataset_type)
+                    log_gt_sequence(frame_paths, dataset_root=dataset_root, log_root=view_root,
+                                    dataset_type=dataset_type)
                 except Exception as e:
                     print(f"[RERUN][WARN] log_gt_sequence failed for {code} {nviews}views: {e}")
 
-            if not args.pgo:
+            if not args.pgo and not args.opt:
                 print(f"\n[STAGE] Strategy 1: subject={code} views={nviews}")
                 s1_start = time.perf_counter()
                 tf_s1 = strategy1_reference(frame_paths, dataset_root, dataset_type=dataset_type)
-                s_g1, R_g1, tr_g1 = solve_final_gt_registration(frame_paths, tf_s1, dataset_root, use_static_mask=False, dataset_type=dataset_type)
+                s_g1, R_g1, tr_g1 = solve_final_gt_registration(frame_paths, tf_s1, dataset_root, use_static_mask=False,
+                                                                dataset_type=dataset_type)
                 save_aligned_results(
                     frame_paths,
                     tf_s1,
@@ -285,17 +324,18 @@ def main():
                         R_g1,
                         tr_g1,
                         label="Strategy_1",
-                            # Strategy1: red
-                            color=[255, 0, 0],
+                        # Strategy1: red
+                        color=[255, 0, 0],
                         dataset_root=dataset_root,
-                            log_root=view_root,
+                        log_root=view_root,
                         dataset_type=dataset_type,
                     )
 
                 print(f"\n[STAGE] Strategy 2: subject={code} views={nviews}")
                 s2_start = time.perf_counter()
                 tf_s2 = strategy2_hierarchical(frame_paths, dataset_root, dataset_type=dataset_type)
-                s_g2, R_g2, tr_g2 = solve_final_gt_registration(frame_paths, tf_s2, dataset_root, use_static_mask=False, dataset_type=dataset_type)
+                s_g2, R_g2, tr_g2 = solve_final_gt_registration(frame_paths, tf_s2, dataset_root, use_static_mask=False,
+                                                                dataset_type=dataset_type)
                 save_aligned_results(
                     frame_paths,
                     tf_s2,
@@ -324,40 +364,69 @@ def main():
                         dataset_type=dataset_type,
                     )
 
-            print(f"\n[STAGE] Strategy 3 (PGO): subject={code} views={nviews}")
-            s3_start = time.perf_counter()
-            tf_s3 = strategy3_pgo(frame_paths, dataset_root, num_iters=50, dataset_type=dataset_type)
-            s_g3, R_g3, tr_g3 = solve_final_gt_registration(frame_paths, tf_s3, dataset_root, use_static_mask=False, dataset_type=dataset_type)
-            save_aligned_results(
-                frame_paths,
-                tf_s3,
-                s_g3,
-                R_g3,
-                tr_g3,
-                subject_name=subject_full,
-                out_dir=s3_dir,
-                dataset_root=dataset_root,
-                method_label="strategy3",
-                dataset_type=dataset_type,
-            )
-            _write_timing_json(s3_dir, "strategy3", len(frame_paths), time.perf_counter() - s3_start)
-            if not args.no_rerun:
-                log_aligned_sequence(
+            if not args.opt:
+                print(f"\n[STAGE] Strategy 3 (PGO): subject={code} views={nviews}")
+            if args.opt:
+                print(f"\n[STAGE] Temporal Optimization (base={args.opt_base}): subject={code} views={nviews}")
+                from vggt.utils.temporal_optimizer import ensure_base_strategy_exists, optimize_temporal_consistency
+
+                base_in_dir = ensure_base_strategy_exists(
+                    subject_full, nviews,
+                    dataset_type=dataset_type,
+                    base_strategy=args.opt_base
+                )
+                if base_in_dir is None:
+                    print(f"[ERROR] Could not obtain {args.opt_base} outputs for {subject_full}. Cannot run --opt.")
+                    continue
+
+                opt_dir = os.path.join("aligned_outputs", "vggt", dataset_type, "opt", subject_full, f"{nviews}views")
+                os.makedirs(opt_dir, exist_ok=True)
+
+                base_frame_paths = _sorted_frame_paths(base_in_dir)
+
+                optimize_temporal_consistency(
+                    frame_paths=base_frame_paths,
+                    out_dir=opt_dir,
+                    dataset_root=dataset_root,
+                    sigma=args.opt_sigma,
+                    alpha=args.opt_alpha,
+                    dataset_type=args.data,
+                )
+            elif not args.opt:
+                s3_start = time.perf_counter()
+                tf_s3 = strategy3_pgo(frame_paths, dataset_root, num_iters=50, dataset_type=dataset_type)
+                s_g3, R_g3, tr_g3 = solve_final_gt_registration(frame_paths, tf_s3, dataset_root, use_static_mask=False,
+                                                                dataset_type=dataset_type)
+                save_aligned_results(
                     frame_paths,
                     tf_s3,
                     s_g3,
                     R_g3,
                     tr_g3,
-                    label="Strategy_3",
-                    # Strategy3: cyan
-                    color=[0, 255, 255],
+                    subject_name=subject_full,
+                    out_dir=s3_dir,
                     dataset_root=dataset_root,
-                    log_root=view_root,
+                    method_label="strategy3",
                     dataset_type=dataset_type,
                 )
+                _write_timing_json(s3_dir, "strategy3", len(frame_paths), time.perf_counter() - s3_start)
+                if not args.no_rerun:
+                    log_aligned_sequence(
+                        frame_paths,
+                        tf_s3,
+                        s_g3,
+                        R_g3,
+                        tr_g3,
+                        label="Strategy_3",
+                        # Strategy3: cyan
+                        color=[0, 255, 255],
+                        dataset_root=dataset_root,
+                        log_root=view_root,
+                        dataset_type=dataset_type,
+                    )
 
         print(f"\n[INFO] Evaluating subject {code} across methods/views ...")
-        _run_eval(code, view_counts, dataset_type)
+        _run_eval(code, view_counts, dataset_type, opt=args.opt)
 
     # Aggregate results across selected subjects only.
     csv_files = []
