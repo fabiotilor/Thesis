@@ -1,34 +1,136 @@
 \chapter{Introduction}\label{c:introduction}
 
-Recovering the three-dimensional structure of a scene from visual observations is a foundational problem in computer vision with critical applications in robotics and autonomous navigation~\cite{hartley2004multiple}. While spatial-first foundation models such as MASt3R~\cite{mast3r} and PI3X~\cite{pi3} have achieved remarkable per-frame geometric fidelity, their application to 4D sequences - where temporal coherence is as vital as spatial accuracy - remains an open challenge. In sparse-view configurations (2-4 cameras), the problem is bifurcated: spatial models lack the temporal grounding to prevent high-frequency jitter, whereas dedicated 4D models, such as VGGT4D~\cite{vggt4d}, introduce temporal priors that risk over-smoothing geometry or creating "motion-blur" artifacts.
+Recovering the three-dimensional structure of a dynamic scene from visual observations is a
+foundational challenge in computer vision with direct implications for robotics and autonomous
+navigation~\cite{hartley2004multiple}. Recent spatial foundation models---such as
+MASt3R-SfM~\cite{mast3r}, VGGT~\cite{vggt}, PI3, and PI3X~\cite{pi3}---have achieved
+remarkable per-frame geometric fidelity by regressing dense 3D pointmaps directly from images.
+Yet in 4D settings, where temporal coherence across a video sequence is as critical as
+spatial accuracy, these models fail: assembled frame-by-frame, their outputs exhibit severe
+high-frequency jitter that renders them unsuitable for robotics applications requiring smooth,
+metric-consistent depth. Conversely, dedicated 4D architectures---VGGT4D~\cite{vggt4d} and
+MonoFusion~\cite{monofusion}---sacrifice geometric precision to buy temporal smoothness,
+inflating Chamfer distance by 20--160\,\% and producing systematic alignment failures in
+sparse-view settings.
 
-This thesis investigates the transition from per-frame 3D reconstruction to sequence-level 4D modeling. We evaluate whether the current generation of foundation models can maintain metric integrity across time or if the introduction of temporal constraints inevitably degrades geometric precision.
+The central finding of this thesis is that a \emph{decoupled} paradigm outperforms both
+families: take a strong per-frame 3D estimator, align its outputs into a common coordinate
+frame through a lightweight temporal alignment strategy, and apply a confidence-weighted,
+mask-aware Gaussian post-processing filter (Opt) to enforce static-scene consistency.
+This approach reduces jitter by 25--81\,\% across four models (MASt3R-SfM, VGGT, PI3,
+PI3X) while preserving geometry to within $\pm$2--8\,\% Chamfer distance---a strictly
+superior trade-off to every native 4D architecture and geometry-refinement baseline we
+evaluate. At the two-camera extreme, VGGT combined with Opt beats the native 4D
+architecture VGGT4D on every single metric.
 
-\section{Background and Motivation}
+%% -----------------------------------------------------------------------
+\section{Background and Motivation}\label{s:background}
 
-Classical multi-view reconstruction methods such as SfM~\cite{schoenberger2016sfm} provide high rigour but struggle with the textureless regions and dynamic occlusions inherent in human-centric environments. Learning-based spatial models like DUSt3R~\cite{dust3r} and PI3~\cite{pi3} have largely superseded these by regressing dense pointmaps directly, yet they treat video as a collection of independent snapshots. This independence results in significant temporal instability when these models are deployed on robotic platforms requiring smooth trajectory estimation.
+Classical multi-view reconstruction pipelines such as Structure-from-Motion
+(SfM)~\cite{schoenberger2016sfm} produce accurate, metric-scale geometry in well-constrained
+settings: they rely on repeatable keypoint matching and bundle adjustment, which deliver
+precise camera poses and sparse point clouds when images share sufficient texture, overlap,
+and baseline. In sparse-view configurations of 2--4 cameras, however, these conditions
+frequently fail. Low inter-camera overlap means that few keypoints are visible in more than
+one view simultaneously~\cite{hartley2004multiple}; short or degenerate baselines reduce parallax and destabilise
+triangulation~\cite{schoenberger2016sfm}; and textureless surfaces---common on human skin, clothing, and manipulation
+objects---yield too few reliable correspondences for bundle adjustment to converge~\cite{dust3r, mast3r}. The
+result is either outright reconstruction failure or incomplete, drift-prone geometry that
+cannot support downstream tasks such as grasping or object tracking.
 
-To address this, temporal-first architectures like VGGT4D~\cite{vggt4d} and MonoFusion~\cite{monofusion} incorporate motion cues to encourage sequence-level consistency. However, the nature of this consistency - whether it acts as a beneficial geometric anchor or a destructive low-pass filter - is poorly understood in sparse-view settings. There is a critical need for a benchmarking framework that quantifies the "temporal cost" of these various architectural choices.
+Learning-based spatial models such as DUSt3R~\cite{dust3r}, PI3, and PI3X~\cite{pi3} overcome
+many of these failure modes by directly regressing dense 3D pointmaps from image pairs, using
+learned priors to fill in low-texture and low-overlap regions where classical methods
+collapse. These models achieve strong per-frame accuracy---PI3 and PI3X in particular deliver
+the highest accuracy and completeness at a strict 1\,cm robotics threshold among all models
+we evaluate. Their weakness is temporal: each frame is processed independently, with no
+mechanism to enforce consistency between consecutive reconstructions. The resulting
+frame-to-frame instability (jitter) can be large enough to make the output unusable for
+trajectory estimation or manipulation planning on a robotic platform.
 
-\section{Problem Statement and Contributions}
+The natural response is to incorporate temporal modelling.
+VGGT4D~\cite{vggt4d} extends spatial transformers with motion cues, and
+MonoFusion~\cite{monofusion} fuses monocular depth priors across time. Both enforce
+sequence-level consistency, but at a cost we measure precisely: VGGT4D inflates Chamfer
+distance by 20--160\,\% relative to its per-frame baseline, and MonoFusion suffers
+systematic alignment convergence failures in sparse-view settings, producing duplicated
+subject artefacts rather than coherent reconstructions. Geometry post-processors such
+as GGPT~\cite{ggpt} offer a third route, but function as unconstrained smoothers that
+destroy fine spatial structure, worsening Chamfer distance by 3--10$\times$.
 
-The central objective of this work is to characterize the performance of 3D and 4D foundation models under the strict hardware constraints of sparse-view (2–4 camera) setups. We focus on measuring the divergence between per-frame accuracy and sequence-level stability, identifying where hierarchical vs. graph-based alignment strategies succeed in mitigating drift.
+These results motivate the central design principle of this work: temporal consistency
+and geometric fidelity are not in fundamental conflict---they simply require a targeted
+rather than global smoothing strategy.
 
-The main contributions of this work are:
+%% -----------------------------------------------------------------------
+\section{Problem Statement and Contributions}\label{s:contributions}
+
+We address the problem of temporally consistent, geometrically precise 4D reconstruction
+from sparse multi-view video (2--4 cameras) of dynamic scenes, evaluated on the
+DEX-YCB~\cite{dexycb} and Hi4D~\cite{hi4d} datasets. The main contributions of this work
+are:
 
 \begin{itemize}
-\item \textbf{4D Benchmarking Framework.} A unified evaluation pipeline for sparse multi-view video that subjects six base models (MAST3R-SfM, VGGT, PI3, PI3X, VGGT4D, and MonoFusion) to identical data-loading and semantic masking conditions across the DEX-YCB, Hi4D, and 4D-DRESS datasets. Crucially, this framework evaluates the impact of applying the GGPT \cite{ggpt} refinement strategy across these architectures (excluding MonoFusion), providing a direct comparison between raw spatial outputs and geometry-grounded 4D sequences.
 
-\item \textbf{The Delta-Consistency Metric.} We formalize a novel quantitative measure to isolate the "temporal cost" of sequence alignment. This metric, $\Delta_{\text{consistency}}$ (see \Cref{eq:delta_consistency}), captures the divergence in geometric fidelity when per-frame reconstructions are transformed from independent, local coordinate systems into a globally consistent 3D reference frame. This value exposes the spatial degradation caused by alignment drift and temporal constraints.
+  \item \textbf{Unified 4D Benchmarking Framework.}
+        A structured evaluation pipeline that subjects six base models---MASt3R-SfM, VGGT,
+        PI3, PI3X, VGGT4D, and MonoFusion---to identical data-loading, semantic masking, and
+        metric-computation conditions across DEX-YCB~\cite{dexycb} and Hi4D~\cite{hi4d}.
+        The framework measures both 3D per-frame and 4D sequence-level performance via
+        Chamfer distance, accuracy and completeness at a 1\,cm threshold, temporal jitter,
+        drift, and camera pose error, with static/dynamic decomposition where applicable
+        (see \Cref{c:methodology}). It additionally evaluates the effect of GGPT~\cite{ggpt}
+        geometry refinement applied on top of all base models except MonoFusion.
 
-\begin{equation}\label{eq:delta_consistency}
-    \Delta_{\text{consistency}} = \text{Chamfer}_{\text{4D}} - \text{Chamfer}_{\text{3D}}
-\end{equation}
+  \item \textbf{Comparative Temporal Alignment Study.}
+        An analysis of three strategies for lifting per-frame 3D reconstructions into a
+        globally consistent 4D representation (see \Cref{c:methodology}).
+        The Reference strategy aligns every frame to a common anchor using static-scene
+        correspondences and the Umeyama similarity transform.
+        The Hierarchical strategy builds a binary tree of pairwise alignments, propagating
+        consistency bottom-up.
+        The Pose-Graph Optimisation strategy computes all $\mathcal{O}(T^2)$ pairwise edges,
+        weights them by alignment reliability, and refines all frame poses simultaneously
+        via robust geodesic averaging on $\mathrm{SO}(3)$.
+        The Hierarchical strategy consistently delivers the best static-scene completeness
+        and geometric stability; Pose-Graph Optimisation minimises the temporal consistency
+        cost $\Delta_{\text{consistency}}$ (Equation~\ref{eq:delta_consistency}) and best
+        preserves dynamic-region accuracy.
 
-\item \textbf{Comparative Alignment Study.} A rigorous analysis of three temporal alignment strategies, highlighting a performance split: identifying hierarchical binary-tree methods as superior for static scene completeness and graph-based optimization (PGO) as superior for dynamic accuracy and minimizing $\Delta_{\text{consistency}}$.
+        \begin{equation}\label{eq:delta_consistency}
+            \Delta_{\text{consistency}} = \mathrm{Chamfer}_{\mathrm{4D}}
+                                        - \mathrm{Chamfer}_{\mathrm{3D}}
+        \end{equation}
 
-\todo[inline, fancyline]{This section must include explicit references to the detailed method descriptions in later chapters (hierarchical alignment trees + PGO formulation).}
+        This quantity isolates the spatial degradation introduced purely by coordinate
+        alignment, enabling direct comparison of alignment strategies and model families.
 
-\item \textbf{Staticity-Informed Refinement.} An investigation into refinement strategies - such as staticity constraints applied to MAST3R-SfM - aimed at reducing high-frequency jitter without the over-smoothing seen in purely temporal architectures.
+  \item \textbf{Confidence-Weighted Temporal Smoothing (Opt).}
+        A ground-truth-free post-processing method that reduces frame-to-frame instability
+        for any per-frame estimator without retraining (see \Cref{c:refinement}).
+        Opt applies a Gaussian temporal filter to already-aligned pointmaps, weighted by
+        model confidence and restricted to pixels classified as static by SAM2~\cite{sam2}-derived
+        masks---leaving dynamic pixels untouched to avoid suppressing real motion.
+        A Pareto-frontier sweep over temporal bandwidth $\sigma$ and blending strength
+        $\alpha$ identifies a single robust configuration ($\sigma{=}4$, $\alpha{=}0.5$)
+        that achieves a 25--81\,\% jitter reduction across MASt3R-SfM, VGGT, PI3, and PI3X
+        while preserving geometry to within $\pm$2--8\,\% Chamfer distance.
+        At 2 views, VGGT with Opt surpasses VGGT4D on every metric, demonstrating that
+        targeted post-processing of a strong spatial model outperforms native 4D
+        architecture design under camera sparsity.
+
+  \item \textbf{Empirical Characterisation of Architectural Families.}
+        A systematic comparison of spatial-first models (PI3, PI3X, MASt3R-SfM, VGGT),
+        native 4D architectures (VGGT4D, MonoFusion), and geometry-refinement
+        post-processors (GGPT) reveals clear, quantifiable failure modes.
+        PI3 and PI3X deliver the highest baseline spatial accuracy but suffer from the
+        greatest temporal instability.
+        MASt3R-SfM and VGGT offer competitive geometry with substantial high-frequency
+        jitter that Opt largely eliminates.
+        Native 4D models trade geometric precision for stability at a rate that never
+        justifies the cost at any view count.
+        GGPT is unsuitable for geometry-critical applications.
+        Together these findings establish the decoupled framework---strong spatial
+        estimator plus Opt---as the recommended approach for sparse-view robotic perception.
 
 \end{itemize}

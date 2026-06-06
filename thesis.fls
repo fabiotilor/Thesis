@@ -1,4 +1,4 @@
-PWD /Users/fabio/Downloads/thesis-template-main/Thesis
+PWD /Users/fabio/Thesis-Latex/Thesis
 INPUT /Users/fabio/Library/TinyTeX/texmf.cnf
 INPUT /Users/fabio/Library/TinyTeX/texmf-dist/web2c/texmf.cnf
 INPUT /Users/fabio/Library/TinyTeX/texmf-var/web2c/pdftex/pdflatex.fmt
@@ -509,10 +509,12 @@ INPUT ./chapters/1-introduction.tex
 INPUT ./chapters/1-introduction.tex
 INPUT chapters/1-introduction.tex
 INPUT /Users/fabio/Library/TinyTeX/texmf-dist/fonts/tfm/adobe/helvetic/phvb8t.tfm
+INPUT /Users/fabio/Library/TinyTeX/texmf-dist/fonts/tfm/public/lm/ec-lmri12.tfm
 INPUT /Users/fabio/Library/TinyTeX/texmf-dist/fonts/tfm/adobe/helvetic/phvr8t.tfm
 INPUT /Users/fabio/Library/TinyTeX/texmf-dist/fonts/tfm/adobe/helvetic/phvb8t.tfm
 INPUT /Users/fabio/Library/TinyTeX/texmf-dist/fonts/vf/adobe/helvetic/phvb8t.vf
 INPUT /Users/fabio/Library/TinyTeX/texmf-dist/fonts/tfm/adobe/helvetic/phvb8r.tfm
+INPUT /Users/fabio/Library/TinyTeX/texmf-dist/fonts/enc/dvips/lm/lm-mathsy.enc
 INPUT /Users/fabio/Library/TinyTeX/texmf-dist/fonts/vf/adobe/helvetic/phvb8t.vf
 INPUT /Users/fabio/Library/TinyTeX/texmf-dist/fonts/tfm/adobe/helvetic/phvb8r.tfm
 INPUT /Users/fabio/Library/TinyTeX/texmf-dist/tex/latex/lm/ts1lmr.fd
@@ -524,7 +526,6 @@ INPUT /Users/fabio/Library/TinyTeX/texmf-dist/fonts/tfm/public/lm/ec-lmr6.tfm
 INPUT /Users/fabio/Library/TinyTeX/texmf-dist/fonts/enc/dvips/lm/lm-ts1.enc
 INPUT /Users/fabio/Library/TinyTeX/texmf-dist/fonts/enc/dvips/lm/lm-rm.enc
 INPUT /Users/fabio/Library/TinyTeX/texmf-dist/fonts/enc/dvips/lm/lm-mathit.enc
-INPUT /Users/fabio/Library/TinyTeX/texmf-dist/fonts/enc/dvips/lm/lm-mathsy.enc
 INPUT ./chapters/2-background-knowledge.tex
 INPUT ./chapters/2-background-knowledge.tex
 INPUT ./chapters/2-background-knowledge.tex
@@ -560,7 +561,6 @@ INPUT ./chapters/8-conclusion.tex
 INPUT ./chapters/8-conclusion.tex
 INPUT ./chapters/8-conclusion.tex
 INPUT chapters/8-conclusion.tex
-INPUT /Users/fabio/Library/TinyTeX/texmf-dist/fonts/tfm/public/lm/ec-lmri12.tfm
 INPUT /Users/fabio/Library/TinyTeX/texmf-dist/tex/latex/lm/t1lmtt.fd
 INPUT /Users/fabio/Library/TinyTeX/texmf-dist/tex/latex/lm/t1lmtt.fd
 INPUT /Users/fabio/Library/TinyTeX/texmf-dist/tex/latex/lm/t1lmtt.fd
@@ -611,7 +611,6 @@ OUTPUT thesis.run.xml
 INPUT /Users/fabio/Library/TinyTeX/texmf-dist/fonts/type1/public/lm/lmbx12.pfb
 INPUT /Users/fabio/Library/TinyTeX/texmf-dist/fonts/type1/public/lm/lmcsc10.pfb
 INPUT /Users/fabio/Library/TinyTeX/texmf-dist/fonts/type1/public/lm/lmmi12.pfb
-INPUT /Users/fabio/Library/TinyTeX/texmf-dist/fonts/type1/public/lm/lmmi8.pfb
 INPUT /Users/fabio/Library/TinyTeX/texmf-dist/fonts/type1/public/lm/lmr12.pfb
 INPUT /Users/fabio/Library/TinyTeX/texmf-dist/fonts/type1/public/lm/lmr7.pfb
 INPUT /Users/fabio/Library/TinyTeX/texmf-dist/fonts/type1/public/lm/lmr8.pfb

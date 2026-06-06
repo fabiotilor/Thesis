@@ -1,4 +1,4 @@
-This is pdfTeX, Version 3.141592653-2.6-1.40.28 (TeX Live 2025) (preloaded format=pdflatex 2026.4.17)  17 APR 2026 15:44
+This is pdfTeX, Version 3.141592653-2.6-1.40.28 (TeX Live 2025) (preloaded format=pdflatex 2026.4.17)  5 JUN 2026 19:35
 entering extended mode
  restricted \write18 enabled.
  %&-line parsing enabled.
@@ -1099,22 +1099,22 @@ Underfull \hbox (badness 10000) in paragraph at lines 37--37
 
  []
 
-<figures/uzh_logo.png, id=63, 287.3937pt x 99.4917pt>
+<figures/uzh_logo.png, id=59, 287.3937pt x 99.4917pt>
 File: figures/uzh_logo.png Graphic file (type png)
 <use figures/uzh_logo.png>
 Package pdftex.def Info: figures/uzh_logo.png  used on input line 45.
 (pdftex.def)             Requested size: 82.1887pt x 28.45274pt.
-<figures/dast-logo.png, id=65, 621.82312pt x 165.61874pt>
+<figures/dast-logo.png, id=61, 621.82312pt x 165.61874pt>
 File: figures/dast-logo.png Graphic file (type png)
 <use figures/dast-logo.png>
 Package pdftex.def Info: figures/dast-logo.png  used on input line 46.
 (pdftex.def)             Requested size: 106.81865pt x 28.45274pt.
-<figures/ETHlogo.pdf, id=66, 179.67125pt x 45.16875pt>
+<figures/ETHlogo.pdf, id=62, 179.67125pt x 45.16875pt>
 File: figures/ETHlogo.pdf Graphic file (type pdf)
 <use figures/ETHlogo.pdf>
 Package pdftex.def Info: figures/ETHlogo.pdf  used on input line 49.
 (pdftex.def)             Requested size: 113.17976pt x 28.45274pt.
-<figures/logo-vlg-text.png, id=67, 2739.23375pt x 711.65875pt>
+<figures/logo-vlg-text.png, id=63, 2739.23375pt x 711.65875pt>
 File: figures/logo-vlg-text.png Graphic file (type png)
 <use figures/logo-vlg-text.png>
 Package pdftex.def Info: figures/logo-vlg-text.png  used on input line 50.
@@ -1186,56 +1186,88 @@ File: ursfs.fd 1998/03/24 rsfs font definition file (jk)
 
 ] (./chapters/1-introduction.tex
 Chapter 1.
+
+Overfull \hbox (6.4824pt too wide) in paragraph at lines 3--15
+\T1/lmr/m/n/12 ing smooth, metric-consistent depth. Con-versely, ded-i-cated 4D architectures---
+ []
+
 [1
 
 
-]
-Package hyperref Info: bookmark level for unknown todo defaults to 0 on input line 34.
-LaTeX Font Info:    Trying to load font information for TS1+lmr on input line 55.
+{/Users/fabio/Library/TinyTeX/texmf-dist/fonts/enc/dvips/lm/lm-mathsy.enc}]
+Overfull \hbox (12.6629pt too wide) in paragraph at lines 41--50
+\T1/lmr/m/n/12 over-come many of these fail-ure modes by di-rectly re-gress-ing dense 3D pointmaps
+ []
+
+[2]
+LaTeX Font Info:    Trying to load font information for TS1+lmr on input line 75.
  (/Users/fabio/Library/TinyTeX/texmf-dist/tex/latex/lm/ts1lmr.fd
 File: ts1lmr.fd 2015/05/01 v1.6.1 Font defs for Latin Modern
-) [2{/Users/fabio/Library/TinyTeX/texmf-dist/fonts/enc/dvips/lm/lm-ts1.enc}{/Users/fabio/Library/TinyTeX/texmf-dist/fonts/enc/dvips/lm/lm-rm.enc}{/Users/fabio/Library/TinyTeX/texmf-dist/fonts/enc/dvips/lm/lm-mathit.enc}{/Users/fabio/Library/TinyTeX/texmf-dist/fonts/enc/dvips/lm/lm-mathsy.enc}]) (./chapters/2-background-knowledge.tex [3]
+)
+
+LaTeX Warning: Reference `c:refinement' on page 1 undefined on input line 110.
+
+[3{/Users/fabio/Library/TinyTeX/texmf-dist/fonts/enc/dvips/lm/lm-ts1.enc}{/Users/fabio/Library/TinyTeX/texmf-dist/fonts/enc/dvips/lm/lm-rm.enc}{/Users/fabio/Library/TinyTeX/texmf-dist/fonts/enc/dvips/lm/lm-mathit.enc}]
+Overfull \hbox (11.66013pt too wide) in paragraph at lines 122--135
+\T1/lmr/m/n/12 VGGT), na-tive 4D ar-chi-tec-tures (VGGT4D, Mono-Fu-sion), and geometry-
+ []
+
+) (./chapters/2-background-knowledge.tex [4]
 Chapter 2.
-) (./chapters/3-related-work.tex [4
+
+Overfull \hbox (13.94884pt too wide) in paragraph at lines 1--1
+|\T1/phv/b/n/24.88 Literature Re-view and Back-ground| 
+ []
+
+) (./chapters/3-related-work.tex [5
 
 ]
 Chapter 3.
-) (./chapters/4-methodology.tex [5
+
+Overfull \hbox (43.8787pt too wide) in paragraph at lines 1--1
+|\T1/phv/b/n/24.88 Methodology: The Eval-u-a-tion Frame-
+ []
+
+) (./chapters/4-methodology.tex [6
 
 ]
 Chapter 4.
-) (./chapters/5-experiments.tex [6
+) (./chapters/5-experiments.tex [7
 
 ]
 Chapter 5.
-) (./chapters/6-limitations.tex [7
+) (./chapters/6-limitations.tex [8
 
 ]
 Chapter 6.
-) (./chapters/7-future-work.tex [8
+) (./chapters/7-future-work.tex [9
 
 ]
 Chapter 7.
-) (./chapters/8-conclusion.tex [9
+) (./chapters/8-conclusion.tex [10
 
 ]
 Chapter 8.
-) [10
+) [11
 
 ]
+Overfull \hbox (3.01653pt too wide) in paragraph at lines 54--54
+[]\T1/lmr/m/n/12 Yu-Wei Chao \T1/lmr/m/it/12 et al\T1/lmr/m/n/12 . ^^P  DexYCB: A Bench-mark for Cap-tur-ing Hand Grasp-
+ []
+
 LaTeX Font Info:    Trying to load font information for T1+lmtt on input line 53.
- (/Users/fabio/Library/TinyTeX/texmf-dist/tex/latex/lm/t1lmtt.fd
+(/Users/fabio/Library/TinyTeX/texmf-dist/tex/latex/lm/t1lmtt.fd
 File: t1lmtt.fd 2015/05/01 v1.6.1 Font defs for Latin Modern
 )
 Overfull \hbox (5.85074pt too wide) in paragraph at lines 54--54
 \T1/lmr/m/it/12 form-ers for 4D Scene Re-con-struc-tion\T1/lmr/m/n/12 . 2025. arXiv: [][]$\T1/lmtt/m/n/12 2511 . 19971$ [cs.CV][][]\T1/lmr/m/n/12 .
  []
 
-[11
+[12
 
-] [12]
+] [13]
 No file thesis.acr.
-(./chapters/A-appendix.tex [13
+(./chapters/A-appendix.tex [14
 
 
 ]
@@ -1246,7 +1278,8 @@ LaTeX Font Info:    External font `lmex10' loaded for size
 (Font)              <7> on input line 4.
 LaTeX Font Info:    External font `lmex10' loaded for size
 (Font)              <5> on input line 4.
-) (./resources/declaration_en.tex [14
+Package hyperref Info: bookmark level for unknown todo defaults to 0 on input line 4.
+) (./resources/declaration_en.tex [15
 
 ]
 File: figures/uzh_logo.png Graphic file (type png)
@@ -1271,25 +1304,29 @@ l.47 \end{titlepage}
 LaTeX2e <2025-11-01>
 L3 programming layer <2026-01-19>
  ***********
+
+
+LaTeX Warning: There were undefined references.
+
 Package rerunfilecheck Info: File `thesis.out' has not changed.
-(rerunfilecheck)             Checksum: 2C3D2A7D66E58E6E859227863BFC1141;1794.
+(rerunfilecheck)             Checksum: 0AAE531E0B5AFC93FE1BC78678044853;1931.
 Package logreq Info: Writing requests to 'thesis.run.xml'.
 \openout1 = `thesis.run.xml'.
 
  ) 
 Here is how much of TeX's memory you used:
- 41868 strings out of 469443
- 833532 string characters out of 5466399
- 1784019 words of memory out of 5000000
- 69812 multiletter control sequences out of 15000+600000
+ 41875 strings out of 469443
+ 833599 string characters out of 5466399
+ 1784227 words of memory out of 5000000
+ 69819 multiletter control sequences out of 15000+600000
  717934 words of font info for 114 fonts, out of 8000000 for 9000
  38 hyphenation exceptions out of 8191
  132i,12n,135p,2593b,2463s stack positions out of 10000i,1000n,20000p,200000b,200000s
-</Users/fabio/Library/TinyTeX/texmf-dist/fonts/type1/public/lm/lmbx12.pfb></Users/fabio/Library/TinyTeX/texmf-dist/fonts/type1/public/lm/lmcsc10.pfb></Users/fabio/Library/TinyTeX/texmf-dist/fonts/type1/public/lm/lmmi12.pfb></Users/fabio/Library/TinyTeX/texmf-dist/fonts/type1/public/lm/lmmi8.pfb></Users/fabio/Library/TinyTeX/texmf-dist/fonts/type1/public/lm/lmr12.pfb></Users/fabio/Library/TinyTeX/texmf-dist/fonts/type1/public/lm/lmr7.pfb></Users/fabio/Library/TinyTeX/texmf-dist/fonts/type1/public/lm/lmr8.pfb></Users/fabio/Library/TinyTeX/texmf-dist/fonts/type1/public/lm/lmri12.pfb></Users/fabio/Library/TinyTeX/texmf-dist/fonts/type1/public/lm/lmsy10.pfb></Users/fabio/Library/TinyTeX/texmf-dist/fonts/type1/public/lm/lmtt10.pfb></Users/fabio/Library/TinyTeX/texmf-dist/fonts/type1/public/lm/lmtt12.pfb></Users/fabio/Library/TinyTeX/texmf-dist/fonts/type1/urw/helvetic/uhvb8a.pfb></Users/fabio/Library/TinyTeX/texmf-dist/fonts/type1/urw/helvetic/uhvr8a.pfb>
-Output written on thesis.pdf (20 pages, 412857 bytes).
+</Users/fabio/Library/TinyTeX/texmf-dist/fonts/type1/public/lm/lmbx12.pfb></Users/fabio/Library/TinyTeX/texmf-dist/fonts/type1/public/lm/lmcsc10.pfb></Users/fabio/Library/TinyTeX/texmf-dist/fonts/type1/public/lm/lmmi12.pfb></Users/fabio/Library/TinyTeX/texmf-dist/fonts/type1/public/lm/lmr12.pfb></Users/fabio/Library/TinyTeX/texmf-dist/fonts/type1/public/lm/lmr7.pfb></Users/fabio/Library/TinyTeX/texmf-dist/fonts/type1/public/lm/lmr8.pfb></Users/fabio/Library/TinyTeX/texmf-dist/fonts/type1/public/lm/lmri12.pfb></Users/fabio/Library/TinyTeX/texmf-dist/fonts/type1/public/lm/lmsy10.pfb></Users/fabio/Library/TinyTeX/texmf-dist/fonts/type1/public/lm/lmtt10.pfb></Users/fabio/Library/TinyTeX/texmf-dist/fonts/type1/public/lm/lmtt12.pfb></Users/fabio/Library/TinyTeX/texmf-dist/fonts/type1/urw/helvetic/uhvb8a.pfb></Users/fabio/Library/TinyTeX/texmf-dist/fonts/type1/urw/helvetic/uhvr8a.pfb>
+Output written on thesis.pdf (21 pages, 415888 bytes).
 PDF statistics:
- 327 PDF objects out of 1000 (max. 8388607)
- 266 compressed objects within 3 object streams
+ 322 PDF objects out of 1000 (max. 8388607)
+ 262 compressed objects within 3 object streams
  55 named destinations out of 1000 (max. 500000)
- 145 words of extra memory for PDF output out of 10000 (max. 10000000)
+ 137 words of extra memory for PDF output out of 10000 (max. 10000000)
 
