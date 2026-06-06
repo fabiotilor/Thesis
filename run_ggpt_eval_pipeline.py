@@ -109,9 +109,9 @@ def run_baseline_alignment(frame_paths, dataset_root, out_dir, skip_existing=Tru
 
         view_names, vmasks = get_view_names_and_masks(data, dataset_root, dataset_type=dataset_type)
 
-        # In DexYCB, None masks mean no depth map (invalid).
-        # In HI4D, None masks just mean no segmentation (still valid for mesh alignment).
-        if dataset_type != "hi4d" and all(m is None for m in vmasks):
+        # In DexYCB, None masks mean no depth map (invalid). In self-contained
+        # datasets, None masks mean there is no external mask and all pixels may be used.
+        if dataset_type == "dex-ycb" and all(m is None for m in vmasks):
             print(f"    [WARN] Frame {t}: Could not resolve any view names/masks, skipping.")
             continue
 
@@ -148,13 +148,13 @@ def run_baseline_alignment(frame_paths, dataset_root, out_dir, skip_existing=Tru
             gt_pts = data["gt_pts"]
             if gt_pts.ndim == 4:
                 # (V, H, W, 3) -> flatten valid
-                gt_mask_all = np.ones(gt_pts.shape[:3], dtype=bool)
+                gt_mask_all = np.linalg.norm(gt_pts, axis=-1) > 1e-6
                 for v in range(V):
                     if vmasks[v] is not None:
                         gt_mask_all[v] &= vmasks[v]
                 gt_pts = gt_pts[gt_mask_all]
-            # Only convert mm->m for dex-ycb (Hi4D meshes are already in meters)
-            if np.any(np.linalg.norm(gt_pts, axis=-1) > 10.0):
+            # Only convert mm->m for dex-ycb.
+            if dataset_type == "dex-ycb" and np.any(np.linalg.norm(gt_pts, axis=-1) > 10.0):
                 gt_pts = gt_pts / 1000.0
 
         save_dict = {
@@ -232,7 +232,7 @@ def run_strategy_alignment(baseline_paths, dataset_root, strategy_func, out_dir,
         aligned_pts = np.concatenate(all_pts) if all_pts else np.zeros((0, 3))
 
         gt_pts = data["gt_pts"]
-        if dataset_type != "hi4d" and np.any(np.linalg.norm(gt_pts, axis=-1) > 10.0):
+        if dataset_type == "dex-ycb" and np.any(np.linalg.norm(gt_pts, axis=-1) > 10.0):
             gt_pts = gt_pts / 1000.0
 
         save_dict = {
@@ -281,7 +281,20 @@ def evaluate_strategy_dir(in_dir, strategy_label, dataset_type="dex-ycb"):
         valid_est = ~np.any(np.isnan(est_pts), axis=-1)
         est_pts = est_pts[valid_est]
 
-        ks, rts, m_2d = data["Ks"], data["R_ts"], data["masks_2d"]
+        ks, rts, m_2d_raw = data["Ks"], data["R_ts"], data["masks_2d"]
+
+        # masks_2d follows the evaluator contract: True=static, False=dynamic.
+        # Hi4D stores person/validity masks instead, so invert only there.
+        m_2d_static = ~m_2d_raw if dataset_type == "hi4d" else m_2d_raw
+
+        # Speed optimization: Subsample dense point clouds for metric computation
+        MAX_EVAL_PTS = 50000
+        if len(est_pts) > MAX_EVAL_PTS:
+            est_select = np.random.choice(len(est_pts), MAX_EVAL_PTS, replace=False)
+            est_pts = est_pts[est_select]
+        if len(gt_pts) > MAX_EVAL_PTS:
+            gt_select = np.random.choice(len(gt_pts), MAX_EVAL_PTS, replace=False)
+            gt_pts = gt_pts[gt_select]
 
         if len(est_pts) > 0 and len(gt_pts) > 0:
             # Time specific metrics
@@ -296,16 +309,16 @@ def evaluate_strategy_dir(in_dir, strategy_label, dataset_type="dex-ycb"):
             c_acc = compute_accuracy(est_pts, gt_pts, tau=0.01)
             acc.append(c_acc)
 
-            # Skip static/dynamic split for hi4d (all GT is person mesh)
-            if dataset_type != "hi4d":
-                s_p, d_p = split_points_by_mask(est_pts, m_2d, ks, rts)
-                g_s, g_d = split_points_by_mask(gt_pts, m_2d, ks, rts)
+            # Monofusion inputs are generated on DexYCB, so keep static/dynamic split.
+            if dataset_type in ("dex-ycb", "monofusion"):
+                s_p, d_p = split_points_by_mask(est_pts, m_2d_static, ks, rts)
+                g_s, g_d = split_points_by_mask(gt_pts, m_2d_static, ks, rts)
                 s_acc.append(compute_accuracy(s_p, g_s, tau=0.01) if len(s_p) > 0 else np.nan)
                 d_acc.append(compute_accuracy(d_p, g_d, tau=0.01) if len(d_p) > 0 else np.nan)
                 s_comp.append(compute_completeness(s_p, g_s, tau=0.01) if len(g_s) > 0 else np.nan)
                 d_comp.append(compute_completeness(d_p, g_d, tau=0.01) if len(g_d) > 0 else np.nan)
             else:
-                # For hi4d, report overall accuracy as "dynamic" (person)
+                # For Hi4D, report overall accuracy as "dynamic" for compact summaries.
                 d_acc.append(compute_accuracy(est_pts, gt_pts, tau=0.01))
                 d_comp.append(c_comp)
                 s_acc.append(np.nan)
@@ -335,7 +348,7 @@ def evaluate_strategy_dir(in_dir, strategy_label, dataset_type="dex-ycb"):
         if pm_key:
             V, H, W = normalize_spatial_dims(data)
             pm = normalize_array(data[pm_key], V, H, W)
-            m_norm = normalize_array(m_2d, V, H, W, is_mask=True)
+            m_norm = normalize_array(m_2d_static, V, H, W, is_mask=True)
             aligned_pm = np.empty_like(pm)
             for vi in range(V):
                 aligned_pm[vi] = apply_similarity_transform(
@@ -423,7 +436,8 @@ def parse_args():
     parser.add_argument("--subject", type=str, default="all", help="Subject code (e.g. 01) or 'all'")
     parser.add_argument("--views", nargs="+", type=int, default=[2, 3, 4])
     parser.add_argument("--model", type=str, default="vggt", help="Base model being refined")
-    parser.add_argument("--dataset", type=str, choices=["dex-ycb", "hi4d"], default="dex-ycb", help="Dataset to use")
+    parser.add_argument("--dataset", type=str, choices=["dex-ycb", "hi4d", "monofusion"], default="dex-ycb",
+                        help="Dataset to use")
     parser.add_argument("--no-rerun", action="store_true")
     parser.add_argument("--skip-refinement", action="store_true", help="Skip GGPT refinement, use existing .npz")
     parser.add_argument("--pgo-only", action="store_true", help="Run only Strategy 3 (PGO)")
@@ -435,8 +449,17 @@ def main():
     args = parse_args()
     refined_model = f"{args.model}-refined"
     dataset_type = args.dataset
+    is_4d_model_eval = args.model in ("vggt4d", "monofusion") or dataset_type == "monofusion"
     ds_config = get_dataset_config(dataset_type)
     subject_map = get_subject_by_code(dataset_type)
+
+    # vggt4d uses pair-based directory structure for hi4d:
+    # subject-pair00/dance00/Nviews/ instead of subject-dance00/Nviews/
+    if args.model == "vggt4d" and dataset_type == "hi4d":
+        subject_map = {}
+        for name in ds_config["subject_names"]:
+            pair, action = name.split("/")
+            subject_map[action] = f"subject-{pair}/{action}"
 
     # Resolve base_input_dir if not provided
     if args.base_input_dir is None:
@@ -447,10 +470,18 @@ def main():
                 args.base_input_dir = os.path.expanduser(f"~/Pi3/ggpt_inputs/{args.model}")
         elif args.model == "vggt" and dataset_type == "hi4d":
             args.base_input_dir = os.path.expanduser("~/vggt/ggpt_inputs/hi4d")
+        elif args.model == "vggt4d":
+            if os.path.exists("/local/home/frrajic/xode/fabio/vggt4d_repo/ggpt_inputs"):
+                args.base_input_dir = "/local/home/frrajic/xode/fabio/vggt4d_repo/ggpt_inputs"
+            else:
+                args.base_input_dir = os.path.expanduser(f"~/vggt4d/ggpt_inputs")
+        elif dataset_type == "monofusion":
+            if os.path.exists("/local/home/frrajic/xode/fabio/monofusion/ggpt_inputs"):
+                args.base_input_dir = "/local/home/frrajic/xode/fabio/monofusion/ggpt_inputs"
+            else:
+                args.base_input_dir = os.path.expanduser("~/monofusion/ggpt_inputs")
         elif dataset_type == "hi4d":
             args.base_input_dir = os.path.expanduser(f"~/{args.model}/ggpt_inputs/hi4d")
-        elif args.model == "vggt4d":
-            args.base_input_dir = os.path.expanduser(f"~/vggt4d/ggpt_inputs")
         else:
             args.base_input_dir = os.path.expanduser(f"~/{args.model}/ggpt_inputs")
     else:
@@ -461,9 +492,18 @@ def main():
 
     # Resolve subjects
     if args.subject == "all":
-        subjects = sorted(subject_map.keys())
+        if dataset_type == "monofusion":
+            subj_folders = sorted(glob.glob(os.path.join(args.base_input_dir, "subject-*")))
+            subjects = [os.path.basename(f).replace("subject-", "") for f in subj_folders]
+            subject_map.update({subj: f"subject-{subj}" for subj in subjects})
+        else:
+            subjects = sorted(subject_map.keys())
     else:
-        subjects = [args.subject]
+        # If the user passed e.g. pair00/dance00, extract dance00
+        subj_code = args.subject.split("/")[-1]
+        if subj_code.startswith("subject-"):
+            subj_code = subj_code.replace("subject-", "", 1)
+        subjects = [subj_code]
 
     # Resolve Hi4D alternative pair folder naming (e.g. hug09 -> pair09_hug09) if needed
     if dataset_type == "hi4d":
@@ -482,7 +522,6 @@ def main():
                         continue
             resolved_subjects.append(subj)
         subjects = resolved_subjects
-
     # Step 0: Run GGPT refinement if needed
     if not args.skip_refinement:
         for subj in subjects:
@@ -492,8 +531,14 @@ def main():
                 scene_dir = os.path.join(args.base_input_dir, subject_full, f"{nv}views")
 
                 if not os.path.isdir(scene_dir):
-                    print(f"  [WARN] Input directory not found: {scene_dir}. Skipping.")
-                    continue
+                    # Check if clean name style exists (e.g. subject-10 instead of full DexYCB name)
+                    alt_subject_full = f"subject-{subj}"
+                    alt_scene_dir = os.path.join(args.base_input_dir, alt_subject_full, f"{nv}views")
+                    if os.path.isdir(alt_scene_dir):
+                        scene_dir = alt_scene_dir
+                    else:
+                        print(f"  [WARN] Input directory not found: {scene_dir}. Skipping.")
+                        continue
 
                 baseline_dir = os.path.join("aligned_outputs", refined_model, "baseline", subject_full, f"{nv}views")
                 existing = _sorted_frame_paths(baseline_dir)
@@ -532,7 +577,9 @@ def main():
             continue
 
         dataset_root = get_dataset_root_for_subject(dataset_type, subject_full)
-        if not os.path.isdir(dataset_root):
+        if dataset_type == "monofusion":
+            dataset_root = os.path.join(args.base_input_dir, subject_full)
+        if dataset_type != "monofusion" and not os.path.isdir(dataset_root):
             print(f"[WARN] Dataset not found: {dataset_root}")
             continue
 
@@ -598,73 +645,104 @@ def main():
                 bl_metrics["subject"] = subject_full
                 subject_results.append(bl_metrics)
 
-            # ── Strategy 1 (Reference) ────────────────────────────────────
-            if not args.pgo_only:
-                s1_dir = os.path.join("aligned_outputs", refined_model, "strategy1", subject_full, f"{nv}views")
-                print(f"\n[STAGE] Strategy 1: {subj}/{nv}views")
-                run_strategy_alignment(baseline_paths, dataset_root, strategy1_reference, s1_dir,
-                                       f"strategy1_{nv}views", dataset_type=dataset_type)
-                print(f"  [EVAL] Evaluating Strategy 1...")
-                s1_metrics = evaluate_strategy_dir(s1_dir, f"strategy1_{nv}views", dataset_type=dataset_type)
-                if s1_metrics:
-                    s1_metrics["subject"] = subject_full
-                    subject_results.append(s1_metrics)
+            if is_4d_model_eval:
+                # ── Global Alignment (One global Umeyama for the full sequence) ──
+                global_out = os.path.join("aligned_outputs", refined_model, "global", subject_full, f"{nv}views")
+                print(f"\n[STAGE] Global alignment: {subj}/{nv}views")
+
+                # For global alignment, frame transforms are identity, and we solve one global registration transform
+                def identity_strategy_func(paths, root, dataset_type):
+                    return [(1.0, np.eye(3), np.zeros(3)) for _ in paths]
+
+                run_strategy_alignment(baseline_paths, dataset_root, identity_strategy_func, global_out,
+                                       f"global_{nv}views", dataset_type=dataset_type)
+
+                print(f"  [EVAL] Evaluating Global...")
+                glob_metrics = evaluate_strategy_dir(global_out, f"global_{nv}views", dataset_type=dataset_type)
+                if glob_metrics:
+                    glob_metrics["subject"] = subject_full
+                    subject_results.append(glob_metrics)
 
                 if not args.no_rerun and rr is not None:
                     try:
-                        tf_s1 = strategy1_reference(baseline_paths, dataset_root, dataset_type=dataset_type)
-                        s_g1, R_g1, tr_g1 = solve_final_gt_registration(baseline_paths, tf_s1, dataset_root,
-                                                                        use_static_mask=False,
-                                                                        dataset_type=dataset_type)
-                        log_aligned_sequence(baseline_paths, tf_s1, s_g1, R_g1, tr_g1,
-                                             "Strategy_1", [255, 0, 0], dataset_root, dataset_type=dataset_type,
+                        tf_glob = identity_strategy_func(baseline_paths, dataset_root, dataset_type=dataset_type)
+                        s_glob, R_glob, tr_glob = solve_final_gt_registration(baseline_paths, tf_glob, dataset_root,
+                                                                              use_static_mask=False,
+                                                                              dataset_type=dataset_type)
+                        log_aligned_sequence(baseline_paths, tf_glob, s_glob, R_glob, tr_glob,
+                                             "Global", [255, 0, 255], dataset_root, dataset_type=dataset_type,
                                              log_root="world")
                     except Exception as e:
-                        print(f"  [RERUN][WARN] Strategy 1 logging failed: {e}")
+                        print(f"  [RERUN][WARN] Global logging failed: {e}")
+            else:
+                # ── Strategy 1 (Reference) ────────────────────────────────────
+                if not args.pgo_only:
+                    s1_dir = os.path.join("aligned_outputs", refined_model, "strategy1", subject_full, f"{nv}views")
+                    print(f"\n[STAGE] Strategy 1: {subj}/{nv}views")
+                    run_strategy_alignment(baseline_paths, dataset_root, strategy1_reference, s1_dir,
+                                           f"strategy1_{nv}views", dataset_type=dataset_type)
+                    print(f"  [EVAL] Evaluating Strategy 1...")
+                    s1_metrics = evaluate_strategy_dir(s1_dir, f"strategy1_{nv}views", dataset_type=dataset_type)
+                    if s1_metrics:
+                        s1_metrics["subject"] = subject_full
+                        subject_results.append(s1_metrics)
 
-            # ── Strategy 2 (Hierarchical) ─────────────────────────────────
-            if not args.pgo_only:
-                s2_dir = os.path.join("aligned_outputs", refined_model, "strategy2", subject_full, f"{nv}views")
-                print(f"\n[STAGE] Strategy 2: {subj}/{nv}views")
-                run_strategy_alignment(baseline_paths, dataset_root, strategy2_hierarchical, s2_dir,
-                                       f"strategy2_{nv}views", dataset_type=dataset_type)
-                s2_metrics = evaluate_strategy_dir(s2_dir, f"strategy2_{nv}views", dataset_type=dataset_type)
-                if s2_metrics:
-                    s2_metrics["subject"] = subject_full
-                    subject_results.append(s2_metrics)
+                    if not args.no_rerun and rr is not None:
+                        try:
+                            tf_s1 = strategy1_reference(baseline_paths, dataset_root, dataset_type=dataset_type)
+                            s_g1, R_g1, tr_g1 = solve_final_gt_registration(baseline_paths, tf_s1, dataset_root,
+                                                                            use_static_mask=False,
+                                                                            dataset_type=dataset_type)
+                            log_aligned_sequence(baseline_paths, tf_s1, s_g1, R_g1, tr_g1,
+                                                 "Strategy_1", [255, 0, 0], dataset_root, dataset_type=dataset_type,
+                                                 log_root="world")
+                        except Exception as e:
+                            print(f"  [RERUN][WARN] Strategy 1 logging failed: {e}")
+
+                # ── Strategy 2 (Hierarchical) ─────────────────────────────────
+                if not args.pgo_only:
+                    s2_dir = os.path.join("aligned_outputs", refined_model, "strategy2", subject_full, f"{nv}views")
+                    print(f"\n[STAGE] Strategy 2: {subj}/{nv}views")
+                    run_strategy_alignment(baseline_paths, dataset_root, strategy2_hierarchical, s2_dir,
+                                           f"strategy2_{nv}views", dataset_type=dataset_type)
+                    s2_metrics = evaluate_strategy_dir(s2_dir, f"strategy2_{nv}views", dataset_type=dataset_type)
+                    if s2_metrics:
+                        s2_metrics["subject"] = subject_full
+                        subject_results.append(s2_metrics)
+
+                    if not args.no_rerun and rr is not None:
+                        try:
+                            tf_s2 = strategy2_hierarchical(baseline_paths, dataset_root, dataset_type=dataset_type)
+                            s_g2, R_g2, tr_g2 = solve_final_gt_registration(baseline_paths, tf_s2, dataset_root,
+                                                                            use_static_mask=False,
+                                                                            dataset_type=dataset_type)
+                            log_aligned_sequence(baseline_paths, tf_s2, s_g2, R_g2, tr_g2,
+                                                 "Strategy_2", [255, 0, 255], dataset_root, dataset_type=dataset_type,
+                                                 log_root="world")
+                        except Exception as e:
+                            print(f"  [RERUN][WARN] Strategy 2 logging failed: {e}")
+
+                # ── Strategy 3 (PGO) ──────────────────────────────────────────
+                s3_dir = os.path.join("aligned_outputs", refined_model, "strategy3", subject_full, f"{nv}views")
+                print(f"\n[STAGE] Strategy 3 (PGO): {subj}/{nv}views")
+                run_strategy_alignment(baseline_paths, dataset_root, strategy3_pgo, s3_dir,
+                                       f"strategy3_{nv}views", dataset_type=dataset_type, num_iters=50)
+                s3_metrics = evaluate_strategy_dir(s3_dir, f"strategy3_{nv}views", dataset_type=dataset_type)
+                if s3_metrics:
+                    s3_metrics["subject"] = subject_full
+                    subject_results.append(s3_metrics)
 
                 if not args.no_rerun and rr is not None:
                     try:
-                        tf_s2 = strategy2_hierarchical(baseline_paths, dataset_root, dataset_type=dataset_type)
-                        s_g2, R_g2, tr_g2 = solve_final_gt_registration(baseline_paths, tf_s2, dataset_root,
+                        tf_s3 = strategy3_pgo(baseline_paths, dataset_root, num_iters=50, dataset_type=dataset_type)
+                        s_g3, R_g3, tr_g3 = solve_final_gt_registration(baseline_paths, tf_s3, dataset_root,
                                                                         use_static_mask=False,
                                                                         dataset_type=dataset_type)
-                        log_aligned_sequence(baseline_paths, tf_s2, s_g2, R_g2, tr_g2,
-                                             "Strategy_2", [255, 0, 255], dataset_root, dataset_type=dataset_type,
+                        log_aligned_sequence(baseline_paths, tf_s3, s_g3, R_g3, tr_g3,
+                                             "Strategy_3_PGO", [0, 150, 150], dataset_root, dataset_type=dataset_type,
                                              log_root="world")
                     except Exception as e:
-                        print(f"  [RERUN][WARN] Strategy 2 logging failed: {e}")
-
-            # ── Strategy 3 (PGO) ──────────────────────────────────────────
-            s3_dir = os.path.join("aligned_outputs", refined_model, "strategy3", subject_full, f"{nv}views")
-            print(f"\n[STAGE] Strategy 3 (PGO): {subj}/{nv}views")
-            run_strategy_alignment(baseline_paths, dataset_root, strategy3_pgo, s3_dir,
-                                   f"strategy3_{nv}views", dataset_type=dataset_type, num_iters=50)
-            s3_metrics = evaluate_strategy_dir(s3_dir, f"strategy3_{nv}views", dataset_type=dataset_type)
-            if s3_metrics:
-                s3_metrics["subject"] = subject_full
-                subject_results.append(s3_metrics)
-
-            if not args.no_rerun and rr is not None:
-                try:
-                    tf_s3 = strategy3_pgo(baseline_paths, dataset_root, num_iters=50, dataset_type=dataset_type)
-                    s_g3, R_g3, tr_g3 = solve_final_gt_registration(baseline_paths, tf_s3, dataset_root,
-                                                                    use_static_mask=False, dataset_type=dataset_type)
-                    log_aligned_sequence(baseline_paths, tf_s3, s_g3, R_g3, tr_g3,
-                                         "Strategy_3_PGO", [0, 150, 150], dataset_root, dataset_type=dataset_type,
-                                         log_root="world")
-                except Exception as e:
-                    print(f"  [RERUN][WARN] Strategy 3 logging failed: {e}")
+                        print(f"  [RERUN][WARN] Strategy 3 logging failed: {e}")
 
         # Save per-subject CSV
         if subject_results:
@@ -675,12 +753,12 @@ def main():
             pd.set_option("display.max_columns", None)
             if dataset_type == "hi4d":
                 cols = [
-                    "strategy", "n_frames", "chamfer", "accuracy", "completeness",
+                    "strategy", "n_frames", "chamfer", "delta_consistency", "accuracy", "completeness",
                     "ate", "rpe", "rot_error", "jitter_mean", "drift_mean", "hf_jitter"
                 ]
             else:
                 cols = [c for c in [
-                    "strategy", "n_frames", "chamfer", "accuracy", "completeness",
+                    "strategy", "n_frames", "chamfer", "delta_consistency", "accuracy", "completeness",
                     "static_comp", "dyn_comp", "static_acc", "dyn_acc", "motion_gap",
                     "ate", "rpe", "rot_error", "focal_error", "pp_error",
                     "jitter_mean", "jitter_std", "jitter_p95", "jitter_max",
@@ -703,12 +781,12 @@ def main():
         print("=" * 80)
         if dataset_type == "hi4d":
             cols = [
-                "strategy", "n_frames", "chamfer", "accuracy", "completeness",
+                "strategy", "n_frames", "chamfer", "delta_consistency", "accuracy", "completeness",
                 "ate", "rpe", "rot_error", "jitter_mean", "drift_mean", "hf_jitter"
             ]
         else:
             cols = [c for c in [
-                "strategy", "n_frames", "chamfer", "accuracy", "completeness",
+                "strategy", "n_frames", "chamfer", "delta_consistency", "accuracy", "completeness",
                 "static_comp", "dyn_comp", "static_acc", "dyn_acc", "motion_gap",
                 "ate", "rpe", "rot_error", "jitter_mean", "drift_mean", "hf_jitter",
             ] if c in agg.columns]

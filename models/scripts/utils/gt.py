@@ -40,6 +40,8 @@ def load_gt_params(view_dir, dataset_type="dex-ycb"):
         c2w[:3, :3] = R.T
         c2w[:3, 3] = -R.T @ t
         return K, c2w
+    elif dataset_type == "monofusion":
+        raise ValueError("Monofusion GT camera parameters are read from GGPT input bins/NPZs.")
     else:
         raise ValueError(f"Unknown dataset type: {dataset_type}")
 
@@ -104,6 +106,8 @@ def _load_hi4d_seg_mask(dataset_root, cam_id, t):
 def build_gt_pointcloud(t, view_names, dataset_root, dataset_type="dex-ycb"):
     if dataset_type == "hi4d":
         return _load_hi4d_mesh_gt(dataset_root, t)
+    if dataset_type == "monofusion":
+        return None
 
     all_pts = []
     for vname in view_names:
@@ -145,6 +149,8 @@ def build_static_gt_pointcloud(t, view_names, dataset_root,
                                flow_threshold=2.0, dataset_type="dex-ycb"):
     if dataset_type == "hi4d":
         return build_gt_pointcloud(t, view_names, dataset_root, dataset_type=dataset_type)
+    if dataset_type == "monofusion":
+        return None
 
     all_pts = []
 
@@ -230,6 +236,8 @@ def get_static_correspondences(t, view_names, pts3d_list, confs, dataset_root,
             t, view_names, pts3d_list, confs, dataset_root,
             conf_percentile=conf_percentile,
         )
+    if dataset_type == "monofusion":
+        return None, None
 
     all_est = []
     all_gt = []
@@ -498,6 +506,9 @@ def build_gt_validity_masks(t, view_names, dataset_root, depth_max_m=1.5,
                 # No seg mask — accept all pixels
                 masks.append(None)
         return masks
+
+    if dataset_type == "monofusion":
+        return [None for _ in view_names]
 
     for vname in view_names:
         view_dir = os.path.join(dataset_root, vname)

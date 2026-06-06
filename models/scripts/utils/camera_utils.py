@@ -44,6 +44,8 @@ def build_camera_intrinsics_cache(dataset_root, dataset_type="dex-ycb"):
                 K = intrinsics[i]
                 key = tuple(np.round(K.flatten(), decimals=3))
                 cache[key] = str(cid)
+    elif dataset_type == "monofusion":
+        pass
 
     _CAMERA_CACHE[cache_key] = cache
     return cache
@@ -81,5 +83,7 @@ def get_rgb_path(view_dir, frame_t, dataset_type="dex-ycb"):
         p = os.path.join(rgb_dir, f"{actual_t:06d}.jpg")
         if os.path.exists(p):
             return p
+    elif dataset_type == "monofusion":
+        return None
 
     return None

@@ -82,7 +82,7 @@ def extract_clean_gt_correspondences(data, dataset_root, n_samples=2000,
     """
     Implements the robust GT projection logic.
     For dex-ycb: matches pointmap pixels to GT back-projected world points using depth.
-    For hi4d: uses pre-computed gt_pts pointmap from the data directly.
+    For hi4d/monofusion: uses pre-computed gt_pts pointmap from the data directly.
     """
     V, H_mod, W_mod = normalize_spatial_dims(data)
     if H_mod == 0: return None
@@ -94,11 +94,11 @@ def extract_clean_gt_correspondences(data, dataset_root, n_samples=2000,
     view_names, vmasks = get_view_names_and_masks(data, dataset_root, dataset_type=dataset_type)
     t = int(data['frame_idx'])
 
-    # ── HI4D path: use gt_pts from the data directly ──
-    if dataset_type == "hi4d":
+    # ── Self-contained pointmap GT path ───────────────────────────────────
+    if dataset_type in ("hi4d", "monofusion"):
         return _extract_correspondences_hi4d(
             data, pm_est, conf_est, m_static, view_names, vmasks,
-            V, H_mod, W_mod, t, dataset_root, n_samples
+            V, H_mod, W_mod, t, dataset_root, n_samples, dataset_type=dataset_type
         )
 
     # ── DexYCB path: load depth from disk ──
@@ -157,8 +157,9 @@ def extract_clean_gt_correspondences(data, dataset_root, n_samples=2000,
 
 
 def _extract_correspondences_hi4d(data, pm_est, conf_est, m_static, view_names, vmasks,
-                                  V, H_mod, W_mod, t, dataset_root, n_samples):
-    """HI4D correspondence extraction using gt_pts pointmap from data."""
+                                  V, H_mod, W_mod, t, dataset_root, n_samples,
+                                  dataset_type="hi4d"):
+    """Correspondence extraction using gt_pts pointmaps from data."""
     gt_pts_raw = data.get('gt_pts')
     if gt_pts_raw is None:
         return None
@@ -194,12 +195,20 @@ def _extract_correspondences_hi4d(data, pm_est, conf_est, m_static, view_names, 
             all_src.append(pm_est[v][ys, xs])
             all_dst.append(gt_pm[v][ys, xs])
 
-            if all_src:
-                return np.concatenate(all_src), np.concatenate(all_dst)
-            # If all_src is empty (e.g. pointmap is all zeros), fall through to mesh fallback
+        if all_src:
+            return np.concatenate(all_src), np.concatenate(all_dst)
+
+        # If all_src is empty (e.g. pointmap is all zeros), fall through to mesh fallback
+        if dataset_type == "hi4d":
             print("    [HI4D] Pointmap empty, falling back to mesh projection.")
 
+        if dataset_type == "monofusion":
+            return None
+
     # If gt_pts is flat mesh vertices or pointmap was empty — use mesh projection (fallback)
+    if dataset_type != "hi4d":
+        return None
+
     from .gt import _get_correspondences_hi4d
 
     # Only keep predictions for views that have a valid name

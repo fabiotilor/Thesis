@@ -2,8 +2,20 @@ import os
 import torch
 
 # ── Paths ─────────────────────────────────────────────────────────────────────
-DATASET_BASE_ROOT = "/home/fabio/datasets/dex-ycb-multiview"
-HI4D_BASE_ROOT = "/home/fabio/datasets/hi4d"
+if os.path.exists("/local/home/frrajic/xode/fabio/datasets"):
+    DATASET_BASE_ROOT = "/local/home/frrajic/xode/fabio/datasets/dex-ycb-multiview"
+    if os.path.exists("/local/home/frrajic/xode/fabio/datasets/hi4d/Bachelorarbeit/hi4d"):
+        HI4D_BASE_ROOT = "/local/home/frrajic/xode/fabio/datasets/hi4d/Bachelorarbeit/hi4d"
+    else:
+        HI4D_BASE_ROOT = "/local/home/frrajic/xode/fabio/datasets/hi4d"
+else:
+    DATASET_BASE_ROOT = "/home/fabio/datasets/dex-ycb-multiview"
+    HI4D_BASE_ROOT = "/home/fabio/datasets/hi4d"
+
+if os.path.exists("/local/home/frrajic/xode/fabio/monofusion"):
+    MONOFUSION_BASE_ROOT = "/local/home/frrajic/xode/fabio/monofusion"
+else:
+    MONOFUSION_BASE_ROOT = "/home/fabio/monofusion"
 
 SUBJECT_NAMES = [
     "20200709-subject-01__20200709_141754",
@@ -105,6 +117,18 @@ DATASETS = {
         },
         "default_target_views": ["4", "16", "28", "40", "52", "64", "76", "88"],
         "eye_up": [0, 1, 0], # Placeholder, adjust as needed for Hi4D
+    },
+    "monofusion": {
+        "root": MONOFUSION_BASE_ROOT,
+        "depth_max_m": None,
+        "subject_names": [f"subject-{i:02d}" for i in range(1, 11)],
+        "view_configs": {
+            2: ["view_00", "view_01"],
+            3: ["view_00", "view_01", "view_02"],
+            4: ["view_00", "view_01", "view_02", "view_03"],
+        },
+        "default_target_views": ["view_00", "view_01", "view_02", "view_03"],
+        "eye_up": [0, 1, 0],
     }
 }
 
@@ -128,6 +152,8 @@ def get_subject_by_code(dataset_name):
             action = name.split("/")[-1]  # e.g., "dance00"
             mapping[action] = f"subject-{action}"
         return mapping
+    elif dataset_name == "monofusion":
+        return {name.replace("subject-", ""): name for name in names}
     else:
         return {name.split("subject-")[1][:2]: name for name in names}
 
@@ -150,6 +176,8 @@ def get_dataset_root_for_subject(dataset_name, subject_full):
                 return os.path.join(config["root"], name)
         # Fallback
         return os.path.join(config["root"], action_norm)
+    elif dataset_name == "monofusion":
+        return os.path.join(config["root"], "ggpt_inputs", subject_full)
     else:
         return os.path.join(config["root"], subject_full)
 
@@ -164,6 +192,8 @@ def get_view_config(dataset_name, nviews, pair_name=None):
             pair_config = view_configs[pair_name]
             return pair_config.get(nviews, pair_config.get(4))
         return view_configs.get("default", {}).get(nviews, ["4", "16", "28", "40"])
+    elif dataset_name == "monofusion":
+        return view_configs.get(nviews, [f"view_{i:02d}" for i in range(nviews)])
     else:
         result = view_configs.get(nviews, config.get("default_target_views"))
         if result is None:

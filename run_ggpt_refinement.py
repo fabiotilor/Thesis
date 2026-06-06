@@ -47,7 +47,8 @@ def parse_args():
     parser.add_argument("--model", type=str, default="vggt",
                         help="Name of the base model being refined (e.g. vggt, mast3r, pi3)")
     parser.add_argument("--no_rerun", action="store_true", help="Disable Rerun logging")
-    parser.add_argument("--dataset", type=str, choices=["dex-ycb", "hi4d"], default="dex-ycb", help="Dataset to use")
+    parser.add_argument("--dataset", type=str, choices=["dex-ycb", "hi4d", "monofusion"], default="dex-ycb",
+                        help="Dataset to use")
     parser.add_argument("--base_input_dir", type=str, default=None, help="Base directory for inputs")
     return parser.parse_args()
 
@@ -188,6 +189,13 @@ def run_refinement(model, cfg, scene_dir, args, subj_code, n_views):
         output_model_name = f"{args.model}-refined"
         dataset_type = args.dataset
         subject_map = get_subject_by_code(dataset_type)
+        # vggt4d uses pair-based directory structure for hi4d
+        if args.model == "vggt4d" and dataset_type == "hi4d":
+            ds_cfg = get_dataset_config(dataset_type)
+            subject_map = {}
+            for name in ds_cfg["subject_names"]:
+                pair, action = name.split("/")
+                subject_map[action] = f"subject-{pair}/{action}"
         full_subject_name = subject_map.get(subj_code, f"subject-{subj_code}")
         out_strategy_dir = os.path.join("aligned_outputs", output_model_name, "baseline", full_subject_name,
                                         f"{n_views}views")
@@ -203,33 +211,35 @@ def run_refinement(model, cfg, scene_dir, args, subj_code, n_views):
         gt_pts_cpu = scene['gt_pts_metric'].cpu().numpy()
         gt_extri_cpu = scene['gt_extrinsics'].cpu().numpy() if scene.get('gt_extrinsics') is not None else ff_extri_cpu
 
-        # Resolve view names and load native GT intrinsics from disk
+        # Resolve view names and load native GT intrinsics where an external dataset exists.
         pair_name = get_pair_name_for_subject(dataset_type, full_subject_name)
         raw_view_list = get_view_config(dataset_type, n_views, pair_name=pair_name)
         if dataset_type == "hi4d":
             # Hi4D views are just camera IDs like "4", "16"
             view_name_list = [str(v) for v in raw_view_list]
+        elif dataset_type == "monofusion":
+            view_name_list = [str(v) for v in raw_view_list]
         else:
             from eval_config import VIEW_CONFIGS, DEFAULT_TARGET_VIEWS
             view_name_list = [f"view_{v}" if not str(v).startswith("view_") else str(v) for v in raw_view_list]
 
-        # Get the dataset root for loading GT intrinsics
-        ds_root = get_dataset_root_for_subject(dataset_type, full_subject_name)
-        from utils.gt import load_gt_params as _load_gt_params
+        if dataset_type == "monofusion":
+            native_gt_Ks = scene['gt_intrinsics'].cpu().numpy()[:n_views] if scene.get(
+                'gt_intrinsics') is not None else ff_intri_cpu[:n_views]
+        else:
+            # Get the dataset root for loading GT intrinsics
+            ds_root = get_dataset_root_for_subject(dataset_type, full_subject_name)
+            from utils.gt import load_gt_params as _load_gt_params
 
-        native_gt_Ks = []
-        for vname in view_name_list:
-            if dataset_type == "hi4d":
-                # For Hi4D, view_dir = dataset_root/cam_id
+            native_gt_Ks = []
+            for vname in view_name_list:
                 view_dir = os.path.join(ds_root, vname)
-            else:
-                view_dir = os.path.join(ds_root, vname)
-            try:
-                K_native, _ = _load_gt_params(view_dir, dataset_type=dataset_type)
-                native_gt_Ks.append(K_native)
-            except Exception:
-                native_gt_Ks.append(ff_intri_cpu[0])  # fallback
-        native_gt_Ks = np.array(native_gt_Ks)
+                try:
+                    K_native, _ = _load_gt_params(view_dir, dataset_type=dataset_type)
+                    native_gt_Ks.append(K_native)
+                except Exception:
+                    native_gt_Ks.append(ff_intri_cpu[0])  # fallback
+            native_gt_Ks = np.array(native_gt_Ks)
 
         V = n_views
         num_frames = vggt_pts_cpu.shape[0] // V
@@ -277,10 +287,18 @@ def main():
                 args.base_input_dir = os.path.expanduser(f"~/Pi3/ggpt_inputs/{args.model}")
         elif args.model == "vggt" and args.dataset == "hi4d":
             args.base_input_dir = os.path.expanduser("~/vggt/ggpt_inputs/hi4d")
+        elif args.model == "vggt4d":
+            if os.path.exists("/local/home/frrajic/xode/fabio/vggt4d_repo/ggpt_inputs"):
+                args.base_input_dir = "/local/home/frrajic/xode/fabio/vggt4d_repo/ggpt_inputs"
+            else:
+                args.base_input_dir = os.path.expanduser(f"~/vggt4d/ggpt_inputs")
+        elif args.dataset == "monofusion":
+            if os.path.exists("/local/home/frrajic/xode/fabio/monofusion/ggpt_inputs"):
+                args.base_input_dir = "/local/home/frrajic/xode/fabio/monofusion/ggpt_inputs"
+            else:
+                args.base_input_dir = os.path.expanduser("~/monofusion/ggpt_inputs")
         elif args.dataset == "hi4d":
             args.base_input_dir = os.path.expanduser(f"~/{args.model}/ggpt_inputs/hi4d")
-        elif args.model == "vggt4d":
-            args.base_input_dir = os.path.expanduser(f"~/vggt4d/ggpt_inputs")
         else:
             args.base_input_dir = os.path.expanduser(f"~/{args.model}/ggpt_inputs")
     else:
@@ -313,18 +331,42 @@ def main():
     model.load_state_dict(ckpt, strict=True)
     model = model.to(args.device)
 
+    # For vggt4d+hi4d, precompute action -> pair mapping
+    vggt4d_hi4d_pair_map = {}
+    if args.model == "vggt4d" and args.dataset == "hi4d":
+        ds_cfg = get_dataset_config(args.dataset)
+        for name in ds_cfg["subject_names"]:
+            pair, action = name.split("/")
+            vggt4d_hi4d_pair_map[action] = pair
+
     # 4. Resolve Subjects
     if args.subject == "all":
-        subj_folders = sorted(glob.glob(os.path.join(args.base_input_dir, "subject-*")))
-        subjects = [os.path.basename(f).replace("subject-", "") for f in subj_folders]
-        print(f"[INFO] Found {len(subjects)} subjects: {subjects}")
+        if args.model == "vggt4d" and args.dataset == "hi4d":
+            # vggt4d uses pair-based structure: subject-pair00/dance00/Nviews/
+            subjects = []
+            for pair_dir in sorted(glob.glob(os.path.join(args.base_input_dir, "subject-pair*"))):
+                for action_dir in sorted(os.listdir(pair_dir)):
+                    if os.path.isdir(os.path.join(pair_dir, action_dir)):
+                        subjects.append(action_dir)
+            print(f"[INFO] Found {len(subjects)} subjects: {subjects}")
+        else:
+            subj_folders = sorted(glob.glob(os.path.join(args.base_input_dir, "subject-*")))
+            subjects = [os.path.basename(f).replace("subject-", "") for f in subj_folders]
+            print(f"[INFO] Found {len(subjects)} subjects: {subjects}")
     else:
-        subjects = [args.subject]
+        subj_code = args.subject.split("/")[-1]
+        if subj_code.startswith("subject-"):
+            subj_code = subj_code.replace("subject-", "", 1)
+        subjects = [subj_code]
 
     # 5. Process loop
     for subj in subjects:
         for v in args.views:
-            scene_dir = os.path.join(args.base_input_dir, f"subject-{subj}", f"{v}views")
+            if args.model == "vggt4d" and args.dataset == "hi4d" and subj in vggt4d_hi4d_pair_map:
+                pair = vggt4d_hi4d_pair_map[subj]
+                scene_dir = os.path.join(args.base_input_dir, f"subject-{pair}", subj, f"{v}views")
+            else:
+                scene_dir = os.path.join(args.base_input_dir, f"subject-{subj}", f"{v}views")
             if not os.path.isdir(scene_dir):
                 # print(f"[WARN] Scene directory not found: {scene_dir}")
                 continue
