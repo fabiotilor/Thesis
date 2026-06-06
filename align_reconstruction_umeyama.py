@@ -32,6 +32,7 @@ from pi3.utils.gt import (
     get_camera_correspondences,
     DEPTH_MAX_M,
     _load_hi4d_seg_mask,
+    build_gt_validity_masks
 )
 
 # ── configuration ─────────────────────────────────────────────────────────────
@@ -352,14 +353,32 @@ def run_reconstruction(
                 print(f"  ✓ t={t:02d}  scale={s:.4f} (camera fallback)")
 
             # ── Filter estimated points ─────────────────────────────────────────
-            # Note: Background is already removed via input image masking,
-            # so we only filter by confidence threshold here.
+            gt_validity_masks = build_gt_validity_masks(
+                actual_t, view_names, dataset_root,
+                depth_max_m=DEPTH_MAX_M,
+                target_hw=None,
+                dataset_type=dataset_type
+            )
+
             est_pts_parts = []
             for i, vname in enumerate(view_names):
                 pts_i = pts3d_list[i].reshape(-1, 3)
                 conf_i = confs[i].ravel()
                 conf_ok = conf_i > frame_thr
-                est_pts_parts.append(pts_i[conf_ok])
+
+                gt_mask = gt_validity_masks[i]
+                if gt_mask is None:
+                    continue
+
+                H, W = confs[i].shape[:2]
+                if gt_mask.shape != (H, W):
+                    gt_mask = cv2.resize(
+                        gt_mask.astype(np.uint8), (W, H),
+                        interpolation=cv2.INTER_NEAREST,
+                    ).astype(bool)
+
+                valid = conf_ok & gt_mask.ravel()
+                est_pts_parts.append(pts_i[valid])
 
             est_pts = np.concatenate(est_pts_parts, axis=0) if est_pts_parts else np.empty((0, 3))
             aligned_pts = apply_similarity_transform(est_pts, s, R, tr)

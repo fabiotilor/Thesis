@@ -68,6 +68,29 @@ def _parse_args():
         help="Disable Rerun visualization to avoid blocking/latency.",
     )
     parser.add_argument("--limit-frames", type=int, default=25, help="Limit number of frames to process")
+    parser.add_argument(
+        "--opt",
+        action="store_true",
+        help="Run temporal optimization on base strategy frames and evaluate exclusively.",
+    )
+    parser.add_argument(
+        "--opt-base",
+        type=str,
+        default="strategy2",
+        help="Base alignment strategy to smooth (default: strategy2).",
+    )
+    parser.add_argument(
+        "--opt-sigma",
+        type=float,
+        default=4.0,
+        help="Gaussian temporal window size for smoothing.",
+    )
+    parser.add_argument(
+        "--opt-alpha",
+        type=float,
+        default=1.0,
+        help="Blending factor for smoothing (0.0=original, 1.0=fully smoothed).",
+    )
 
     # Keep backward compatibility for subject flags if needed, or just use --subjects
     return parser.parse_known_args()[0]
@@ -137,9 +160,11 @@ def _target_views_for_nviews(nviews: int, dataset_config, subject_name=None):
     return target_views
 
 
-def _run_eval(code: str, view_counts: list[int], dataset_type: str, model_type: str):
+def _run_eval(code: str, view_counts: list[int], dataset_type: str, model_type: str, opt: bool = False):
     cmd = [sys.executable, "evaluate_4D.py", "--subjects", code, "--data", dataset_type, "--model", model_type,
            "--views"] + [str(v) for v in view_counts]
+    if opt:
+        cmd.append("--opt")
     print(f"\nRUNNING: {' '.join(cmd)}")
     subprocess.run(cmd, check=True)
 
@@ -310,41 +335,74 @@ def main():
                         dataset_type=dataset_type,
                     )
 
-            print(f"\n[STAGE] Strategy 3 (PGO): subject={code} views={nviews}")
-            s3_start = time.perf_counter()
-            tf_s3 = strategy3_pgo(frame_paths, dataset_root, num_iters=50, dataset_type=dataset_type)
-            s_g3, R_g3, tr_g3 = solve_final_gt_registration(frame_paths, tf_s3, dataset_root, use_static_mask=False,
-                                                            dataset_type=dataset_type)
-            save_aligned_results(
-                frame_paths,
-                tf_s3,
-                s_g3,
-                R_g3,
-                tr_g3,
-                subject_name=subject_full,
-                out_dir=s3_dir,
-                dataset_root=dataset_root,
-                method_label="strategy3",
-                dataset_type=dataset_type,
-            )
-            _write_timing_json(s3_dir, "strategy3", len(frame_paths), time.perf_counter() - s3_start)
-            if not args.no_rerun:
-                log_aligned_sequence(
+            if not args.opt:
+                print(f"\n[STAGE] Strategy 3 (PGO): subject={code} views={nviews}")
+            if args.opt:
+                print(f"\n[STAGE] Temporal Optimization (base={args.opt_base}): subject={code} views={nviews}")
+                from pi3.utils.temporal_optimizer import ensure_base_strategy_exists, optimize_temporal_consistency
+
+                base_in_dir = ensure_base_strategy_exists(
+                    subject_full, nviews,
+                    dataset_type=dataset_type,
+                    base_strategy=args.opt_base,
+                    model_name=args.model,
+                )
+                if base_in_dir is None:
+                    print(f"[ERROR] Could not obtain {args.opt_base} outputs for {subject_full}. Cannot run --opt.")
+                    continue
+
+                opt_dir = os.path.join("aligned_outputs", args.model, dataset_type, "opt", subject_full,
+                                       f"{nviews}views")
+                os.makedirs(opt_dir, exist_ok=True)
+
+                base_frame_paths = _sorted_frame_paths(base_in_dir)
+                if len(base_frame_paths) < 2:
+                    print(f"[ERROR] Not enough frames in {base_in_dir}.")
+                    continue
+
+                optimize_temporal_consistency(
+                    frame_paths=base_frame_paths,
+                    out_dir=opt_dir,
+                    dataset_root=dataset_root,
+                    sigma=args.opt_sigma,
+                    alpha=args.opt_alpha,
+                    dataset_type=args.data,
+                )
+            elif not args.opt:
+                s3_start = time.perf_counter()
+                tf_s3 = strategy3_pgo(frame_paths, dataset_root, num_iters=50, dataset_type=dataset_type)
+                s_g3, R_g3, tr_g3 = solve_final_gt_registration(frame_paths, tf_s3, dataset_root, use_static_mask=False,
+                                                                dataset_type=dataset_type)
+                save_aligned_results(
                     frame_paths,
                     tf_s3,
                     s_g3,
                     R_g3,
                     tr_g3,
-                    label="Strategy_3",
-                    color=[0, 255, 255],
+                    subject_name=subject_full,
+                    out_dir=s3_dir,
                     dataset_root=dataset_root,
-                    log_root=view_root,
+                    method_label="strategy3",
                     dataset_type=dataset_type,
                 )
+                _write_timing_json(s3_dir, "strategy3", len(frame_paths), time.perf_counter() - s3_start)
+                if not args.no_rerun:
+                    log_aligned_sequence(
+                        frame_paths,
+                        tf_s3,
+                        s_g3,
+                        R_g3,
+                        tr_g3,
+                        label="Strategy_3",
+                        color=[0, 255, 255],
+                        dataset_root=dataset_root,
+                        log_root=view_root,
+                        dataset_type=dataset_type,
+                    )
 
         print(f"\n[INFO] Evaluating subject {code} across methods/views ...")
         if not args.pgo:
-            _run_eval(code, view_counts, dataset_type, args.model)
+            _run_eval(code, view_counts, dataset_type, args.model, opt=args.opt)
 
     # Aggregate results across selected subjects only.
     csv_files = []

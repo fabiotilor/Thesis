@@ -106,8 +106,19 @@ def save_aligned_results(
             )
             # Note: Background is already removed via input image masking,
             # so we only filter by confidence threshold here.
+            t, ks = int(data.get("frame_idx", i)), data["Ks"]
+            from pi3.utils.camera_utils import discover_view_name
+            view_names = [discover_view_name(dataset_root, k, dataset_type=dataset_type) for k in ks] if 'view_names' not in data else data['view_names'].tolist()
+            from pi3.utils.gt import build_gt_validity_masks
+            vmasks = build_gt_validity_masks(t, view_names, dataset_root, target_hw=(H, W), dataset_type=dataset_type)
+
             for v in range(V):
                 mask = np.ones((H, W), dtype=bool)
+                if vmasks[v] is not None:
+                    mask &= vmasks[v]
+                elif view_names[v] is not None:
+                    print(f"    [WARN] Frame {t} view {v} ({view_names[v]}): Depth mask missing.")
+
                 if conf is not None:
                     if 'min_conf_thr' in data:
                         thr = data['min_conf_thr']

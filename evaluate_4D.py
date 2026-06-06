@@ -21,6 +21,7 @@ from pi3.utils.temporal_metrics import (
 from pi3.utils.alignment_4d import normalize_spatial_dims, normalize_array
 from eval_config import DATASETS
 
+
 def print_metrics_summary(results_df, label):
     """Prints a comparison table for all strategies."""
     print(f"\n=== Performance Summary: {label} ===")
@@ -39,6 +40,7 @@ def print_metrics_summary(results_df, label):
     cols_to_show = [c for c in cols_to_show if c in results_df.columns]
     print(results_df[cols_to_show].to_string(index=False))
     print("=" * (len(label) + 25))
+
 
 def evaluate_strategy_dir(in_dir, out_plot_dir, strategy_label=""):
     files = sorted(glob.glob(os.path.join(in_dir, "frame_*.npz")))
@@ -72,7 +74,9 @@ def evaluate_strategy_dir(in_dir, out_plot_dir, strategy_label=""):
             comp_score.append(np.nan)
             acc_score.append(np.nan)
 
-        s_val, R_val, tr_val = data['scale'], data['R'], data['tr']
+        s_val = data['scale'] if 'scale' in data else 1.0
+        R_val = data['R'] if 'R' in data else np.eye(3)
+        tr_val = data['tr'] if 'tr' in data else np.zeros(3)
         if 'est_poses' in data and data['est_poses'] is not None and data['est_poses'].ndim >= 3:
             e_p = data['est_poses']
             g_p = np.array([np.linalg.inv(rt) for rt in rts])
@@ -105,6 +109,43 @@ def evaluate_strategy_dir(in_dir, out_plot_dir, strategy_label=""):
         'completeness': np.nanmean(comp_score),
         'accuracy': np.nanmean(acc_score),
     }
+
+    # Compute static and dynamic completeness and accuracy using masks
+    s_acc_list = []
+    d_acc_list = []
+    s_comp_list = []
+    d_comp_list = []
+
+    from pi3.utils.temporal_metrics import split_points_by_mask
+    for i, f in enumerate(files):
+        data = np.load(f)
+        gt_pts, est_pts = data['gt_pts'], data['aligned_pts']
+        valid_est = ~np.any(np.isnan(est_pts), axis=-1)
+        est_pts = est_pts[valid_est]
+        ks, rts = data['Ks'], data['R_ts']
+        m_2d = data['masks_2d']
+
+        if len(est_pts) > 0 and len(gt_pts) > 0:
+            s_p, d_p = split_points_by_mask(est_pts, m_2d, ks, rts)
+            g_s, g_d = split_points_by_mask(gt_pts, m_2d, ks, rts)
+            s_acc_list.append(compute_accuracy(s_p, g_s, tau=0.01) if len(s_p) > 0 else np.nan)
+            d_acc_list.append(compute_accuracy(d_p, g_d, tau=0.01) if len(d_p) > 0 else np.nan)
+            s_comp_list.append(compute_completeness(s_p, g_s, tau=0.01) if len(g_s) > 0 else np.nan)
+            d_comp_list.append(compute_completeness(d_p, g_d, tau=0.01) if len(g_d) > 0 else np.nan)
+        else:
+            s_acc_list.append(np.nan)
+            d_acc_list.append(np.nan)
+            s_comp_list.append(np.nan)
+            d_comp_list.append(np.nan)
+
+    m_static_acc = np.nanmean(s_acc_list)
+    m_dyn_acc = np.nanmean(d_acc_list)
+    metrics['static_completeness'] = np.nanmean(s_comp_list)
+    metrics['dynamic_completeness'] = np.nanmean(d_comp_list)
+    metrics['static_accuracy'] = m_static_acc
+    metrics['dynamic_accuracy'] = m_dyn_acc
+    metrics['motion_gap'] = m_static_acc - m_dyn_acc if not np.isnan(m_static_acc) and not np.isnan(
+        m_dyn_acc) else np.nan
 
     timing_path = os.path.join(in_dir, "timing.json")
     if os.path.exists(timing_path):
@@ -141,6 +182,7 @@ def evaluate_strategy_dir(in_dir, out_plot_dir, strategy_label=""):
     plt.savefig(os.path.join(out_plot_dir, f'chamfer_{strategy_label}.png'))
     plt.close()
     return metrics
+
 
 def add_delta_consistency(results_df):
     """
@@ -184,12 +226,14 @@ def add_delta_consistency(results_df):
         df.at[idx, "delta_consistency"] = row["chamfer"] - baseline_chamfer
     return df
 
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--data", type=str, choices=["dex-ycb", "hi4d"], default="dex-ycb", help="Dataset to use")
     parser.add_argument("--all", action="store_true")
     parser.add_argument("--subjects", nargs="+", type=str, help="Specific subject codes to run.")
     parser.add_argument("--pgo", action="store_true", help="Evaluate only Strategy 3 outputs.")
+    parser.add_argument("--opt", action="store_true", help="Evaluate only temporal optimization outputs.")
     parser.add_argument("--views", nargs="+", type=int, help="Optional view counts to evaluate (e.g. --views 2 3 4).")
     parser.add_argument("--model", type=str, choices=["pi3", "pi3x"], default="pi3", help="Model type to evaluate")
     args, unknown = parser.parse_known_args()
@@ -208,11 +252,13 @@ def main():
         import sys
         subjects = [a.lstrip('-') for a in sys.argv if a.startswith('--') and a.lstrip('-') in subject_by_code]
         if not subjects:
-             subjects = [list(subject_by_code.keys())[0]]
+            subjects = [list(subject_by_code.keys())[0]]
 
     method_roots = ["baseline", "strategy1", "strategy2", "strategy3"]
     if args.pgo:
         method_roots = ["strategy3"]
+    elif args.opt:
+        method_roots = ["opt"]
 
     view_set = set(args.views) if args.views else None
 
@@ -297,6 +343,7 @@ def main():
             out_csv = f"eval_summary_{dataset_type}_{safe_code}.csv"
             df.to_csv(out_csv, index=False)
             print(f"[INFO] Saved combined report to {out_csv}")
+
 
 if __name__ == "__main__":
     main()
