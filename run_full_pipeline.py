@@ -97,7 +97,7 @@ def _parse_args():
     parser.add_argument(
         "--opt-sigma",
         type=float,
-        default=2.0,
+        default=6.0,
         help="Gaussian temporal window size for smoothing.",
     )
     parser.add_argument(
