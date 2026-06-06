@@ -89,13 +89,13 @@ def _parse_args():
     parser.add_argument(
         "--opt-sigma",
         type=float,
-        default=4.0,
+        default=2.0,
         help="Gaussian temporal window size for smoothing.",
     )
     parser.add_argument(
         "--opt-alpha",
         type=float,
-        default=0.5,
+        default=1.0,
         help="Blending factor for smoothing (0.0=original, 1.0=fully smoothed).",
     )
 
