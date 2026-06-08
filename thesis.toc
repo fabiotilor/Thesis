@@ -3,12 +3,23 @@
 \contentsline {section}{\numberline {1.1}Background and Motivation}{2}{section.1.1}%
 \contentsline {section}{\numberline {1.2}Problem Statement and Contributions}{3}{section.1.2}%
 \contentsline {chapter}{\numberline {2}Literature Review and Background}{6}{chapter.2}%
-\contentsline {chapter}{\numberline {3}Methodology: The Evaluation Framework}{7}{chapter.3}%
-\contentsline {chapter}{\numberline {4}System Implementation}{8}{chapter.4}%
-\contentsline {chapter}{\numberline {5}Results}{9}{chapter.5}%
-\contentsline {chapter}{\numberline {6}Refinement Strategy}{10}{chapter.6}%
-\contentsline {chapter}{\numberline {7}Discussion}{11}{chapter.7}%
-\contentsline {chapter}{\numberline {8}Conclusions}{12}{chapter.8}%
-\contentsline {chapter}{Bibliography}{12}{section*.5}%
-\contentsline {chapter}{List of Acronyms}{15}{section*.7}%
-\contentsline {chapter}{\numberline {A}Artifacts Availability}{16}{appendix.A}%
+\contentsline {section}{\numberline {2.1}Structure-from-Motion and Multi-View Stereo Foundations}{6}{section.2.1}%
+\contentsline {section}{\numberline {2.2}Foundation Models for 3D and 4D Reconstruction}{8}{section.2.2}%
+\contentsline {subsection}{\numberline {2.2.1}Spatial Reconstruction Models}{8}{subsection.2.2.1}%
+\contentsline {paragraph}{MASt3R-SfM.}{8}{subsection.2.2.1}%
+\contentsline {paragraph}{VGGT.}{9}{subsection.2.2.1}%
+\contentsline {paragraph}{PI3 and PI3X.}{9}{subsection.2.2.1}%
+\contentsline {subsection}{\numberline {2.2.2}Geometry Refinement Models}{9}{subsection.2.2.2}%
+\contentsline {paragraph}{GGPT.}{10}{subsection.2.2.2}%
+\contentsline {subsection}{\numberline {2.2.3}Temporal Reconstruction Models}{10}{subsection.2.2.3}%
+\contentsline {paragraph}{VGGT4D.}{10}{subsection.2.2.3}%
+\contentsline {paragraph}{MonoFusion.}{10}{subsection.2.2.3}%
+\contentsline {chapter}{\numberline {3}Methodology: The Evaluation Framework}{12}{chapter.3}%
+\contentsline {chapter}{\numberline {4}System Implementation}{13}{chapter.4}%
+\contentsline {chapter}{\numberline {5}Results}{14}{chapter.5}%
+\contentsline {chapter}{\numberline {6}Refinement Strategy}{15}{chapter.6}%
+\contentsline {chapter}{\numberline {7}Discussion}{16}{chapter.7}%
+\contentsline {chapter}{\numberline {8}Conclusions}{17}{chapter.8}%
+\contentsline {chapter}{Bibliography}{17}{section*.5}%
+\contentsline {chapter}{List of Acronyms}{20}{section*.7}%
+\contentsline {chapter}{\numberline {A}Artifacts Availability}{21}{appendix.A}%

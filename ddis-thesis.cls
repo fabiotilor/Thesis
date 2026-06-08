@@ -35,7 +35,7 @@
 \loadglsentries{resources/glossary}
 
 % Set Table of Content Depth
-\setcounter{tocdepth}{1}
+\setcounter{tocdepth}{2}
 
 \definecolor{darkblue}{RGB}{0,0,139}
 

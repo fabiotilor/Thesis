@@ -2396,6 +2396,33 @@
     <bcf:citekey order="20" intorder="1">hi4d</bcf:citekey>
     <bcf:citekey order="21" intorder="1">ggpt</bcf:citekey>
     <bcf:citekey order="22" intorder="1">sam2</bcf:citekey>
+    <bcf:citekey order="23" intorder="1">hartley2004multiple</bcf:citekey>
+    <bcf:citekey order="23" intorder="2">schoenberger2016sfm</bcf:citekey>
+    <bcf:citekey order="23" intorder="3">schoenberger2016mvs</bcf:citekey>
+    <bcf:citekey order="24" intorder="1">hartley2004multiple</bcf:citekey>
+    <bcf:citekey order="24" intorder="2">schoenberger2016sfm</bcf:citekey>
+    <bcf:citekey order="25" intorder="1">schoenberger2016sfm</bcf:citekey>
+    <bcf:citekey order="26" intorder="1">schoenberger2016mvs</bcf:citekey>
+    <bcf:citekey order="26" intorder="2">seitz2006comparison</bcf:citekey>
+    <bcf:citekey order="27" intorder="1">schoenberger2016mvs</bcf:citekey>
+    <bcf:citekey order="28" intorder="1">hartley2004multiple</bcf:citekey>
+    <bcf:citekey order="28" intorder="2">pataki2025mpsfmmonocularsurfacepriors</bcf:citekey>
+    <bcf:citekey order="29" intorder="1">hartley2004multiple</bcf:citekey>
+    <bcf:citekey order="29" intorder="2">schoenberger2016sfm</bcf:citekey>
+    <bcf:citekey order="30" intorder="1">dust3r</bcf:citekey>
+    <bcf:citekey order="30" intorder="2">mast3r</bcf:citekey>
+    <bcf:citekey order="31" intorder="1">Cin_2025_CVPR</bcf:citekey>
+    <bcf:citekey order="32" intorder="1">dust3r</bcf:citekey>
+    <bcf:citekey order="32" intorder="2">mast3r</bcf:citekey>
+    <bcf:citekey order="32" intorder="3">vggt</bcf:citekey>
+    <bcf:citekey order="33" intorder="1">mast3rsfm</bcf:citekey>
+    <bcf:citekey order="34" intorder="1">dust3r</bcf:citekey>
+    <bcf:citekey order="35" intorder="1">mast3r</bcf:citekey>
+    <bcf:citekey order="36" intorder="1">vggt</bcf:citekey>
+    <bcf:citekey order="37" intorder="1">pi3</bcf:citekey>
+    <bcf:citekey order="38" intorder="1">ggpt</bcf:citekey>
+    <bcf:citekey order="39" intorder="1">vggt4d</bcf:citekey>
+    <bcf:citekey order="40" intorder="1">monofusion</bcf:citekey>
   </bcf:section>
   <!-- SORTING TEMPLATES -->
   <bcf:sortingtemplate name="nty">

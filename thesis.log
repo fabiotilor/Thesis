@@ -1,4 +1,4 @@
-This is pdfTeX, Version 3.141592653-2.6-1.40.28 (TeX Live 2025) (preloaded format=pdflatex 2026.4.17)  8 JUN 2026 14:30
+This is pdfTeX, Version 3.141592653-2.6-1.40.28 (TeX Live 2025) (preloaded format=pdflatex 2026.4.17)  8 JUN 2026 18:13
 entering extended mode
  restricted \write18 enabled.
  %&-line parsing enabled.
@@ -1099,22 +1099,22 @@ Underfull \hbox (badness 10000) in paragraph at lines 37--37
 
  []
 
-<figures/uzh_logo.png, id=59, 287.3937pt x 99.4917pt>
+<figures/uzh_logo.png, id=79, 287.3937pt x 99.4917pt>
 File: figures/uzh_logo.png Graphic file (type png)
 <use figures/uzh_logo.png>
 Package pdftex.def Info: figures/uzh_logo.png  used on input line 45.
 (pdftex.def)             Requested size: 82.1887pt x 28.45274pt.
-<figures/dast-logo.png, id=61, 621.82312pt x 165.61874pt>
+<figures/dast-logo.png, id=81, 621.82312pt x 165.61874pt>
 File: figures/dast-logo.png Graphic file (type png)
 <use figures/dast-logo.png>
 Package pdftex.def Info: figures/dast-logo.png  used on input line 46.
 (pdftex.def)             Requested size: 106.81865pt x 28.45274pt.
-<figures/ETHlogo.pdf, id=62, 179.67125pt x 45.16875pt>
+<figures/ETHlogo.pdf, id=82, 179.67125pt x 45.16875pt>
 File: figures/ETHlogo.pdf Graphic file (type pdf)
 <use figures/ETHlogo.pdf>
 Package pdftex.def Info: figures/ETHlogo.pdf  used on input line 49.
 (pdftex.def)             Requested size: 113.17976pt x 28.45274pt.
-<figures/logo-vlg-text.png, id=63, 2739.23375pt x 711.65875pt>
+<figures/logo-vlg-text.png, id=83, 2739.23375pt x 711.65875pt>
 File: figures/logo-vlg-text.png Graphic file (type png)
 <use figures/logo-vlg-text.png>
 Package pdftex.def Info: figures/logo-vlg-text.png  used on input line 50.
@@ -1190,64 +1190,76 @@ Chapter 1.
 
 
 {/Users/fabio/Library/TinyTeX/texmf-dist/fonts/enc/dvips/lm/lm-mathsy.enc}]
-Overfull \hbox (12.6629pt too wide) in paragraph at lines 45--60
+Overfull \hbox (12.6629pt too wide) in paragraph at lines 34--35
 \T1/lmr/m/n/12 over-come many of these fail-ure modes by di-rectly re-gress-ing dense 3D pointmaps
  []
 
-
-Overfull \hbox (9.64432pt too wide) in paragraph at lines 61--62
-\T1/lmr/m/n/12 re-fine-ment in-formed by sparse SfM-derived cor-re-spon-dences. While the method
- []
-
-[2]
-Overfull \hbox (33.40398pt too wide) in paragraph at lines 63--70
-[]\T1/lmr/m/n/12 The nat-u-ral re-sponse is to in-cor-po-rate tem-po-ral mod-elling di-rectly. VGGT4D [[][]4[][]]
- []
-
-LaTeX Font Info:    Trying to load font information for TS1+lmr on input line 86.
-(/Users/fabio/Library/TinyTeX/texmf-dist/tex/latex/lm/ts1lmr.fd
+[2{/Users/fabio/Library/TinyTeX/texmf-dist/fonts/enc/dvips/lm/lm-rm.enc}]
+LaTeX Font Info:    Trying to load font information for TS1+lmr on input line 49.
+ (/Users/fabio/Library/TinyTeX/texmf-dist/tex/latex/lm/ts1lmr.fd
 File: ts1lmr.fd 2015/05/01 v1.6.1 Font defs for Latin Modern
-) [3{/Users/fabio/Library/TinyTeX/texmf-dist/fonts/enc/dvips/lm/lm-ts1.enc}]
+) [3{/Users/fabio/Library/TinyTeX/texmf-dist/fonts/enc/dvips/lm/lm-ts1.enc}{/Users/fabio/Library/TinyTeX/texmf-dist/fonts/enc/dvips/lm/lm-mathit.enc}]
 
-LaTeX Warning: Reference `c:refinement' on page 1 undefined on input line 121.
+LaTeX Warning: Reference `c:refinement' on page 1 undefined on input line 84.
 
-[4{/Users/fabio/Library/TinyTeX/texmf-dist/fonts/enc/dvips/lm/lm-rm.enc}{/Users/fabio/Library/TinyTeX/texmf-dist/fonts/enc/dvips/lm/lm-mathit.enc}]) (./chapters/2-background-knowledge.tex [5]
+[4]) (./chapters/2-background-knowledge.tex [5]
 Chapter 2.
 
 Overfull \hbox (13.94884pt too wide) in paragraph at lines 1--1
 |\T1/phv/b/n/24.88 Literature Re-view and Back-ground| 
  []
 
-) (./chapters/3-related-work.tex [6
 
-]
+LaTeX Warning: Reference `sec:sam2_background' on page 6 undefined on input line 4.
+
+
+LaTeX Warning: Reference `sec:math_background' on page 6 undefined on input line 4.
+
+
+Overfull \hbox (14.97005pt too wide) in paragraph at lines 6--6
+|[]\T1/phv/b/n/17.28 Structure-from-Motion and Multi-View Stereo
+ []
+
+[6
+
+] [7]
+Overfull \hbox (2.00873pt too wide) in paragraph at lines 35--36
+[] []\T1/lmr/bx/n/12 MASt3R-SfM.[] \T1/lmr/m/n/12 MASt3R-SfM is a hy-brid re-con-struc-tion pipeline that com-
+ []
+
+[8] [9]
+Overfull \hbox (2.1705pt too wide) in paragraph at lines 67--68
+[] []\T1/lmr/bx/n/12 Mono-Fu-sion.[] \T1/lmr/m/n/12 Mono-Fu-sion ap-proaches sparse-view four-dimensional re-con-
+ []
+
+[10]) (./chapters/3-related-work.tex [11]
 Chapter 3.
 
 Overfull \hbox (43.8787pt too wide) in paragraph at lines 1--1
 |\T1/phv/b/n/24.88 Methodology: The Eval-u-a-tion Frame-
  []
 
-) (./chapters/4-methodology.tex [7
+) (./chapters/4-methodology.tex [12
 
 ]
 Chapter 4.
-) (./chapters/5-experiments.tex [8
+) (./chapters/5-experiments.tex [13
 
 ]
 Chapter 5.
-) (./chapters/6-limitations.tex [9
+) (./chapters/6-limitations.tex [14
 
 ]
 Chapter 6.
-) (./chapters/7-future-work.tex [10
+) (./chapters/7-future-work.tex [15
 
 ]
 Chapter 7.
-) (./chapters/8-conclusion.tex [11
+) (./chapters/8-conclusion.tex [16
 
 ]
 Chapter 8.
-) [12
+) [17
 
 ]
 Overfull \hbox (3.01653pt too wide) in paragraph at lines 54--54
@@ -1262,11 +1274,16 @@ Overfull \hbox (5.85074pt too wide) in paragraph at lines 54--54
 \T1/lmr/m/it/12 form-ers for 4D Scene Re-con-struc-tion\T1/lmr/m/n/12 . 2025. arXiv: [][]$\T1/lmtt/m/n/12 2511 . 19971$ [cs.CV][][]\T1/lmr/m/n/12 .
  []
 
-[13
 
-] [14]
+Overfull \hbox (2.71123pt too wide) in paragraph at lines 54--54
+\T1/lmr/m/it/12 Structure-from-Motion\T1/lmr/m/n/12 . 2025. arXiv: [][]$\T1/lmtt/m/n/12 2504 . 20040$ [cs.CV][][]\T1/lmr/m/n/12 . \T1/lmr/m/sc/12 url\T1/lmr/m/n/12 : [][]$\T1/lmtt/m/n/12 https :
+ []
+
+[18
+
+] [19]
 No file thesis.acr.
-(./chapters/A-appendix.tex [15
+(./chapters/A-appendix.tex [20
 
 
 ]
@@ -1278,7 +1295,7 @@ LaTeX Font Info:    External font `lmex10' loaded for size
 LaTeX Font Info:    External font `lmex10' loaded for size
 (Font)              <5> on input line 4.
 Package hyperref Info: bookmark level for unknown todo defaults to 0 on input line 4.
-) (./resources/declaration_en.tex [16
+) (./resources/declaration_en.tex [21
 
 ]
 File: figures/uzh_logo.png Graphic file (type png)
@@ -1308,24 +1325,24 @@ L3 programming layer <2026-01-19>
 LaTeX Warning: There were undefined references.
 
 Package rerunfilecheck Info: File `thesis.out' has not changed.
-(rerunfilecheck)             Checksum: 0AAE531E0B5AFC93FE1BC78678044853;1931.
+(rerunfilecheck)             Checksum: 1CA95C588CAD160B7F6BF4684250A75D;3205.
 Package logreq Info: Writing requests to 'thesis.run.xml'.
 \openout1 = `thesis.run.xml'.
 
  ) 
 Here is how much of TeX's memory you used:
- 41876 strings out of 469443
- 833606 string characters out of 5466399
- 1784230 words of memory out of 5000000
- 69819 multiletter control sequences out of 15000+600000
- 717934 words of font info for 114 fonts, out of 8000000 for 9000
+ 41933 strings out of 469443
+ 835181 string characters out of 5466399
+ 1784271 words of memory out of 5000000
+ 69860 multiletter control sequences out of 15000+600000
+ 722400 words of font info for 117 fonts, out of 8000000 for 9000
  38 hyphenation exceptions out of 8191
  132i,12n,135p,2593b,2463s stack positions out of 10000i,1000n,20000p,200000b,200000s
 </Users/fabio/Library/TinyTeX/texmf-dist/fonts/type1/public/lm/lmbx12.pfb></Users/fabio/Library/TinyTeX/texmf-dist/fonts/type1/public/lm/lmcsc10.pfb></Users/fabio/Library/TinyTeX/texmf-dist/fonts/type1/public/lm/lmmi12.pfb></Users/fabio/Library/TinyTeX/texmf-dist/fonts/type1/public/lm/lmr12.pfb></Users/fabio/Library/TinyTeX/texmf-dist/fonts/type1/public/lm/lmr7.pfb></Users/fabio/Library/TinyTeX/texmf-dist/fonts/type1/public/lm/lmr8.pfb></Users/fabio/Library/TinyTeX/texmf-dist/fonts/type1/public/lm/lmri12.pfb></Users/fabio/Library/TinyTeX/texmf-dist/fonts/type1/public/lm/lmsy10.pfb></Users/fabio/Library/TinyTeX/texmf-dist/fonts/type1/public/lm/lmtt10.pfb></Users/fabio/Library/TinyTeX/texmf-dist/fonts/type1/public/lm/lmtt12.pfb></Users/fabio/Library/TinyTeX/texmf-dist/fonts/type1/urw/helvetic/uhvb8a.pfb></Users/fabio/Library/TinyTeX/texmf-dist/fonts/type1/urw/helvetic/uhvr8a.pfb>
-Output written on thesis.pdf (22 pages, 418517 bytes).
+Output written on thesis.pdf (27 pages, 435697 bytes).
 PDF statistics:
- 327 PDF objects out of 1000 (max. 8388607)
- 266 compressed objects within 3 object streams
- 56 named destinations out of 1000 (max. 500000)
- 137 words of extra memory for PDF output out of 10000 (max. 10000000)
+ 417 PDF objects out of 1000 (max. 8388607)
+ 350 compressed objects within 4 object streams
+ 71 named destinations out of 1000 (max. 500000)
+ 177 words of extra memory for PDF output out of 10000 (max. 10000000)
 

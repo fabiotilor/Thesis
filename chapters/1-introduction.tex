@@ -29,55 +29,18 @@ architecture VGGT4D on every single metric.
 %% -----------------------------------------------------------------------
 \section{Background and Motivation}\label{s:background}
 
-Classical multi-view reconstruction pipelines such as Structure-from-Motion
-(SfM)~\cite{schoenberger2016sfm} produce accurate, metric-scale geometry in well-constrained
-settings: they rely on repeatable keypoint matching and bundle adjustment, which deliver
-precise camera poses and sparse point clouds when images share sufficient texture, overlap,
-and baseline. In sparse-view configurations of 2--4 cameras, however, these conditions
-frequently fail. Low inter-camera overlap means that few keypoints are visible in more than
-one view simultaneously~\cite{hartley2004multiple}; short or degenerate baselines reduce
-parallax and destabilise triangulation~\cite{schoenberger2016sfm}; and textureless
-surfaces---common on human skin, clothing, and manipulation objects---yield too few reliable
-correspondences for bundle adjustment to converge~\cite{dust3r, mast3r}. The result is
-either outright reconstruction failure or incomplete, drift-prone geometry that cannot
-support downstream tasks such as grasping or object tracking.
+Classical multi-view reconstruction pipelines such as Structure-from-Motion (SfM)~\cite{schoenberger2016sfm} produce accurate, metric-scale geometry in well-constrained settings: they rely on repeatable keypoint matching and bundle adjustment, which deliver precise camera poses and sparse point clouds when images share sufficient texture, overlap, and baseline. In sparse-view configurations of two to four cameras, however, these conditions frequently fail. Low inter-camera overlap means that few keypoints are visible in more than one view simultaneously~\cite{hartley2004multiple}; short or degenerate baselines reduce parallax and destabilise triangulation~\cite{schoenberger2016sfm}; and textureless surfaces---common on human skin, clothing, and manipulation objects---yield too few reliable correspondences for bundle adjustment to converge~\cite{dust3r, mast3r}. The result is either outright reconstruction failure or incomplete, drift-prone geometry that cannot support downstream tasks such as grasping or object tracking.
 
-Learning-based spatial models such as DUSt3R~\cite{dust3r}, PI3, and PI3X~\cite{pi3}
-overcome many of these failure modes by directly regressing dense 3D pointmaps from image
-pairs, using learned priors to fill in low-texture and low-overlap regions where classical
-methods collapse. These models achieve strong per-frame accuracy---PI3 and PI3X in
-particular deliver the highest accuracy and completeness at a strict 1\,cm robotics
-threshold among all models we evaluate. Although they address many of the correspondence
-and reconstruction failures that limit classical SfM, they do not eliminate the broader
-challenge of producing reconstructions that are sufficiently stable for downstream robotic
-use. As purely spatial estimators, they process each frame independently and therefore
-provide no explicit mechanism for enforcing temporal consistency across a sequence. The
-resulting frame-to-frame instability can manifest as high-frequency jitter, scale
-fluctuations, or pose inconsistencies, with the severity varying substantially across
-architectures. Such instability can render otherwise accurate reconstructions unsuitable
-for downstream tasks including trajectory estimation, object tracking, and robotic
-manipulation.
+Learning-based spatial models such as DUSt3R~\cite{dust3r}, PI3, and PI3X~\cite{pi3} overcome many of these failure modes by directly regressing dense 3D pointmaps from images, using learned priors to fill in low-texture and low-overlap regions where classical methods collapse. These models achieve strong per-frame accuracy---PI3 and PI3X in particular deliver the highest accuracy and completeness at a strict 1\,cm robotics threshold among all models we evaluate. As purely spatial estimators, however, they process each frame independently and provide no explicit mechanism for enforcing temporal consistency across a sequence. The resulting frame-to-frame instability---manifesting as high-frequency jitter, scale fluctuations, or pose inconsistencies---can render otherwise accurate reconstructions unsuitable for downstream tasks including trajectory estimation, object tracking, and robotic manipulation.
 
-GGPT~\cite{ggpt} augments feed-forward reconstructions using geometry-guided refinement informed by sparse SfM-derived correspondences. While the method improves reconstruction quality on the static benchmarks for which it was designed, its behaviour under the sparse-view dynamic conditions considered in this thesis differs substantially. Across all evaluated backbone models, GGPT consistently reduces the measured static-scene jitter metric, often by an order of magnitude. However, this reduction is accompanied by large increases in Chamfer distance and inconsistent changes in accuracy and completeness. Since the degradation is already evident in the per-frame evaluation prior to temporal alignment, the observed jitter suppression is unlikely to arise from improved geometric fidelity. Instead, the results suggest that GGPT acts as a strong geometric regulariser in this setting, producing more temporally stable but less geometrically accurate reconstructions.
+Geometry-refinement approaches such as GGPT~\cite{ggpt} take a different direction: rather than addressing temporal stability, they seek to improve the multi-view geometric consistency of per-frame feed-forward reconstructions by grounding dense pointmap predictions with sparse SfM-derived geometric guidance. Under the sparse-view dynamic conditions considered in this thesis, however, GGPT worsens Chamfer distance by $3$--$10\times$ across all evaluated backbone models, making it unsuitable for geometry-critical applications in this setting. Dedicated 4D architectures---VGGT4D~\cite{vggt4d} and MonoFusion~\cite{monofusion}---enforce sequence-level consistency, but at a measurable cost: VGGT4D inflates Chamfer distance by 20--160\,\% relative to its per-frame baseline, and MonoFusion suffers systematic alignment convergence failures in sparse-view settings, producing duplicated subject artefacts rather than coherent reconstructions.
 
-The natural response is to incorporate temporal modelling directly. VGGT4D~\cite{vggt4d}
-extends spatial transformers with motion cues, and MonoFusion~\cite{monofusion} fuses
-monocular depth priors across time. Both enforce sequence-level consistency, but at a cost
-we measure precisely: VGGT4D inflates Chamfer distance by 20--160\,\% relative to its
-per-frame baseline, and MonoFusion suffers systematic alignment convergence failures in
-sparse-view settings, producing duplicated subject artefacts rather than coherent
-reconstructions.
-
-None of these approaches simultaneously achieves geometric fidelity and temporal
-consistency under sparse-view dynamic conditions. These results motivate the central design
-principle of this work: temporal consistency and geometric fidelity are not in fundamental
-conflict---they simply require a targeted rather than global smoothing strategy.
-
+None of these approaches simultaneously achieves geometric fidelity and temporal consistency under sparse-view dynamic conditions. These results motivate the central design principle of this work: temporal consistency and geometric fidelity are not in fundamental conflict---they simply require a targeted rather than global smoothing strategy.
 %% -----------------------------------------------------------------------
 \section{Problem Statement and Contributions}\label{s:contributions}
 
 We address the problem of temporally consistent, geometrically precise 4D reconstruction
-from sparse multi-view video (2--4 cameras) of dynamic scenes, evaluated on the
+from sparse multi-view video (two to four cameras) of dynamic scenes, evaluated on the
 DEX-YCB~\cite{dexycb} and Hi4D~\cite{hi4d} datasets. The main contributions of this work
 are:
 
