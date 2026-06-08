@@ -2,13 +2,13 @@
 \contentsline {chapter}{\numberline {1}Introduction}{1}{chapter.1}%
 \contentsline {section}{\numberline {1.1}Background and Motivation}{2}{section.1.1}%
 \contentsline {section}{\numberline {1.2}Problem Statement and Contributions}{3}{section.1.2}%
-\contentsline {chapter}{\numberline {2}Literature Review and Background}{5}{chapter.2}%
-\contentsline {chapter}{\numberline {3}Methodology: The Evaluation Framework}{6}{chapter.3}%
-\contentsline {chapter}{\numberline {4}System Implementation}{7}{chapter.4}%
-\contentsline {chapter}{\numberline {5}Results}{8}{chapter.5}%
-\contentsline {chapter}{\numberline {6}Refinement Strategy}{9}{chapter.6}%
-\contentsline {chapter}{\numberline {7}Discussion}{10}{chapter.7}%
-\contentsline {chapter}{\numberline {8}Conclusions}{11}{chapter.8}%
-\contentsline {chapter}{Bibliography}{11}{section*.5}%
-\contentsline {chapter}{List of Acronyms}{14}{section*.7}%
-\contentsline {chapter}{\numberline {A}Artifacts Availability}{15}{appendix.A}%
+\contentsline {chapter}{\numberline {2}Literature Review and Background}{6}{chapter.2}%
+\contentsline {chapter}{\numberline {3}Methodology: The Evaluation Framework}{7}{chapter.3}%
+\contentsline {chapter}{\numberline {4}System Implementation}{8}{chapter.4}%
+\contentsline {chapter}{\numberline {5}Results}{9}{chapter.5}%
+\contentsline {chapter}{\numberline {6}Refinement Strategy}{10}{chapter.6}%
+\contentsline {chapter}{\numberline {7}Discussion}{11}{chapter.7}%
+\contentsline {chapter}{\numberline {8}Conclusions}{12}{chapter.8}%
+\contentsline {chapter}{Bibliography}{12}{section*.5}%
+\contentsline {chapter}{List of Acronyms}{15}{section*.7}%
+\contentsline {chapter}{\numberline {A}Artifacts Availability}{16}{appendix.A}%

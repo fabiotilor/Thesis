@@ -1,18 +1,18 @@
 [0] Config.pm:328> INFO - This is Biber 2.21
 [0] Config.pm:331> INFO - Logfile is 'thesis.blg'
-[35] biber-darwin:342> INFO - === Fri Jun  5, 2026, 19:35:45
-[45] Biber.pm:421> INFO - Reading 'thesis.bcf'
-[85] Biber.pm:1002> INFO - Found 12 citekeys in bib section 0
-[94] Biber.pm:4487> INFO - Processing section 0
-[99] Biber.pm:4678> INFO - Looking for bibtex file 'resources/sources.bib' for section 0
-[100] bibtex.pm:1713> INFO - LaTeX decoding ...
-[108] bibtex.pm:1519> INFO - Found BibTeX data source 'resources/sources.bib'
-[187] UCollate.pm:68> INFO - Overriding locale 'en-US' defaults 'normalization = NFD' with 'normalization = prenormalized'
-[187] UCollate.pm:68> INFO - Overriding locale 'en-US' defaults 'variable = shifted' with 'variable = non-ignorable'
-[187] Biber.pm:4307> INFO - Sorting list 'nty/global//global/global/global' of type 'entry' with template 'nty' and locale 'en-US'
-[187] Biber.pm:4313> INFO - No sort tailoring available for locale 'en-US'
-[197] bbl.pm:676> INFO - Writing 'thesis.bbl' with encoding 'UTF-8'
-[201] bbl.pm:779> INFO - Output to thesis.bbl
-[201] Biber.pm:132> WARN - legacy month field 'October' in entry 'pi3' is not an integer - this will probably not sort properly.
-[201] Biber.pm:132> WARN - legacy month field 'October' in entry 'monofusion' is not an integer - this will probably not sort properly.
-[201] Biber.pm:134> INFO - WARNINGS: 2
+[38] biber-darwin:342> INFO - === Mon Jun  8, 2026, 14:30:02
+[47] Biber.pm:421> INFO - Reading 'thesis.bcf'
+[93] Biber.pm:1002> INFO - Found 12 citekeys in bib section 0
+[102] Biber.pm:4487> INFO - Processing section 0
+[108] Biber.pm:4678> INFO - Looking for bibtex file 'resources/sources.bib' for section 0
+[109] bibtex.pm:1713> INFO - LaTeX decoding ...
+[118] bibtex.pm:1519> INFO - Found BibTeX data source 'resources/sources.bib'
+[206] UCollate.pm:68> INFO - Overriding locale 'en-US' defaults 'normalization = NFD' with 'normalization = prenormalized'
+[206] UCollate.pm:68> INFO - Overriding locale 'en-US' defaults 'variable = shifted' with 'variable = non-ignorable'
+[206] Biber.pm:4307> INFO - Sorting list 'nty/global//global/global/global' of type 'entry' with template 'nty' and locale 'en-US'
+[206] Biber.pm:4313> INFO - No sort tailoring available for locale 'en-US'
+[217] bbl.pm:676> INFO - Writing 'thesis.bbl' with encoding 'UTF-8'
+[221] bbl.pm:779> INFO - Output to thesis.bbl
+[221] Biber.pm:132> WARN - legacy month field 'October' in entry 'pi3' is not an integer - this will probably not sort properly.
+[222] Biber.pm:132> WARN - legacy month field 'October' in entry 'monofusion' is not an integer - this will probably not sort properly.
+[222] Biber.pm:134> INFO - WARNINGS: 2

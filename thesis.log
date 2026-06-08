@@ -1,4 +1,4 @@
-This is pdfTeX, Version 3.141592653-2.6-1.40.28 (TeX Live 2025) (preloaded format=pdflatex 2026.4.17)  5 JUN 2026 19:35
+This is pdfTeX, Version 3.141592653-2.6-1.40.28 (TeX Live 2025) (preloaded format=pdflatex 2026.4.17)  8 JUN 2026 14:30
 entering extended mode
  restricted \write18 enabled.
  %&-line parsing enabled.
@@ -1186,40 +1186,39 @@ File: ursfs.fd 1998/03/24 rsfs font definition file (jk)
 
 ] (./chapters/1-introduction.tex
 Chapter 1.
-
-Overfull \hbox (6.4824pt too wide) in paragraph at lines 3--15
-\T1/lmr/m/n/12 ing smooth, metric-consistent depth. Con-versely, ded-i-cated 4D architectures---
- []
-
 [1
 
 
 {/Users/fabio/Library/TinyTeX/texmf-dist/fonts/enc/dvips/lm/lm-mathsy.enc}]
-Overfull \hbox (12.6629pt too wide) in paragraph at lines 41--50
+Overfull \hbox (12.6629pt too wide) in paragraph at lines 45--60
 \T1/lmr/m/n/12 over-come many of these fail-ure modes by di-rectly re-gress-ing dense 3D pointmaps
  []
 
-[2]
-LaTeX Font Info:    Trying to load font information for TS1+lmr on input line 75.
- (/Users/fabio/Library/TinyTeX/texmf-dist/tex/latex/lm/ts1lmr.fd
-File: ts1lmr.fd 2015/05/01 v1.6.1 Font defs for Latin Modern
-)
 
-LaTeX Warning: Reference `c:refinement' on page 1 undefined on input line 110.
-
-[3{/Users/fabio/Library/TinyTeX/texmf-dist/fonts/enc/dvips/lm/lm-ts1.enc}{/Users/fabio/Library/TinyTeX/texmf-dist/fonts/enc/dvips/lm/lm-rm.enc}{/Users/fabio/Library/TinyTeX/texmf-dist/fonts/enc/dvips/lm/lm-mathit.enc}]
-Overfull \hbox (11.66013pt too wide) in paragraph at lines 122--135
-\T1/lmr/m/n/12 VGGT), na-tive 4D ar-chi-tec-tures (VGGT4D, Mono-Fu-sion), and geometry-
+Overfull \hbox (9.64432pt too wide) in paragraph at lines 61--62
+\T1/lmr/m/n/12 re-fine-ment in-formed by sparse SfM-derived cor-re-spon-dences. While the method
  []
 
-) (./chapters/2-background-knowledge.tex [4]
+[2]
+Overfull \hbox (33.40398pt too wide) in paragraph at lines 63--70
+[]\T1/lmr/m/n/12 The nat-u-ral re-sponse is to in-cor-po-rate tem-po-ral mod-elling di-rectly. VGGT4D [[][]4[][]]
+ []
+
+LaTeX Font Info:    Trying to load font information for TS1+lmr on input line 86.
+(/Users/fabio/Library/TinyTeX/texmf-dist/tex/latex/lm/ts1lmr.fd
+File: ts1lmr.fd 2015/05/01 v1.6.1 Font defs for Latin Modern
+) [3{/Users/fabio/Library/TinyTeX/texmf-dist/fonts/enc/dvips/lm/lm-ts1.enc}]
+
+LaTeX Warning: Reference `c:refinement' on page 1 undefined on input line 121.
+
+[4{/Users/fabio/Library/TinyTeX/texmf-dist/fonts/enc/dvips/lm/lm-rm.enc}{/Users/fabio/Library/TinyTeX/texmf-dist/fonts/enc/dvips/lm/lm-mathit.enc}]) (./chapters/2-background-knowledge.tex [5]
 Chapter 2.
 
 Overfull \hbox (13.94884pt too wide) in paragraph at lines 1--1
 |\T1/phv/b/n/24.88 Literature Re-view and Back-ground| 
  []
 
-) (./chapters/3-related-work.tex [5
+) (./chapters/3-related-work.tex [6
 
 ]
 Chapter 3.
@@ -1228,27 +1227,27 @@ Overfull \hbox (43.8787pt too wide) in paragraph at lines 1--1
 |\T1/phv/b/n/24.88 Methodology: The Eval-u-a-tion Frame-
  []
 
-) (./chapters/4-methodology.tex [6
+) (./chapters/4-methodology.tex [7
 
 ]
 Chapter 4.
-) (./chapters/5-experiments.tex [7
+) (./chapters/5-experiments.tex [8
 
 ]
 Chapter 5.
-) (./chapters/6-limitations.tex [8
+) (./chapters/6-limitations.tex [9
 
 ]
 Chapter 6.
-) (./chapters/7-future-work.tex [9
+) (./chapters/7-future-work.tex [10
 
 ]
 Chapter 7.
-) (./chapters/8-conclusion.tex [10
+) (./chapters/8-conclusion.tex [11
 
 ]
 Chapter 8.
-) [11
+) [12
 
 ]
 Overfull \hbox (3.01653pt too wide) in paragraph at lines 54--54
@@ -1263,11 +1262,11 @@ Overfull \hbox (5.85074pt too wide) in paragraph at lines 54--54
 \T1/lmr/m/it/12 form-ers for 4D Scene Re-con-struc-tion\T1/lmr/m/n/12 . 2025. arXiv: [][]$\T1/lmtt/m/n/12 2511 . 19971$ [cs.CV][][]\T1/lmr/m/n/12 .
  []
 
-[12
+[13
 
-] [13]
+] [14]
 No file thesis.acr.
-(./chapters/A-appendix.tex [14
+(./chapters/A-appendix.tex [15
 
 
 ]
@@ -1279,7 +1278,7 @@ LaTeX Font Info:    External font `lmex10' loaded for size
 LaTeX Font Info:    External font `lmex10' loaded for size
 (Font)              <5> on input line 4.
 Package hyperref Info: bookmark level for unknown todo defaults to 0 on input line 4.
-) (./resources/declaration_en.tex [15
+) (./resources/declaration_en.tex [16
 
 ]
 File: figures/uzh_logo.png Graphic file (type png)
@@ -1315,18 +1314,18 @@ Package logreq Info: Writing requests to 'thesis.run.xml'.
 
  ) 
 Here is how much of TeX's memory you used:
- 41875 strings out of 469443
- 833599 string characters out of 5466399
- 1784227 words of memory out of 5000000
+ 41876 strings out of 469443
+ 833606 string characters out of 5466399
+ 1784230 words of memory out of 5000000
  69819 multiletter control sequences out of 15000+600000
  717934 words of font info for 114 fonts, out of 8000000 for 9000
  38 hyphenation exceptions out of 8191
  132i,12n,135p,2593b,2463s stack positions out of 10000i,1000n,20000p,200000b,200000s
 </Users/fabio/Library/TinyTeX/texmf-dist/fonts/type1/public/lm/lmbx12.pfb></Users/fabio/Library/TinyTeX/texmf-dist/fonts/type1/public/lm/lmcsc10.pfb></Users/fabio/Library/TinyTeX/texmf-dist/fonts/type1/public/lm/lmmi12.pfb></Users/fabio/Library/TinyTeX/texmf-dist/fonts/type1/public/lm/lmr12.pfb></Users/fabio/Library/TinyTeX/texmf-dist/fonts/type1/public/lm/lmr7.pfb></Users/fabio/Library/TinyTeX/texmf-dist/fonts/type1/public/lm/lmr8.pfb></Users/fabio/Library/TinyTeX/texmf-dist/fonts/type1/public/lm/lmri12.pfb></Users/fabio/Library/TinyTeX/texmf-dist/fonts/type1/public/lm/lmsy10.pfb></Users/fabio/Library/TinyTeX/texmf-dist/fonts/type1/public/lm/lmtt10.pfb></Users/fabio/Library/TinyTeX/texmf-dist/fonts/type1/public/lm/lmtt12.pfb></Users/fabio/Library/TinyTeX/texmf-dist/fonts/type1/urw/helvetic/uhvb8a.pfb></Users/fabio/Library/TinyTeX/texmf-dist/fonts/type1/urw/helvetic/uhvr8a.pfb>
-Output written on thesis.pdf (21 pages, 415888 bytes).
+Output written on thesis.pdf (22 pages, 418517 bytes).
 PDF statistics:
- 322 PDF objects out of 1000 (max. 8388607)
- 262 compressed objects within 3 object streams
- 55 named destinations out of 1000 (max. 500000)
+ 327 PDF objects out of 1000 (max. 8388607)
+ 266 compressed objects within 3 object streams
+ 56 named destinations out of 1000 (max. 500000)
  137 words of extra memory for PDF output out of 10000 (max. 10000000)
 
