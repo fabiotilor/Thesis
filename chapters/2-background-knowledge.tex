@@ -56,7 +56,7 @@ Unlike spatial reconstruction and temporal reconstruction architectures, GGPT do
 \subsection{Temporal Reconstruction Models}
 \label{sec:temporal_models}
 
-A common limitation of purely spatial reconstruction models is the absence of explicit temporal reasoning: each frame or image set is reconstructed independently, meaning that geometric predictions may vary between consecutive frames even when the underlying scene remains static. Temporal reconstruction models address this by incorporating motion information and sequence-level reasoning during inference, jointly modelling geometry and temporal evolution rather than treating each frame as an isolated input.
+A common limitation of purely spatial reconstruction models is the absence of explicit temporal reasoning~\cite{vggt4d}: each frame or image set is reconstructed independently, meaning that geometric predictions may vary between consecutive frames even when the underlying scene remains static. Temporal reconstruction models address this by incorporating motion information and sequence-level reasoning during inference, jointly modelling geometry and temporal evolution rather than treating each frame as an isolated input~\cite{vggt4d}.
 
 \paragraph{VGGT4D.}
 
@@ -64,6 +64,215 @@ VGGT4D extends the VGGT architecture to four-dimensional reconstruction by incor
 
 \paragraph{MonoFusion.}
 
-MonoFusion approaches sparse-view four-dimensional reconstruction from a different perspective~\cite{monofusion}. Instead of relying solely on multi-view geometric constraints, it combines monocular depth priors with temporal fusion mechanisms to accumulate information across a sequence. This strategy enables reconstruction from extremely sparse camera configurations and provides an explicit mechanism for enforcing temporal coherence. The model reflects a growing trend toward integrating learned monocular geometry with multi-view reasoning to overcome the limitations of sparse observations.
+MonoFusion approaches sparse-view four-dimensional reconstruction from a different perspective~\cite{monofusion}. Instead of relying solely on multi-view geometric constraints, it combines monocular depth priors with temporal fusion mechanisms to accumulate information across a sequence. This strategy enables reconstruction from extremely sparse camera configurations and provides an explicit mechanism for enforcing temporal coherence. The model reflects a growing trend toward integrating learned monocular geometry with multi-view reasoning to overcome the limitations of sparse observations~\cite{li2025mono3rexploitingmonocularcues, Jiang_2025_ICCV, Cheng2025MonSterUS}.
 
 While temporal architectures address an important limitation of spatial models by introducing sequence-level consistency, the incorporation of temporal information inevitably introduces additional modelling assumptions and complexity. This creates a trade-off between geometric precision and temporal stability that remains an active area of research, and one that the comparative evaluation in this thesis aims to illuminate under controlled sparse-view conditions.
+
+\section{SAM2 for Static and Dynamic Scene Segmentation}
+\label{sec:sam2_background}
+
+SAM2 (Segment Anything Model 2) extends the original Segment Anything Model
+from static-image segmentation to image and video sequences~\cite{sam2}. By
+combining promptable segmentation with a memory mechanism that propagates
+object information across time, SAM2 produces temporally consistent masks
+throughout a video sequence. Trained on large-scale image and video datasets,
+the model demonstrates strong zero-shot generalisation across diverse object
+categories and scene types~\cite{sam2}.
+
+Video segmentation has become increasingly relevant for dynamic-scene
+reconstruction, where moving actors and objects violate the static-world
+assumptions commonly exploited by geometric reconstruction methods.
+Recent systems such as MonoFusion~\cite{monofusion} employ
+foreground-background segmentation to distinguish dynamic scene content from
+temporally stable geometry during reconstruction and optimisation.
+
+In this thesis, SAM2 is used to generate static and dynamic scene masks for
+evaluation and alignment purposes. These masks enable separate analysis of
+reconstruction quality in static and dynamic regions and provide the basis for
+the static-scene correspondences used by the temporal alignment methods
+introduced in Chapter~\ref{c:methodology}. The specific mask generation and
+integration procedures are described in Chapters~\ref{c:methodology} and
+\ref{c:implementation}.
+
+\section{Mathematical Background}
+\label{sec:math_background}
+
+The reconstruction models evaluated in this thesis do not necessarily predict
+geometry in a common coordinate system. In particular, the spatial foundation
+models discussed in Section~\ref{sec:foundation_models} reconstruct each frame
+or image set independently, often producing point clouds that differ by an
+arbitrary scale, rotation, and translation. Constructing a temporally coherent
+4D reconstruction therefore requires estimating geometric transformations
+between independently reconstructed frames and combining these estimates into a
+globally consistent coordinate system.
+
+This section introduces the mathematical concepts that underpin these
+operations. First, similarity transformations and Umeyama alignment are
+presented as the basis for point-cloud registration. Next, the geometry of the
+rotation manifold $\mathrm{SO}(3)$ and geodesic rotation averaging are
+introduced, which form the foundation of the pose-graph optimisation strategy
+described later in Chapter~\ref{c:methodology}. Finally, the Chamfer distance
+is presented as a primary metric for evaluating reconstruction quality.
+
+\subsection{Similarity Transformations and Umeyama Alignment}
+
+A three-dimensional similarity transformation aligns two point clouds by accounting for differences in scale, rotation, and translation.
+
+A three-dimensional similarity transformation is defined as
+
+\begin{equation}
+\mathbf{y}
+=
+s\,\mathbf{R}\mathbf{x}
++
+\mathbf{t},
+\end{equation}
+
+where $s \in \mathbb{R}^{+}$ denotes a global scale factor,
+$\mathbf{R} \in \mathrm{SO}(3)$ is a rotation matrix, and
+$\mathbf{t} \in \mathbb{R}^{3}$ is a translation vector.
+
+Throughout this thesis, similarity alignment is performed using the
+least-squares method proposed by Umeyama~\cite{umeyama1991least}. Given two
+sets of corresponding three-dimensional points, the algorithm estimates the
+optimal scale, rotation, and translation that minimise the mean squared
+alignment error. Because the solution is available in closed form, Umeyama
+alignment provides an efficient and numerically stable method for registering
+reconstructed point clouds.
+
+The estimated similarity transformations are used both for aligning
+reconstructions to ground truth during evaluation and for computing
+frame-to-frame alignments in the temporal reconstruction strategies introduced
+in Chapter~\ref{c:methodology}.
+
+\subsection{Rotation Geometry on \texorpdfstring{$\mathrm{SO}(3)$}{SO(3)}}
+
+While translations and scales can be manipulated using standard Euclidean
+operations, rotations require special treatment because they lie on a curved
+manifold rather than in a vector space. The set of valid three-dimensional
+rotations forms the special orthogonal group
+
+\begin{equation}
+\mathrm{SO}(3)
+=
+\left\{
+\mathbf{R}\in\mathbb{R}^{3\times3}
+\;\middle|\;
+\mathbf{R}^{\top}\mathbf{R}=\mathbf{I},
+\;
+\det(\mathbf{R})=1
+\right\}.
+\end{equation}
+
+Direct arithmetic averaging of rotation matrices generally produces matrices
+that no longer satisfy the orthogonality constraints of
+$\mathrm{SO}(3)$~\cite{absil2008optimization,chirikjian2011stochastic}.
+Consequently, optimisation and averaging operations must be performed using
+geometric constructions defined on the manifold itself.
+
+A commonly used measure of rotational discrepancy is the geodesic distance
+
+\begin{equation}
+d(\mathbf{R}_1,\mathbf{R}_2)
+=
+\arccos
+\left(
+\frac{
+\mathrm{tr}
+\!\left(
+\mathbf{R}_1^{\top}\mathbf{R}_2
+\right)
+-1
+}{2}
+\right),
+\end{equation}
+
+which corresponds to the minimum rotation angle required to transform one
+orientation into the other~\cite{hartley2013rotation}.
+
+\subsection{Geodesic Rotation Averaging}
+
+The pose-graph optimisation strategy developed in this thesis estimates
+pairwise similarity transformations between many frames in a sequence. Since
+multiple alignment paths may exist between two frames, individual rotation
+estimates must be combined into a single globally consistent orientation.
+
+Given a set of rotations
+$\{\mathbf{R}_i\}_{i=1}^{N}$, rotation averaging seeks a consensus rotation
+that best represents the collection. A common formulation minimises the sum of
+squared geodesic distances,
+
+\begin{equation}
+\mathbf{R}^{*}
+=
+\arg\min_{\mathbf{R}\in\mathrm{SO}(3)}
+\sum_{i=1}^{N}
+d(\mathbf{R},\mathbf{R}_i)^2.
+\end{equation}
+
+Although effective, this L2 formulation can be sensitive to erroneous
+pairwise alignments and outliers. To improve robustness, this thesis employs an
+L1 geodesic formulation,
+
+\begin{equation}
+\mathbf{R}^{*}
+=
+\arg\min_{\mathbf{R}\in\mathrm{SO}(3)}
+\sum_{i=1}^{N}
+d(\mathbf{R},\mathbf{R}_i),
+\end{equation}
+
+which corresponds to the geometric median on the rotation manifold.
+
+The optimisation is performed using a manifold adaptation of the Weiszfeld
+algorithm~\cite{weiszfeld1937point}. At each iteration, rotations are mapped
+to the tangent space of the current estimate via the logarithmic map, robustly
+averaged using distance-dependent weights, and projected back onto
+$\mathrm{SO}(3)$ through the exponential map. Compared with conventional L2
+averaging, this approach reduces the influence of unreliable pairwise
+transformations and yields more stable consensus rotations during pose-graph
+optimisation.
+
+\subsection{Chamfer Distance}
+
+Geometric reconstruction quality is evaluated throughout this thesis using a
+combination of distance-based and threshold-based metrics. The primary
+distance-based metric is the symmetric Chamfer distance, which measures the
+average geometric discrepancy between reconstructed and ground-truth point
+clouds~\cite{chamfer1977image}.
+
+Given two point sets $P$ and $Q$, the Chamfer distance is defined as
+
+\begin{equation}
+d_{\mathrm{Chamfer}}(P,Q)
+=
+\frac{1}{|P|}
+\sum_{\mathbf{p}\in P}
+\min_{\mathbf{q}\in Q}
+\|\mathbf{p}-\mathbf{q}\|_2
++
+\frac{1}{|Q|}
+\sum_{\mathbf{q}\in Q}
+\min_{\mathbf{p}\in P}
+\|\mathbf{q}-\mathbf{p}\|_2.
+\end{equation}
+
+The first term measures how accurately reconstructed points correspond to the
+reference geometry, while the second term measures how completely the
+reference geometry is represented by the reconstruction. Smaller values
+therefore indicate closer geometric agreement between the two point sets.
+
+Chamfer distance provides a global measure of reconstruction quality and is
+widely used in three-dimensional vision benchmarks. However, because average
+distances do not directly indicate whether a reconstruction satisfies the
+precision requirements of downstream applications, this thesis additionally
+employs threshold-based Accuracy and Completeness metrics, introduced in
+Chapter~\ref{c:methodology}, to quantify the proportion of reconstructed
+geometry lying within a specified error tolerance.
+
+The concepts introduced in this section provide the mathematical foundation
+for the temporal alignment and evaluation framework developed later in this
+thesis. In particular, Umeyama alignment enables frame-to-frame registration,
+while geodesic rotation averaging and Weiszfeld optimisation form the core of
+the pose-graph optimisation strategy used to construct globally consistent
+4D reconstructions from independently reconstructed frames.

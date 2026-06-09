@@ -14,12 +14,18 @@
 \contentsline {subsection}{\numberline {2.2.3}Temporal Reconstruction Models}{10}{subsection.2.2.3}%
 \contentsline {paragraph}{VGGT4D.}{10}{subsection.2.2.3}%
 \contentsline {paragraph}{MonoFusion.}{10}{subsection.2.2.3}%
-\contentsline {chapter}{\numberline {3}Methodology: The Evaluation Framework}{12}{chapter.3}%
-\contentsline {chapter}{\numberline {4}System Implementation}{13}{chapter.4}%
-\contentsline {chapter}{\numberline {5}Results}{14}{chapter.5}%
-\contentsline {chapter}{\numberline {6}Refinement Strategy}{15}{chapter.6}%
-\contentsline {chapter}{\numberline {7}Discussion}{16}{chapter.7}%
-\contentsline {chapter}{\numberline {8}Conclusions}{17}{chapter.8}%
-\contentsline {chapter}{Bibliography}{17}{section*.5}%
-\contentsline {chapter}{List of Acronyms}{20}{section*.7}%
-\contentsline {chapter}{\numberline {A}Artifacts Availability}{21}{appendix.A}%
+\contentsline {section}{\numberline {2.3}SAM2 for Static and Dynamic Scene Segmentation}{11}{section.2.3}%
+\contentsline {section}{\numberline {2.4}Mathematical Background}{12}{section.2.4}%
+\contentsline {subsection}{\numberline {2.4.1}Similarity Transformations and Umeyama Alignment}{12}{subsection.2.4.1}%
+\contentsline {subsection}{\numberline {2.4.2}Rotation Geometry on $\mathrm {SO}(3)$}{13}{subsection.2.4.2}%
+\contentsline {subsection}{\numberline {2.4.3}Geodesic Rotation Averaging}{13}{subsection.2.4.3}%
+\contentsline {subsection}{\numberline {2.4.4}Chamfer Distance}{14}{subsection.2.4.4}%
+\contentsline {chapter}{\numberline {3}Methodology: The Evaluation Framework}{15}{chapter.3}%
+\contentsline {chapter}{\numberline {4}System Implementation}{16}{chapter.4}%
+\contentsline {chapter}{\numberline {5}Results}{17}{chapter.5}%
+\contentsline {chapter}{\numberline {6}Refinement Strategy}{18}{chapter.6}%
+\contentsline {chapter}{\numberline {7}Discussion}{19}{chapter.7}%
+\contentsline {chapter}{\numberline {8}Conclusions}{20}{chapter.8}%
+\contentsline {chapter}{Bibliography}{20}{section*.5}%
+\contentsline {chapter}{List of Acronyms}{24}{section*.7}%
+\contentsline {chapter}{\numberline {A}Artifacts Availability}{25}{appendix.A}%

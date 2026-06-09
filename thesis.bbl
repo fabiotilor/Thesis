@@ -19,6 +19,85 @@
 
 \refsection{0}
   \datalist[entry]{nty/global//global/global/global}
+    \entry{absil2008optimization}{book}{}{}
+      \name{author}{3}{}{%
+        {{hash=f04127af5590b24996356b703aabfef4}{%
+           family={Absil},
+           familyi={A\bibinitperiod},
+           given={Pierre-Antoine},
+           giveni={P\bibinithyphendelim A\bibinitperiod}}}%
+        {{hash=523f1624940e07366b63a96872ddb4be}{%
+           family={Mahony},
+           familyi={M\bibinitperiod},
+           given={Robert},
+           giveni={R\bibinitperiod}}}%
+        {{hash=0dfd29560d972684e45872242d7ebfb8}{%
+           family={Sepulchre},
+           familyi={S\bibinitperiod},
+           given={Rodolphe},
+           giveni={R\bibinitperiod}}}%
+      }
+      \strng{namehash}{95fe456df9bb3b23248095b3cbb2e591}
+      \strng{fullhash}{03593cbc464b9973027316aadae5c47f}
+      \strng{fullhashraw}{03593cbc464b9973027316aadae5c47f}
+      \strng{bibnamehash}{03593cbc464b9973027316aadae5c47f}
+      \strng{authorbibnamehash}{03593cbc464b9973027316aadae5c47f}
+      \strng{authornamehash}{95fe456df9bb3b23248095b3cbb2e591}
+      \strng{authorfullhash}{03593cbc464b9973027316aadae5c47f}
+      \strng{authorfullhashraw}{03593cbc464b9973027316aadae5c47f}
+      \field{sortinit}{A}
+      \field{sortinithash}{2f401846e2029bad6b3ecc16d50031e2}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{isbn}{978-0-691-13298-3}
+      \field{journaltitle}{Mathematics of Computation - Math. Comput.}
+      \field{month}{12}
+      \field{title}{Optimization Algorithms on Matrix Manifolds}
+      \field{volume}{78}
+      \field{year}{2008}
+      \verb{doi}
+      \verb 10.1515/9781400830244
+      \endverb
+    \endentry
+    \entry{chamfer1977image}{article}{}{}
+      \name{author}{4}{}{%
+        {{hash=4b8936e7d864001133f031152f6a10ac}{%
+           family={Barrow},
+           familyi={B\bibinitperiod},
+           given={Harry\bibnamedelima G.},
+           giveni={H\bibinitperiod\bibinitdelim G\bibinitperiod}}}%
+        {{hash=1158ea4f60244dbffc237293f443489c}{%
+           family={Tenenbaum},
+           familyi={T\bibinitperiod},
+           given={Jay\bibnamedelima M.},
+           giveni={J\bibinitperiod\bibinitdelim M\bibinitperiod}}}%
+        {{hash=e9706463974655ea0b5838077d44bb3f}{%
+           family={Bolles},
+           familyi={B\bibinitperiod},
+           given={Richard\bibnamedelima C.},
+           giveni={R\bibinitperiod\bibinitdelim C\bibinitperiod}}}%
+        {{hash=ab340c68b02230781db1303e585e5bb8}{%
+           family={Wolf},
+           familyi={W\bibinitperiod},
+           given={Helen\bibnamedelima C.},
+           giveni={H\bibinitperiod\bibinitdelim C\bibinitperiod}}}%
+      }
+      \strng{namehash}{e49c1261f740bba1810b938e6787adeb}
+      \strng{fullhash}{3c3abb00496e41b9ff8b500c1b53f99a}
+      \strng{fullhashraw}{3c3abb00496e41b9ff8b500c1b53f99a}
+      \strng{bibnamehash}{e49c1261f740bba1810b938e6787adeb}
+      \strng{authorbibnamehash}{e49c1261f740bba1810b938e6787adeb}
+      \strng{authornamehash}{e49c1261f740bba1810b938e6787adeb}
+      \strng{authorfullhash}{3c3abb00496e41b9ff8b500c1b53f99a}
+      \strng{authorfullhashraw}{3c3abb00496e41b9ff8b500c1b53f99a}
+      \field{sortinit}{B}
+      \field{sortinithash}{d7095fff47cda75ca2589920aae98399}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{journaltitle}{International Joint Conference on Artificial Intelligence}
+      \field{title}{Image Matching as a Distance Measure}
+      \field{year}{1977}
+    \endentry
     \entry{dexycb}{inproceedings}{}{}
       \name{author}{12}{}{%
         {{hash=d7bd68dee7391e49eed4a1acfe0a6158}{%
@@ -141,6 +220,121 @@
       \field{booktitle}{Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition (CVPR)}
       \field{title}{GGPT: Geometry-Grounded Point Transformer}
       \field{year}{2026}
+    \endentry
+    \entry{Cheng2025MonSterUS}{inproceedings}{}{}
+      \name{author}{13}{}{%
+        {{hash=852e2e27fd7e6573fd2fa22321a65534}{%
+           family={Cheng},
+           familyi={C\bibinitperiod},
+           given={Junda},
+           giveni={J\bibinitperiod}}}%
+        {{hash=dca41abb88b93d80d97aa5e88cfc1df4}{%
+           family={Liao},
+           familyi={L\bibinitperiod},
+           given={Wenjing},
+           giveni={W\bibinitperiod}}}%
+        {{hash=32887024e9e5d2743d9caf6fe9112748}{%
+           family={Cai},
+           familyi={C\bibinitperiod},
+           given={Zhipeng},
+           giveni={Z\bibinitperiod}}}%
+        {{hash=36e6eee9823f4a0d5d3bc23c654adcae}{%
+           family={Liu},
+           familyi={L\bibinitperiod},
+           given={Longliang},
+           giveni={L\bibinitperiod}}}%
+        {{hash=5a5b22551ca2b07feb978081c3206c2b}{%
+           family={Xu},
+           familyi={X\bibinitperiod},
+           given={Gangwei},
+           giveni={G\bibinitperiod}}}%
+        {{hash=06ee0001357b723b134275f5ffb342ce}{%
+           family={Wang},
+           familyi={W\bibinitperiod},
+           given={Xianqi},
+           giveni={X\bibinitperiod}}}%
+        {{hash=98f2265f8899dfbaf0624861ea9514ba}{%
+           family={Wang},
+           familyi={W\bibinitperiod},
+           given={Yuzhou},
+           giveni={Y\bibinitperiod}}}%
+        {{hash=cbdf0c0ed8d3aed7ffd2ef3d93530047}{%
+           family={Yuan},
+           familyi={Y\bibinitperiod},
+           given={Zikang},
+           giveni={Z\bibinitperiod}}}%
+        {{hash=c40603e7956e020566ebeebf61741516}{%
+           family={Deng},
+           familyi={D\bibinitperiod},
+           given={Yong},
+           giveni={Y\bibinitperiod}}}%
+        {{hash=cf7a5e07e66f9d8cb7dda70aecce0a9f}{%
+           family={Zang},
+           familyi={Z\bibinitperiod},
+           given={Jinliang},
+           giveni={J\bibinitperiod}}}%
+        {{hash=f11b70e99345438ef864b582c1376051}{%
+           family={Shi},
+           familyi={S\bibinitperiod},
+           given={Yangyang},
+           giveni={Y\bibinitperiod}}}%
+        {{hash=4c9157227cef6d36d443ce936935d128}{%
+           family={Tang},
+           familyi={T\bibinitperiod},
+           given={Jinhui},
+           giveni={J\bibinitperiod}}}%
+        {{hash=62d4a83086583fabbbf84995d583c96e}{%
+           family={Yang},
+           familyi={Y\bibinitperiod},
+           given={Xin},
+           giveni={X\bibinitperiod}}}%
+      }
+      \strng{namehash}{ce5e6eb06b9975750dcc4e13cdd58dc2}
+      \strng{fullhash}{2ee50612bfabe6afc33565d5819c420d}
+      \strng{fullhashraw}{2ee50612bfabe6afc33565d5819c420d}
+      \strng{bibnamehash}{ce5e6eb06b9975750dcc4e13cdd58dc2}
+      \strng{authorbibnamehash}{ce5e6eb06b9975750dcc4e13cdd58dc2}
+      \strng{authornamehash}{ce5e6eb06b9975750dcc4e13cdd58dc2}
+      \strng{authorfullhash}{2ee50612bfabe6afc33565d5819c420d}
+      \strng{authorfullhashraw}{2ee50612bfabe6afc33565d5819c420d}
+      \field{sortinit}{C}
+      \field{sortinithash}{4d103a86280481745c9c897c925753c0}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{title}{MonSter++: Unified Stereo Matching, Multi-view Stereo, and Real-time Stereo with Monodepth Priors}
+      \field{year}{2025}
+      \verb{urlraw}
+      \verb https://api.semanticscholar.org/CorpusID:275544438
+      \endverb
+      \verb{url}
+      \verb https://api.semanticscholar.org/CorpusID:275544438
+      \endverb
+    \endentry
+    \entry{chirikjian2011stochastic}{book}{}{}
+      \name{author}{1}{}{%
+        {{hash=0bb4fe91e5d0c99f7ecf93d5e8c0ca09}{%
+           family={Chirikjian},
+           familyi={C\bibinitperiod},
+           given={Gregory\bibnamedelima S.},
+           giveni={G\bibinitperiod\bibinitdelim S\bibinitperiod}}}%
+      }
+      \list{publisher}{1}{%
+        {Birkhäuser}%
+      }
+      \strng{namehash}{0bb4fe91e5d0c99f7ecf93d5e8c0ca09}
+      \strng{fullhash}{0bb4fe91e5d0c99f7ecf93d5e8c0ca09}
+      \strng{fullhashraw}{0bb4fe91e5d0c99f7ecf93d5e8c0ca09}
+      \strng{bibnamehash}{0bb4fe91e5d0c99f7ecf93d5e8c0ca09}
+      \strng{authorbibnamehash}{0bb4fe91e5d0c99f7ecf93d5e8c0ca09}
+      \strng{authornamehash}{0bb4fe91e5d0c99f7ecf93d5e8c0ca09}
+      \strng{authorfullhash}{0bb4fe91e5d0c99f7ecf93d5e8c0ca09}
+      \strng{authorfullhashraw}{0bb4fe91e5d0c99f7ecf93d5e8c0ca09}
+      \field{sortinit}{C}
+      \field{sortinithash}{4d103a86280481745c9c897c925753c0}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{title}{Stochastic Models, Information Theory, and Lie Groups, Volume 2}
+      \field{year}{2011}
     \endentry
     \entry{Cin_2025_CVPR}{inproceedings}{}{}
       \name{author}{4}{}{%
@@ -271,6 +465,49 @@
       \field{title}{Multiple View Geometry in Computer Vision}
       \field{year}{2004}
     \endentry
+    \entry{hartley2013rotation}{article}{}{}
+      \name{author}{4}{}{%
+        {{hash=a0cea72f57464ff654a3f8362e58503d}{%
+           family={Hartley},
+           familyi={H\bibinitperiod},
+           given={Richard},
+           giveni={R\bibinitperiod}}}%
+        {{hash=c714822b3f0b920bdfd89a26bc132308}{%
+           family={Trumpf},
+           familyi={T\bibinitperiod},
+           given={Jochen},
+           giveni={J\bibinitperiod}}}%
+        {{hash=46e3a90300a599dc3588c3ceb79df78b}{%
+           family={Dai},
+           familyi={D\bibinitperiod},
+           given={Yuchao},
+           giveni={Y\bibinitperiod}}}%
+        {{hash=bfb71cf26620b3b038faaa059c3341f7}{%
+           family={Li},
+           familyi={L\bibinitperiod},
+           given={Hongdong},
+           giveni={H\bibinitperiod}}}%
+      }
+      \strng{namehash}{8e7a03190a02019e6b707a2cb770fbb2}
+      \strng{fullhash}{b03fb97fad77363a48d2d580169ed4a4}
+      \strng{fullhashraw}{b03fb97fad77363a48d2d580169ed4a4}
+      \strng{bibnamehash}{8e7a03190a02019e6b707a2cb770fbb2}
+      \strng{authorbibnamehash}{8e7a03190a02019e6b707a2cb770fbb2}
+      \strng{authornamehash}{8e7a03190a02019e6b707a2cb770fbb2}
+      \strng{authorfullhash}{b03fb97fad77363a48d2d580169ed4a4}
+      \strng{authorfullhashraw}{b03fb97fad77363a48d2d580169ed4a4}
+      \field{sortinit}{H}
+      \field{sortinithash}{23a3aa7c24e56cfa16945d55545109b5}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{journaltitle}{International Journal of Computer Vision}
+      \field{number}{3}
+      \field{title}{Rotation Averaging}
+      \field{volume}{103}
+      \field{year}{2013}
+      \field{pages}{267\bibrangedash 305}
+      \range{pages}{39}
+    \endentry
     \entry{vggt4d}{misc}{}{}
       \name{author}{5}{}{%
         {{hash=e171c63652ef5d90507cbbcc479aa99a}{%
@@ -325,6 +562,63 @@
       \verb https://arxiv.org/abs/2511.19971
       \endverb
     \endentry
+    \entry{Jiang_2025_ICCV}{inproceedings}{}{}
+      \name{author}{7}{}{%
+        {{hash=ba54d60fd2ca90cb3470fc089f228146}{%
+           family={Jiang},
+           familyi={J\bibinitperiod},
+           given={Jianfei},
+           giveni={J\bibinitperiod}}}%
+        {{hash=8b3d9dea3de4cfd86a2154345d23c116}{%
+           family={Liu},
+           familyi={L\bibinitperiod},
+           given={Qiankun},
+           giveni={Q\bibinitperiod}}}%
+        {{hash=67c74327c428c0e34709eabdb28b5f05}{%
+           family={Yu},
+           familyi={Y\bibinitperiod},
+           given={Haochen},
+           giveni={H\bibinitperiod}}}%
+        {{hash=eb7d4a9e67f74fa8b6cc306f8f72afc9}{%
+           family={Liu},
+           familyi={L\bibinitperiod},
+           given={Hongyuan},
+           giveni={H\bibinitperiod}}}%
+        {{hash=810173abb277b0391945a21bee549da8}{%
+           family={Wang},
+           familyi={W\bibinitperiod},
+           given={Liyong},
+           giveni={L\bibinitperiod}}}%
+        {{hash=ebe470250edfb5209eca764ed80458bd}{%
+           family={Chen},
+           familyi={C\bibinitperiod},
+           given={Jiansheng},
+           giveni={J\bibinitperiod}}}%
+        {{hash=eee95eaac8be5a34a026c20dd0e1ddf2}{%
+           family={Ma},
+           familyi={M\bibinitperiod},
+           given={Huimin},
+           giveni={H\bibinitperiod}}}%
+      }
+      \strng{namehash}{e4929ebc6ee8fbd65f31671ec6cf70d5}
+      \strng{fullhash}{0cdc3cfa970226937b2817d33bf66d7c}
+      \strng{fullhashraw}{0cdc3cfa970226937b2817d33bf66d7c}
+      \strng{bibnamehash}{e4929ebc6ee8fbd65f31671ec6cf70d5}
+      \strng{authorbibnamehash}{e4929ebc6ee8fbd65f31671ec6cf70d5}
+      \strng{authornamehash}{e4929ebc6ee8fbd65f31671ec6cf70d5}
+      \strng{authorfullhash}{0cdc3cfa970226937b2817d33bf66d7c}
+      \strng{authorfullhashraw}{0cdc3cfa970226937b2817d33bf66d7c}
+      \field{sortinit}{J}
+      \field{sortinithash}{b2f54a9081ace9966a7cb9413811edb4}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{booktitle}{Proceedings of the IEEE/CVF International Conference on Computer Vision (ICCV)}
+      \field{month}{10}
+      \field{title}{MonoMVSNet: Monocular Priors Guided Multi-View Stereo Network}
+      \field{year}{2025}
+      \field{pages}{27806\bibrangedash 27816}
+      \range{pages}{11}
+    \endentry
     \entry{mast3r}{misc}{}{}
       \name{author}{3}{}{%
         {{hash=56306aad24e83463892152ec58668e19}{%
@@ -361,6 +655,55 @@
       \field{year}{2024}
       \verb{eprint}
       \verb 2406.09756
+      \endverb
+    \endentry
+    \entry{li2025mono3rexploitingmonocularcues}{misc}{}{}
+      \name{author}{4}{}{%
+        {{hash=be861748ae913367498f7cbc4ba69a0a}{%
+           family={Li},
+           familyi={L\bibinitperiod},
+           given={Wenyu},
+           giveni={W\bibinitperiod}}}%
+        {{hash=4e8940d6e1df49ca17c25f3eab2cdc16}{%
+           family={Liu},
+           familyi={L\bibinitperiod},
+           given={Sidun},
+           giveni={S\bibinitperiod}}}%
+        {{hash=61d7181bcb0d87b9c8e0ed36630cb6c6}{%
+           family={Qiao},
+           familyi={Q\bibinitperiod},
+           given={Peng},
+           giveni={P\bibinitperiod}}}%
+        {{hash=8ac13019bb4ae995fb72b3f3fac2beb6}{%
+           family={Dou},
+           familyi={D\bibinitperiod},
+           given={Yong},
+           giveni={Y\bibinitperiod}}}%
+      }
+      \strng{namehash}{ef8bcae8751f628771e338892a563945}
+      \strng{fullhash}{8d9da24817a1e76b311bd5fdb4800390}
+      \strng{fullhashraw}{8d9da24817a1e76b311bd5fdb4800390}
+      \strng{bibnamehash}{ef8bcae8751f628771e338892a563945}
+      \strng{authorbibnamehash}{ef8bcae8751f628771e338892a563945}
+      \strng{authornamehash}{ef8bcae8751f628771e338892a563945}
+      \strng{authorfullhash}{8d9da24817a1e76b311bd5fdb4800390}
+      \strng{authorfullhashraw}{8d9da24817a1e76b311bd5fdb4800390}
+      \field{sortinit}{L}
+      \field{sortinithash}{7c47d417cecb1f4bd38d1825c427a61a}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{eprintclass}{cs.CV}
+      \field{eprinttype}{arXiv}
+      \field{title}{Mono3R: Exploiting Monocular Cues for Geometric 3D Reconstruction}
+      \field{year}{2025}
+      \verb{eprint}
+      \verb 2504.13419
+      \endverb
+      \verb{urlraw}
+      \verb https://arxiv.org/abs/2504.13419
+      \endverb
+      \verb{url}
+      \verb https://arxiv.org/abs/2504.13419
       \endverb
     \endentry
     \entry{pataki2025mpsfmmonocularsurfacepriors}{misc}{}{}
@@ -639,6 +982,38 @@
       \field{title}{A Comparison and Evaluation of Multi-View Stereo Reconstruction Algorithms}
       \field{year}{2006}
     \endentry
+    \entry{umeyama1991least}{article}{}{}
+      \name{author}{1}{}{%
+        {{hash=2dc7cd18759a5a030ee67028660a94ff}{%
+           family={Umeyama},
+           familyi={U\bibinitperiod},
+           given={S.},
+           giveni={S\bibinitperiod}}}%
+      }
+      \strng{namehash}{2dc7cd18759a5a030ee67028660a94ff}
+      \strng{fullhash}{2dc7cd18759a5a030ee67028660a94ff}
+      \strng{fullhashraw}{2dc7cd18759a5a030ee67028660a94ff}
+      \strng{bibnamehash}{2dc7cd18759a5a030ee67028660a94ff}
+      \strng{authorbibnamehash}{2dc7cd18759a5a030ee67028660a94ff}
+      \strng{authornamehash}{2dc7cd18759a5a030ee67028660a94ff}
+      \strng{authorfullhash}{2dc7cd18759a5a030ee67028660a94ff}
+      \strng{authorfullhashraw}{2dc7cd18759a5a030ee67028660a94ff}
+      \field{sortinit}{U}
+      \field{sortinithash}{6901a00e45705986ee5e7ca9fd39adca}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{journaltitle}{IEEE Transactions on Pattern Analysis and Machine Intelligence}
+      \field{number}{4}
+      \field{title}{Least-squares estimation of transformation parameters between two point patterns}
+      \field{volume}{13}
+      \field{year}{1991}
+      \field{pages}{376\bibrangedash 380}
+      \range{pages}{5}
+      \verb{doi}
+      \verb 10.1109/34.88573
+      \endverb
+      \keyw{Parameter estimation;Computer vision;Robot vision systems;Pattern recognition;Robotics and automation;Cameras;Computer graphics;Calibration;Image processing;Application software}
+    \endentry
     \entry{vggt}{misc}{}{}
       \name{author}{6}{}{%
         {{hash=f7d3af6210d07a58ff3c30b47d6d64f8}{%
@@ -839,6 +1214,33 @@
       \field{year}{2025}
       \field{pages}{8252\bibrangedash 8263}
       \range{pages}{12}
+    \endentry
+    \entry{weiszfeld1937point}{article}{}{}
+      \name{author}{1}{}{%
+        {{hash=b8b84e3259b53d22e108b523132aed39}{%
+           family={Weiszfeld},
+           familyi={W\bibinitperiod},
+           given={Endre},
+           giveni={E\bibinitperiod}}}%
+      }
+      \strng{namehash}{b8b84e3259b53d22e108b523132aed39}
+      \strng{fullhash}{b8b84e3259b53d22e108b523132aed39}
+      \strng{fullhashraw}{b8b84e3259b53d22e108b523132aed39}
+      \strng{bibnamehash}{b8b84e3259b53d22e108b523132aed39}
+      \strng{authorbibnamehash}{b8b84e3259b53d22e108b523132aed39}
+      \strng{authornamehash}{b8b84e3259b53d22e108b523132aed39}
+      \strng{authorfullhash}{b8b84e3259b53d22e108b523132aed39}
+      \strng{authorfullhashraw}{b8b84e3259b53d22e108b523132aed39}
+      \field{sortinit}{W}
+      \field{sortinithash}{4315d78024d0cea9b57a0c6f0e35ed0d}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{journaltitle}{Tohoku Mathematical Journal}
+      \field{title}{Sur le point pour lequel la somme des distances de n points donnés est minimum}
+      \field{volume}{43}
+      \field{year}{1937}
+      \field{pages}{355\bibrangedash 386}
+      \range{pages}{32}
     \endentry
     \entry{hi4d}{inproceedings}{}{}
       \name{author}{6}{}{%

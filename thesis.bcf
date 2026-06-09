@@ -2422,7 +2422,21 @@
     <bcf:citekey order="37" intorder="1">pi3</bcf:citekey>
     <bcf:citekey order="38" intorder="1">ggpt</bcf:citekey>
     <bcf:citekey order="39" intorder="1">vggt4d</bcf:citekey>
-    <bcf:citekey order="40" intorder="1">monofusion</bcf:citekey>
+    <bcf:citekey order="40" intorder="1">vggt4d</bcf:citekey>
+    <bcf:citekey order="41" intorder="1">vggt4d</bcf:citekey>
+    <bcf:citekey order="42" intorder="1">monofusion</bcf:citekey>
+    <bcf:citekey order="43" intorder="1">li2025mono3rexploitingmonocularcues</bcf:citekey>
+    <bcf:citekey order="43" intorder="2">Jiang_2025_ICCV</bcf:citekey>
+    <bcf:citekey order="43" intorder="3">Cheng2025MonSterUS</bcf:citekey>
+    <bcf:citekey order="44" intorder="1">sam2</bcf:citekey>
+    <bcf:citekey order="45" intorder="1">sam2</bcf:citekey>
+    <bcf:citekey order="46" intorder="1">monofusion</bcf:citekey>
+    <bcf:citekey order="47" intorder="1">umeyama1991least</bcf:citekey>
+    <bcf:citekey order="48" intorder="1">absil2008optimization</bcf:citekey>
+    <bcf:citekey order="48" intorder="2">chirikjian2011stochastic</bcf:citekey>
+    <bcf:citekey order="49" intorder="1">hartley2013rotation</bcf:citekey>
+    <bcf:citekey order="50" intorder="1">weiszfeld1937point</bcf:citekey>
+    <bcf:citekey order="51" intorder="1">chamfer1977image</bcf:citekey>
   </bcf:section>
   <!-- SORTING TEMPLATES -->
   <bcf:sortingtemplate name="nty">
