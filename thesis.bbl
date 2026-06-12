@@ -870,6 +870,56 @@
       \verb https://arxiv.org/abs/2408.00714
       \endverb
     \endentry
+    \entry{rusu2008statistical}{inproceedings}{}{}
+      \name{author}{5}{}{%
+        {{hash=598e9072f4ae6c3325d1592edb06325c}{%
+           family={Rusu},
+           familyi={R\bibinitperiod},
+           given={Radu},
+           giveni={R\bibinitperiod}}}%
+        {{hash=a71e6cb8f89aff0a67400cd429e894f2}{%
+           family={Blodow},
+           familyi={B\bibinitperiod},
+           given={Nico},
+           giveni={N\bibinitperiod}}}%
+        {{hash=1f4b6fa416d97ab4f75a1f5e3f628524}{%
+           family={Marton},
+           familyi={M\bibinitperiod},
+           given={Zoltan},
+           giveni={Z\bibinitperiod}}}%
+        {{hash=2009325ff17e08c89ac4ee95e2b60440}{%
+           family={Soos},
+           familyi={S\bibinitperiod},
+           given={Alina},
+           giveni={A\bibinitperiod}}}%
+        {{hash=3dd53ac30b09d0130d3ee99f06833a82}{%
+           family={Beetz},
+           familyi={B\bibinitperiod},
+           given={Michael},
+           giveni={M\bibinitperiod}}}%
+      }
+      \strng{namehash}{5aefaaede071a95229dad798341c774a}
+      \strng{fullhash}{2aeed1eac657dc8d1f6b88b899ab9c78}
+      \strng{fullhashraw}{2aeed1eac657dc8d1f6b88b899ab9c78}
+      \strng{bibnamehash}{5aefaaede071a95229dad798341c774a}
+      \strng{authorbibnamehash}{5aefaaede071a95229dad798341c774a}
+      \strng{authornamehash}{5aefaaede071a95229dad798341c774a}
+      \strng{authorfullhash}{2aeed1eac657dc8d1f6b88b899ab9c78}
+      \strng{authorfullhashraw}{2aeed1eac657dc8d1f6b88b899ab9c78}
+      \field{sortinit}{R}
+      \field{sortinithash}{5e1c39a9d46ffb6bebd8f801023a9486}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{journaltitle}{International Conference on Intelligent Robots and Systems, IEEE, San Diego, CA, Oct. 29-Nov. 2}
+      \field{month}{10}
+      \field{title}{Towards 3D Object Maps for Autonomous Household Robots}
+      \field{year}{2007}
+      \field{pages}{3191\bibrangedash 3198}
+      \range{pages}{8}
+      \verb{doi}
+      \verb 10.1109/IROS.2007.4399309
+      \endverb
+    \endentry
     \entry{schoenberger2016sfm}{inproceedings}{}{}
       \name{author}{2}{}{%
         {{hash=e4ed718dd19b3fee6b128ed86216cb38}{%
@@ -981,6 +1031,52 @@
       \field{journaltitle}{Proceedings of the IEEE Conference on Computer Vision and Pattern Recognition}
       \field{title}{A Comparison and Evaluation of Multi-View Stereo Reconstruction Algorithms}
       \field{year}{2006}
+    \endentry
+    \entry{sturm12iros}{inproceedings}{}{}
+      \name{author}{5}{}{%
+        {{hash=ab99cf1964133ee312f859db2edb5fe8}{%
+           family={Sturm},
+           familyi={S\bibinitperiod},
+           given={J.},
+           giveni={J\bibinitperiod}}}%
+        {{hash=b497d06526b052e00774b1b5cd19f227}{%
+           family={Engelhard},
+           familyi={E\bibinitperiod},
+           given={N.},
+           giveni={N\bibinitperiod}}}%
+        {{hash=358b55c51c3329f4b50a4197b37d3804}{%
+           family={Endres},
+           familyi={E\bibinitperiod},
+           given={F.},
+           giveni={F\bibinitperiod}}}%
+        {{hash=bce2faa6685176847af3844f1c3dfef2}{%
+           family={Burgard},
+           familyi={B\bibinitperiod},
+           given={W.},
+           giveni={W\bibinitperiod}}}%
+        {{hash=b4995f3c4c5030db3a9e2fe4f3d61481}{%
+           family={Cremers},
+           familyi={C\bibinitperiod},
+           given={D.},
+           giveni={D\bibinitperiod}}}%
+      }
+      \strng{namehash}{9a64f5c5b3a69a26b7071fd86314adb2}
+      \strng{fullhash}{9c932a53e0d0df5b317b1f26cfd3ced4}
+      \strng{fullhashraw}{9c932a53e0d0df5b317b1f26cfd3ced4}
+      \strng{bibnamehash}{9a64f5c5b3a69a26b7071fd86314adb2}
+      \strng{authorbibnamehash}{9a64f5c5b3a69a26b7071fd86314adb2}
+      \strng{authornamehash}{9a64f5c5b3a69a26b7071fd86314adb2}
+      \strng{authorfullhash}{9c932a53e0d0df5b317b1f26cfd3ced4}
+      \strng{authorfullhashraw}{9c932a53e0d0df5b317b1f26cfd3ced4}
+      \field{sortinit}{S}
+      \field{sortinithash}{b164b07b29984b41daf1e85279fbc5ab}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{booktitle}{Proc. of the International Conference on Intelligent Robot Systems (IROS)}
+      \field{month}{10}
+      \field{title}{A Benchmark for the Evaluation of RGB-D SLAM Systems}
+      \field{year}{2012}
+      \keyw{rgb-d,rgb-d benchmark,sturmselection,dataset,vslam}
     \endentry
     \entry{umeyama1991least}{article}{}{}
       \name{author}{1}{}{%

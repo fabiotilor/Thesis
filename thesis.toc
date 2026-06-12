@@ -6,26 +6,44 @@
 \contentsline {section}{\numberline {2.1}Structure-from-Motion and Multi-View Stereo Foundations}{6}{section.2.1}%
 \contentsline {section}{\numberline {2.2}Foundation Models for 3D and 4D Reconstruction}{8}{section.2.2}%
 \contentsline {subsection}{\numberline {2.2.1}Spatial Reconstruction Models}{8}{subsection.2.2.1}%
-\contentsline {paragraph}{MASt3R-SfM.}{8}{subsection.2.2.1}%
+\contentsline {paragraph}{MASt3R-SfM.}{9}{subsection.2.2.1}%
 \contentsline {paragraph}{VGGT.}{9}{subsection.2.2.1}%
 \contentsline {paragraph}{PI3 and PI3X.}{9}{subsection.2.2.1}%
-\contentsline {subsection}{\numberline {2.2.2}Geometry Refinement Models}{9}{subsection.2.2.2}%
+\contentsline {subsection}{\numberline {2.2.2}Geometry Refinement Models}{10}{subsection.2.2.2}%
 \contentsline {paragraph}{GGPT.}{10}{subsection.2.2.2}%
 \contentsline {subsection}{\numberline {2.2.3}Temporal Reconstruction Models}{10}{subsection.2.2.3}%
-\contentsline {paragraph}{VGGT4D.}{10}{subsection.2.2.3}%
-\contentsline {paragraph}{MonoFusion.}{10}{subsection.2.2.3}%
+\contentsline {paragraph}{VGGT4D.}{11}{subsection.2.2.3}%
+\contentsline {paragraph}{MonoFusion.}{11}{subsection.2.2.3}%
 \contentsline {section}{\numberline {2.3}SAM2 for Static and Dynamic Scene Segmentation}{11}{section.2.3}%
 \contentsline {section}{\numberline {2.4}Mathematical Background}{12}{section.2.4}%
 \contentsline {subsection}{\numberline {2.4.1}Similarity Transformations and Umeyama Alignment}{12}{subsection.2.4.1}%
 \contentsline {subsection}{\numberline {2.4.2}Rotation Geometry on $\mathrm {SO}(3)$}{13}{subsection.2.4.2}%
 \contentsline {subsection}{\numberline {2.4.3}Geodesic Rotation Averaging}{13}{subsection.2.4.3}%
 \contentsline {subsection}{\numberline {2.4.4}Chamfer Distance}{14}{subsection.2.4.4}%
-\contentsline {chapter}{\numberline {3}Methodology: The Evaluation Framework}{15}{chapter.3}%
-\contentsline {chapter}{\numberline {4}System Implementation}{16}{chapter.4}%
-\contentsline {chapter}{\numberline {5}Results}{17}{chapter.5}%
-\contentsline {chapter}{\numberline {6}Refinement Strategy}{18}{chapter.6}%
-\contentsline {chapter}{\numberline {7}Discussion}{19}{chapter.7}%
-\contentsline {chapter}{\numberline {8}Conclusions}{20}{chapter.8}%
-\contentsline {chapter}{Bibliography}{20}{section*.5}%
-\contentsline {chapter}{List of Acronyms}{24}{section*.7}%
-\contentsline {chapter}{\numberline {A}Artifacts Availability}{25}{appendix.A}%
+\contentsline {chapter}{\numberline {3}Methodology: The Evaluation Framework}{16}{chapter.3}%
+\contentsline {section}{\numberline {3.1}Datasets}{16}{section.3.1}%
+\contentsline {section}{\numberline {3.2}Evaluation Pipeline}{19}{section.3.2}%
+\contentsline {subsection}{\numberline {3.2.1}Point Cloud Filtering}{19}{subsection.3.2.1}%
+\contentsline {subsubsection}{Ground-Truth Validity Masking}{20}{subsection.3.2.1}%
+\contentsline {subsubsection}{Confidence-Based Filtering}{20}{subsection.3.2.1}%
+\contentsline {subsubsection}{Statistical Outlier Removal}{21}{subsection.3.2.1}%
+\contentsline {subsection}{\numberline {3.2.2}Correspondence Construction}{21}{subsection.3.2.2}%
+\contentsline {subsection}{\numberline {3.2.3}Per-Frame Similarity Alignment}{21}{subsection.3.2.3}%
+\contentsline {section}{\numberline {3.3}Metric Suite}{22}{section.3.3}%
+\contentsline {subsection}{\numberline {3.3.1}Geometric Metrics at 1\,cm Threshold}{22}{subsection.3.3.1}%
+\contentsline {subsubsection}{Static/Dynamic Decomposition and Motion Gap}{23}{equation.3.3}%
+\contentsline {subsection}{\numberline {3.3.2}Temporal Consistency Metrics (Jitter and Drift)}{23}{subsection.3.3.2}%
+\contentsline {subsection}{\numberline {3.3.3}Camera Pose Metrics}{24}{subsection.3.3.3}%
+\contentsline {subsubsection}{Absolute Trajectory Error (ATE)}{25}{subsection.3.3.3}%
+\contentsline {subsubsection}{Relative Pose Error (RPE)}{25}{equation.3.5}%
+\contentsline {subsubsection}{Rotation Error}{25}{equation.3.6}%
+\contentsline {subsubsection}{Intrinsic Error}{25}{equation.3.7}%
+\contentsline {subsection}{\numberline {3.3.4}The 3D-to-4D Consistency Metric $\Delta _{\text {consistency}}$}{26}{subsection.3.3.4}%
+\contentsline {chapter}{\numberline {4}System Implementation}{27}{chapter.4}%
+\contentsline {chapter}{\numberline {5}Results}{28}{chapter.5}%
+\contentsline {chapter}{\numberline {6}Refinement Strategy}{29}{chapter.6}%
+\contentsline {chapter}{\numberline {7}Discussion}{30}{chapter.7}%
+\contentsline {chapter}{\numberline {8}Conclusions}{31}{chapter.8}%
+\contentsline {chapter}{Bibliography}{31}{section*.9}%
+\contentsline {chapter}{List of Acronyms}{35}{section*.11}%
+\contentsline {chapter}{\numberline {A}Artifacts Availability}{36}{appendix.A}%

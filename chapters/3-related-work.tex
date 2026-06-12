@@ -1,2 +1,289 @@
 \chapter{Methodology: The Evaluation Framework}
 \label{c:methodology}
+
+This chapter presents the evaluation framework developed to compare
+reconstruction methods under sparse-view conditions across three
+architectural families: spatial reconstruction models, geometry
+refinement models, and temporal reconstruction models. The framework is designed to assess not only per-frame geometric reconstruction quality, but also temporal consistency across dynamic sequences. Section~\ref{sec:datasets} introduces the datasets and camera configurations used throughout the experiments. Section~\ref{sec:evaluation_pipeline} describes the processing pipeline used to construct valid point-wise correspondences between reconstructions and ground truth. Section~\ref{sec:metrics} defines the geometric, temporal, and camera-based evaluation metrics. Section~\ref{sec:alignment_strategies} presents the temporal alignment strategies developed to transform independently reconstructed frames into a common coordinate system. Finally, Section~\ref{sec:dataset_adaptations} discusses dataset-specific adaptations required for robust evaluation.
+
+\section{Datasets}
+\label{sec:datasets}
+
+The experimental evaluation is conducted on two complementary benchmark datasets: DEX-YCB~\cite{dexycb} and Hi4D~\cite{hi4d}. Together, these datasets provide a diverse set of dynamic reconstruction scenarios covering both human--object and human--human interactions. Importantly, both datasets provide high-quality geometric ground truth alongside multiple synchronised camera views, making them well suited for studying sparse-view reconstruction.
+
+For DEX-YCB, subjects 1 through 10 are evaluated, each providing sequences of 24 to 25 frames. For Hi4D, 15 interaction sequences are evaluated across three subject pairs (pair00, pair01, pair09), covering a diverse range of activities including dance, fight, high-five, taichi, hug, yoga, basketball, talk, and bend. To avoid the run-up period before meaningful human--human contact begins, Hi4D sequences start at frame index 22. From that point, 24 consecutive frames are extracted per sequence, matching the DEX-YCB sequence length and remaining within GPU memory constraints for the native 4D models, which process the full multi-view sequence jointly.
+
+DEX-YCB focuses on dexterous human--object manipulation and provides RGB-D observations together with accurate object and hand pose annotations~\cite{dexycb}. The dataset captures a wide range of grasping and manipulation motions across diverse object categories, making it representative of practical human--robot interaction scenarios. Ground-truth depth is obtained directly from the calibrated RGB-D sensors provided by the dataset, enabling pixel-wise geometric comparison between reconstructed and observed scene geometry. While sensor depth carries the inherent noise characteristics of structured-light capture, it provides sufficiently accurate ground truth for evaluation at the 1\,cm precision threshold used throughout this thesis.
+
+Hi4D focuses on close human--human interaction and provides temporally consistent mesh-based ground truth for dynamic multi-person scenes~\cite{hi4d}. Compared to DEX-YCB, Hi4D contains substantially larger non-rigid motion, stronger self-occlusions, and more complex interaction patterns. Ground-truth geometry is derived from temporally consistent fitted meshes rather than direct depth measurement, which requires projecting the mesh into each camera view to obtain per-pixel reference geometry during evaluation. This derivation process, and the dataset-specific adaptations it necessitates, are described in Section~\ref{sec:dataset_adaptations}. Hi4D therefore serves as a challenging benchmark for evaluating reconstruction quality in dynamic four-dimensional settings, both in terms of scene complexity and evaluation methodology.
+
+Each dataset provides eight synchronised and calibrated camera views. To investigate reconstruction performance under sparse-view conditions, subsets consisting of two, three, and four cameras were selected from the available viewpoints. The selected configurations were chosen according to two criteria. First, the cameras should maximise visibility of the dynamic scene content to ensure that the interacting subjects remain observable from multiple viewpoints. Second, sufficient overlap between neighbouring views should be maintained, both to provide meaningful geometric constraints for correspondence-based reconstruction methods and to ensure that the static-scene correspondences required by the temporal alignment strategies introduced in Section~\ref{sec:alignment_strategies} can be reliably estimated.
+
+For DEX-YCB, the selected cameras span both frontal and rear viewpoints, providing broad scene coverage while maintaining overlap around the manipulation region. For Hi4D, larger subject motion and stronger self-occlusions made frontal viewpoints more reliable, resulting in configurations that primarily utilise front-facing cameras. The exact camera selections used throughout the evaluation are summarised in Table~\ref{tab:camera_configs}.
+
+\begin{table}[t]
+\centering
+\caption{Camera configurations used for sparse-view evaluation.}
+\label{tab:camera_configs}
+\begin{tabular}{lll}
+\toprule
+Views & DEX-YCB Cameras & Hi4D Cameras \\
+\midrule
+2 & 01, 06 & 16, 04$^{\dagger}$ \\
+3 & 04, 06, 07 & 16, 04, 88 \\
+4 & 02, 03, 06, 07 & 16, 04, 88, 28 \\
+\bottomrule
+\end{tabular}
+
+\vspace{0.5em}
+
+\begin{minipage}{0.95\linewidth}
+\footnotesize
+$^{\dagger}$ For pair09, alternative camera indices were selected
+(28, 40), (28, 40, 16), and (28, 40, 16, 52) for the
+2-, 3-, and 4-view configurations respectively.
+These cameras occupy spatial positions comparable to those used for
+pair00 and pair01, ensuring consistent subject coverage across sequences.
+\end{minipage}
+\end{table}
+
+It should be noted that the native 4D models --- VGGT4D and MonoFusion --- receive the full multi-view video sequence as a single input rather than processing frames independently. For these models, the selected camera subsets define the complete input provided at inference time. All other models process each frame independently, with temporal alignment applied as a post-processing step as described in Section~\ref{sec:alignment_strategies}.
+
+Figures~\ref{fig:dex_configs} and~\ref{fig:hi4d_configs} illustrate the selected camera configurations for DEX-YCB and Hi4D, respectively. The visualisations highlight the progressive increase in viewpoint coverage as additional cameras are introduced while preserving substantial overlap between neighbouring views.
+
+\begin{figure}[t]
+\centering
+
+\begin{subfigure}[b]{0.32\textwidth}
+    \includegraphics[width=\linewidth]{figures/DEX2}
+    \caption{2 views}
+\end{subfigure}
+\hfill
+\begin{subfigure}[b]{0.32\textwidth}
+    \includegraphics[width=\linewidth]{figures/DEX3}
+    \caption{3 views}
+\end{subfigure}
+\hfill
+\begin{subfigure}[b]{0.32\textwidth}
+    \includegraphics[width=\linewidth]{figures/DEX4}
+    \caption{4 views}
+\end{subfigure}
+
+\caption{Camera configurations for DEX-YCB across 2-, 3-, and 4-view settings.}
+\label{fig:dex_configs}
+
+\end{figure}
+
+\begin{figure}[t]
+\centering
+
+\begin{subfigure}[b]{0.32\textwidth}
+    \includegraphics[width=\linewidth]{figures/HI4D2}
+    \caption{2 views}
+\end{subfigure}
+\hfill
+\begin{subfigure}[b]{0.32\textwidth}
+    \includegraphics[width=\linewidth]{figures/HI4D3}
+    \caption{3 views}
+\end{subfigure}
+\hfill
+\begin{subfigure}[b]{0.32\textwidth}
+    \includegraphics[width=\linewidth]{figures/HI4D4}
+    \caption{4 views}
+\end{subfigure}
+
+\caption{Camera configurations for Hi4D across 2-, 3-, and 4-view settings. Frontal cameras are preferred due to stronger self-occlusions.}
+\label{fig:hi4d_configs}
+
+\end{figure}
+
+The resulting evaluation protocol provides a controlled framework for analysing how reconstruction quality changes as the number of available cameras decreases. By applying identical camera-count settings across both datasets, it becomes possible to isolate the effects of viewpoint sparsity while simultaneously examining the influence of different scene dynamics and interaction types.
+
+\FloatBarrier
+\section{Evaluation Pipeline}
+\label{sec:evaluation_pipeline}
+
+This section describes the processing pipeline that transforms raw model outputs into aligned, filtered point clouds. Figure~\ref{fig:evaluation_pipeline} gives an overview. The top row shows the per‑frame baseline alignment used for 3D metrics; the bottom row previews the 4D alignment stage (detailed in Section~\ref{sec:alignment_strategies}). The pipeline consists of three core stages: (1) point cloud filtering, (2) correspondence construction, and (3) similarity alignment.
+
+
+
+\begin{figure}[h!]
+\centering
+\includegraphics[width=\textwidth]{figures/method_figure_cropped}
+\caption{Evaluation pipeline overview. The top row illustrates the per‑frame baseline alignment: raw model outputs are filtered (depth validity, confidence, statistical outlier removal), correspondences are built via pixel projection, and Umeyama similarity alignment aligns each frame to ground truth, producing 3D metrics. The bottom row previews the additional 4D alignment stage (Section~\ref{sec:alignment_strategies}) that lifts independent frames into a common coordinate system using static masks; the three concrete strategies are detailed later.}
+\label{fig:pipeline}
+\end{figure}
+
+\subsection{Point Cloud Filtering}
+
+Raw reconstructions produced by the evaluated models contain points that are invalid, geometrically unreliable, or not meaningfully comparable to ground truth. The following filtering stages are applied to ensure that only valid correspondences enter the alignment and metric computation steps.
+
+\subsubsection{Ground-Truth Validity Masking}
+
+For DEX-YCB, each ground-truth depth map is accompanied by a validity mask indicating pixels where sensor measurements are reliable. Points whose ground-truth depth is invalid or exceeds a maximum range of 1.5\,m are discarded. The 1.5\,m cutoff removes distant regions that are often unreconstructed by the models due to limited camera coverage and avoids biasing metrics with large, irrelevant portions of the scene.
+
+For Hi4D, ground truth is provided as temporally consistent meshes of the human subjects only, with no background geometry. Instead of a depth-based validity mask, the dataset's provided segmentation masks are used to retain only pixels belonging to the interacting subjects. Background pixels are set to black in the input images before model inference, and the same masks are applied post-hoc to remove model predictions outside the subject region. The mesh-projection procedure used to obtain per-pixel ground-truth depth for Hi4D is described in Section~\ref{sec:dataset_adaptations}.
+
+\subsubsection{Confidence-Based Filtering}
+
+All evaluated reconstruction models output per-point confidence estimates alongside their geometric predictions. To focus evaluation on regions where each model is most certain, only the top 50\% of points by predicted confidence are retained. This threshold is applied independently per frame and per model. For DEX-YCB, confidence filtering is applied after ground-truth masking; for Hi4D, confidence filtering is omitted entirely because model confidences were found to be poorly calibrated on out-of-domain human-interaction data, and mask-based filtering already removes most invalid predictions.
+
+\subsubsection{Statistical Outlier Removal}
+
+Even after validity and confidence filtering, reconstructed point clouds may contain isolated floating points or sparse noise artifacts. Statistical outlier removal is applied using a KDTree-based implementation~\cite{rusu2008statistical}. For each point, the mean distance to its $k=15$ nearest neighbours is computed; points whose mean distance exceeds the global mean by more than 0.8 standard deviations are discarded. This step eliminates geometrically inconsistent floaters without affecting densely reconstructed surfaces.
+
+\subsection{Correspondence Construction}
+
+To align a reconstructed point cloud with ground truth, pixel-wise correspondences are established by projecting both point sets into each camera view using the known camera intrinsics.
+
+For a given camera view, let $\mathbf{p}_{\text{est}}(u,v) \in \mathbb{R}^3$ denote the reconstructed point at pixel $(u,v)$, and $\mathbf{p}_{\text{gt}}(u,v) \in \mathbb{R}^3$ the ground-truth point at the same pixel coordinates after unprojection from depth. For every pixel $(u,v)$ where both points are valid (i.e., not discarded by filtering), the pair $(\mathbf{p}_{\text{est}}, \mathbf{p}_{\text{gt}})$ forms a 3D--3D correspondence. This projection-based matching is deterministic, efficient, and avoids the complexity of nearest-neighbour search in 3D space.
+
+When multiple reconstructed points project to the same pixel — which can occur due to resolution differences or model artifacts — the point with the highest confidence is retained. Conversely, pixels where only one of the two point sets has a valid reconstruction are excluded from correspondence construction.
+
+\subsection{Per-Frame Similarity Alignment}
+
+Given a set of correspondences $\{(\mathbf{p}_{\text{est}}^i, \mathbf{p}_{\text{gt}}^i)\}_{i=1}^{N}$, the optimal similarity transformation aligning the reconstruction to ground truth is estimated using the Umeyama algorithm~\cite{umeyama1991least}. This algorithm minimises the mean squared alignment error
+
+\begin{equation}
+\min_{s, \mathbf{R}, \mathbf{t}} \frac{1}{N} \sum_{i=1}^{N} \| \mathbf{p}_{\text{gt}}^i - (s \mathbf{R} \mathbf{p}_{\text{est}}^i + \mathbf{t}) \|_2^2,
+\end{equation}
+
+where $s \in \mathbb{R}^+$ is a global scale factor, $\mathbf{R} \in \mathrm{SO}(3)$ is a rotation matrix, and $\mathbf{t} \in \mathbb{R}^3$ is a translation vector. The solution is available in closed form, making Umeyama alignment efficient and numerically stable.
+
+For per-frame (3D) evaluation, each frame is aligned independently to its corresponding ground-truth frame using the correspondences constructed from that frame alone. This produces metrics that reflect the model's spatial reconstruction quality without any temporal propagation or smoothing.
+
+For 4D evaluation, the three temporal alignment strategies presented in Section~\ref{sec:alignment_strategies} first align frames to each other — using only static scene correspondences to avoid "poisoning" the Umeyama solver with dynamic points — before a final alignment to the concatenated ground-truth sequence. The resulting transformations enable temporally coherent reconstruction quality assessment across entire sequences.
+
+\section{Metric Suite}
+\label{sec:metrics}
+
+This section defines the quantitative measures used to evaluate reconstruction quality. The metrics are organised into three categories: (1) geometric metrics that build on the Chamfer distance (defined in Section~\ref{sec:chamfer_distance}) to assess accuracy and completeness at a 1\,cm robotics-relevant threshold; (2) temporal consistency metrics (jitter and drift) that quantify frame-to-frame instability of static scene points; and (3) camera pose metrics that evaluate estimated camera parameters against ground truth. Additionally, the $\Delta_{\text{consistency}}$ metric (introduced in Chapter~\ref{c:introduction}) is restated here for completeness.
+
+All metrics are computed after the aligned point clouds have been transformed into the ground-truth coordinate system using the per-frame Umeyama alignment described in Section~\ref{sec:evaluation_pipeline}. For 4D evaluation, the concatenated sequence is aligned once after applying one of the temporal alignment strategies of Section~\ref{sec:alignment_strategies}.
+
+\subsection{Geometric Metrics at 1\,cm Threshold}
+
+While the Chamfer distance provides a global average error, robotics applications require reconstructions to be accurate within a strict tolerance. Following common practice in manipulation and grasping, we report two thresholded metrics at a 1\,cm threshold.
+
+Let $P$ be the set of estimated points and $Q$ the set of ground-truth points after filtering and alignment. The nearest-neighbour distances are computed using KD-trees.
+
+\begin{align}
+\text{Accuracy}(P,Q) &= \frac{1}{|P|} \left|\left\{ \mathbf{p}\in P \mid \min_{\mathbf{q}\in Q} \|\mathbf{p}-\mathbf{q}\|_2 < 0.01\,\text{m} \right\}\right|, \\[4pt]
+\text{Completeness}(P,Q) &= \frac{1}{|Q|} \left|\left\{ \mathbf{q}\in Q \mid \min_{\mathbf{p}\in P} \|\mathbf{q}-\mathbf{p}\|_2 < 0.01\,\text{m} \right\}\right|.
+\end{align}
+
+Accuracy measures the fraction of reconstructed points that lie within 1\,cm of
+the true surface; multiplying by $\frac{1}{|P|}$ normalises the count to a
+percentage. Completeness measures the fraction of true surface points that are
+recovered within the same tolerance, normalised by $\frac{1}{|Q|}$.
+
+\subsubsection{Static/Dynamic Decomposition and Motion Gap}
+
+To understand where models succeed or fail, we decompose the scene into static and dynamic regions using SAM2-derived masks (Section~\ref{sec:sam2_background}). A point is classified as dynamic if it projects into a dynamic region in any view; otherwise it is static. Accuracy and completeness are computed separately on static and dynamic points. The difference between static and dynamic accuracy defines the \emph{motion gap}:
+
+\begin{equation}
+\text{motion\_gap} = \text{Accuracy}_{\text{static}} - \text{Accuracy}_{\text{dynamic}}.
+\end{equation}
+
+A positive motion gap indicates that the model reconstructs static scene parts better than moving parts -- a pattern expected for models trained predominantly on static indoor scenes.
+
+\subsection{Temporal Consistency Metrics (Jitter and Drift)}
+
+Temporal instability manifests as unwanted frame-to-frame movement of static scene points after alignment. To measure this, we first fuse the multiple views of each frame into a single 3D representation: for every pixel classified as static by the majority of views (based on SAM2 motion masks), we take the mean 3D position across views (invalid positions are ignored). We then build an anchor set consisting of pixels that are valid in \emph{all} frames of a sequence. From this intersection we randomly sample $5{,}000$ anchor pixels and extract
+their 3D trajectories $\{\mathbf{x}_a(t)\}_{t=1}^{T}$ over time. This sample
+size yields a worst-case margin of error of $1.96/(2\sqrt{5000}) \approx 1.4\%$
+at 95\% confidence, which is sufficient for reconstruction evaluation.
+
+Let $\mathbf{x}_a(t)$ be the position of anchor $a$ at frame $t$. The following metrics are then defined:
+
+\begin{itemize}
+  \item \textbf{Mean jitter}: average frame-to-frame displacement,
+  averaged over all anchors:
+  \[
+    \frac{1}{T-1}\sum_{t=1}^{T-1}
+    \|\mathbf{x}_a(t+1)-\mathbf{x}_a(t)\|_2
+  \]
+
+  \item \textbf{Jitter standard deviation}: standard deviation of per-anchor
+  mean jitter, measuring how unevenly jitter is distributed across the scene.
+
+  \item \textbf{Jitter P95}: the 95th percentile of per-anchor mean jitter,
+  capturing worst-case instability while excluding extreme outliers.
+
+  \item \textbf{Jitter max}: the maximum per-anchor mean jitter.
+
+  \item \textbf{Drift}: cumulative displacement over the full sequence,
+  averaged over anchors:
+  \[
+    \|\mathbf{x}_a(T)-\mathbf{x}_a(1)\|_2
+  \]
+
+  \item \textbf{High-frequency jitter}: second-order temporal acceleration,
+  which isolates high-frequency fluctuations beyond linear motion:
+  \[
+    \frac{1}{T-2}\sum_{t=1}^{T-2}
+    \|\mathbf{x}_a(t+2)-2\mathbf{x}_a(t+1)+\mathbf{x}_a(t)\|_2
+  \]
+\end{itemize}
+
+All jitter metrics are computed exclusively on static scene points, because dynamic points are supposed to move and therefore do not constitute an error.
+
+\subsection{Camera Pose Metrics}
+
+The accuracy of estimated camera parameters is evaluated using standard visual odometry and SfM metrics~\cite{sturm12iros}. For models that estimate intrinsics (VGGT, PI3, MASt3R-SfM, GGPT), we compare them against ground truth; MonoFusion is injected with ground-truth intrinsics, so its focal and principal point errors are zero by construction.
+
+\subsubsection{Absolute Trajectory Error (ATE)}
+
+ATE measures the global consistency of the estimated camera trajectory after alignment to the ground-truth trajectory via a similarity transformation. Given ground-truth poses $\mathbf{P}_{\text{gt},t} \in \mathrm{SE}(3)$ and estimated poses $\mathbf{P}_{\text{est},t}$, the ATE is the root-mean-square error of the translational components:
+
+\begin{equation}
+\text{ATE} = \sqrt{ \frac{1}{T} \sum_{t=1}^{T} \bigl\| \mathbf{t}_{\text{gt},t} - \mathbf{t}_{\text{est},t}' \bigr\|_2^2 },
+\end{equation}
+
+where $\mathbf{t}_{\text{est},t}'$ are the estimated translations after similarity alignment (scale, rotation, translation) that minimises the overall trajectory error.
+
+\subsubsection{Relative Pose Error (RPE)}
+
+RPE evaluates local drift by comparing relative motions between pairs of frames. For each pair $(i,j)$ with a fixed time interval $\Delta$, the relative error is:
+
+\begin{equation}
+\text{RPE}_{\Delta} = \sqrt{ \frac{1}{N_{\Delta}} \sum_{i} \bigl\| \mathbf{t}_{\text{gt},i}^{-1}\mathbf{t}_{\text{gt},j} - \mathbf{t}_{\text{est},i}^{-1}\mathbf{t}_{\text{est},j} \bigr\|_2^2 }.
+\end{equation}
+
+We report the average RPE over all pairs with $\Delta = 1$ (consecutive frames) and $\Delta = 2$.
+
+\subsubsection{Rotation Error}
+
+The rotation error between an estimated rotation matrix $\mathbf{R}_{\text{est}}$ and the ground truth $\mathbf{R}_{\text{gt}}$ is the geodesic distance on $\mathrm{SO}(3)$ (see Section~\ref{sec:math_background}):
+
+\begin{equation}
+\text{RotErr} = \arccos\!\left( \frac{\operatorname{tr}(\mathbf{R}_{\text{gt}}^{\top} \mathbf{R}_{\text{est}}) - 1}{2} \right),
+\end{equation}
+
+expressed in degrees. This error is computed after applying the global rotation alignment obtained from the Umeyama step.
+
+\subsubsection{Intrinsic Error}
+
+For models that estimate camera intrinsics, we report two errors:
+\begin{itemize}
+  \item \textbf{Focal error}: relative difference in average focal length,
+        $\displaystyle \frac{|f_{\text{est}} - f_{\text{gt}}|}{f_{\text{gt}}}$.
+  \item \textbf{Principal point error}: Euclidean distance in pixels,
+        $\|\mathbf{pp}_{\text{est}} - \mathbf{pp}_{\text{gt}}\|_2$.
+\end{itemize}
+For MonoFusion, these errors are zero because ground-truth intrinsics are provided to the model.
+
+\subsection{The 3D-to-4D Consistency Metric
+  \texorpdfstring{$\Delta_{\text{consistency}}$}{Delta\_consistency}}
+
+As defined in Equation~\ref{eq:delta_consistency} of Chapter~\ref{c:introduction}, $\Delta_{\text{consistency}}$ isolates the spatial degradation introduced purely by coordinate alignment, not by the reconstruction model itself:
+
+\begin{equation}
+\Delta_{\text{consistency}} = \mathrm{Chamfer}_{\mathrm{4D}} - \mathrm{Chamfer}_{\mathrm{3D}},
+\end{equation}
+
+where $\mathrm{Chamfer}_{\mathrm{3D}}$ is the average per-frame Chamfer distance (each frame aligned independently to its own ground truth), and $\mathrm{Chamfer}_{\mathrm{4D}}$ is the Chamfer distance of the concatenated sequence after applying one of the temporal alignment strategies (Section~\ref{sec:alignment_strategies}) and a final global alignment to the concatenated ground truth.
+
+A value of $\Delta_{\text{consistency}} \approx 0$ indicates that the alignment strategy preserves per-frame geometry faithfully; a large positive value indicates that the alignment introduces geometric distortion. This metric forms the primary basis for comparing the three temporal alignment strategies in Section~\ref{sec:alignment_strategies}.
+
+All metrics are implemented in Python using efficient KDTree queries (via \texttt{scipy.spatial.cKDTree}) and run on the filtered, aligned point clouds produced by the pipeline of Section~\ref{sec:evaluation_pipeline}. Results are averaged over all frames, all sequences, and all subjects within each dataset.

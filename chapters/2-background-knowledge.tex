@@ -1,20 +1,19 @@
 \chapter{Literature Review and Background}
 \label{c:background}
 
-This chapter reviews the theoretical and technical foundations underlying the reconstruction pipelines evaluated throughout this thesis. Section~\ref{sec:sfm_mvs_foundations} introduces classical Structure-from-Motion (SfM) and Multi-View Stereo (MVS) methods, highlighting both their strengths and their limitations under sparse-view conditions. Section~\ref{sec:foundation_models} surveys recent foundation models for 3D vision, grouped according to their treatment of spatial and temporal information. Section~\ref{sec:sam2_background} describes the Segment Anything Model 2 (SAM2), which is used throughout this work to distinguish static and dynamic scene regions. Finally, Section~\ref{sec:math_background} presents the mathematical concepts required for the proposed alignment and temporal smoothing framework, including similarity transformations, rotation averaging on $\mathrm{SO}(3)$, robust geodesic averaging, and geometric evaluation metrics.
+This chapter reviews the theoretical and technical foundations underlying the reconstruction pipelines evaluated throughout this thesis. Section~\ref{sec:sfm_mvs_foundations} introduces classical Structure-from-Motion (SfM) and Multi-View Stereo (MVS) methods, highlighting both their strengths and their limitations under sparse-view conditions. Section~\ref{sec:foundation_models} surveys recent foundation models for 3D vision, grouped according to their treatment of spatial and temporal information. Section~\ref{sec:sam2_background} describes the Segment Anything Model 2 (SAM2), which is used throughout this work to distinguish static and dynamic scene regions. Finally, Section~\ref{sec:math_background} presents the mathematical concepts required for the proposed alignment and temporal smoothing framework, including similarity transformations, rotation averaging on $\mathrm{SO}(3)$, robust geodesic averaging, and geometric evaluation metrics. 
 
 \section{Structure-from-Motion and Multi-View Stereo Foundations}
 \label{sec:sfm_mvs_foundations}
 
 Three-dimensional scene reconstruction from multiple images has traditionally been addressed through the complementary paradigms of Structure-from-Motion (SfM) and Multi-View Stereo (MVS). Together, these methods form the foundation of modern photogrammetry systems and remain the dominant approach for producing accurate metric-scale reconstructions from calibrated or partially calibrated image collections~\cite{hartley2004multiple,schoenberger2016sfm,schoenberger2016mvs}.
 
-SfM seeks to jointly estimate camera poses and scene structure from image observations. Given a collection of overlapping images, distinctive visual features are first detected and matched across views. Geometric verification is then used to reject inconsistent correspondences, after which camera poses and sparse three-dimensional points are estimated through triangulation and refined using bundle adjustment~\cite{hartley2004multiple,schoenberger2016sfm}. Modern SfM systems such as COLMAP~\cite{schoenberger2016sfm} achieve remarkable accuracy and robustness on large-scale reconstruction tasks, often producing camera trajectories with sub-pixel reprojection error.
+SfM seeks to jointly estimate camera poses and scene structure from image observations. Given a collection of overlapping images, distinctive visual features are first detected and matched across views. Geometric verification is then used to reject inconsistent correspondences, after which camera poses and sparse three-dimensional points are estimated through triangulation and refined using bundle adjustment~\cite{hartley2004multiple,schoenberger2016sfm}. Modern SfM systems such as COLMAP~\cite{schoenberger2016sfm} achieve remarkable accuracy and robustness on large-scale reconstruction tasks, often producing camera trajectories and sparse point clouds with low reprojection error.
 
 While SfM recovers only a sparse representation of scene geometry, MVS extends this sparse reconstruction into a dense surface estimate. Given camera poses obtained from SfM, MVS algorithms estimate depth for individual pixels by enforcing photometric consistency across multiple views. These depth estimates are subsequently fused into dense point clouds or surface representations~\cite{schoenberger2016mvs,seitz2006comparison}. Modern MVS systems employ sophisticated view-selection strategies and regularisation techniques that enable high-quality reconstructions across a wide range of scenes~\cite{schoenberger2016mvs}.
 
 Despite their success, classical SfM and MVS pipelines rely fundamentally on the existence of reliable multi-view correspondences. Performance degrades substantially when these assumptions are violated. Sparse-view reconstruction represents a particularly challenging regime because the number of observations available for establishing geometric constraints is severely limited. When only two to four cameras are available, several failure modes become prominent.
-
-First, low inter-camera overlap reduces the number of features that are simultaneously visible across views, limiting the quantity and quality of geometric correspondences available for pose estimation~\cite{hartley2004multiple, pataki2025mpsfmmonocularsurfacepriors}. Second, short or degenerate baselines reduce triangulation accuracy because depth uncertainty grows rapidly as the triangulation angle decreases~\cite{hartley2004multiple,schoenberger2016sfm}. Third, textureless surfaces such as human skin, clothing, walls, and many manipulation objects provide few distinctive features for matching, causing correspondence estimation and bundle adjustment to become unstable~\cite{dust3r,mast3r}. Dynamic scene content introduces an additional challenge because moving objects violate the static-world assumptions underlying both feature matching and bundle adjustment~\cite{Cin_2025_CVPR}.
+First, low inter-camera overlap reduces the number of features that are simultaneously visible across views, limiting the quantity and quality of geometric correspondences available for pose estimation~\cite{hartley2004multiple, pataki2025mpsfmmonocularsurfacepriors}. Second, short or degenerate baselines reduce triangulation accuracy because depth uncertainty grows rapidly as the triangulation angle decreases~\cite{hartley2004multiple,schoenberger2016sfm}. Third, textureless surfaces such as human skin, clothing, walls, and many manipulation objects provide few distinctive features for matching, causing correspondence estimation and bundle adjustment to become unstable~\cite{dust3r,mast3r}. Fourth, and most critically for the setting considered in this thesis, dynamic scene content introduces a qualitatively different challenge: moving objects actively violate the static-world assumption underlying both feature matching and bundle adjustment, producing spurious correspondences that cannot be resolved by increasing image count or improving texture~\cite{Cin_2025_CVPR}. Unlike the first three failure modes, which can in principle be mitigated by careful rig design or denser capture, dynamic content represents a fundamental incompatibility with the geometric model assumed by classical pipelines.
 
 These limitations are particularly acute in robotics and human-centred perception scenarios, where sparse multi-camera systems are often preferred for reasons of cost, deployment complexity, and occlusion constraints, yet such configurations provide exactly the conditions under which traditional SfM and MVS become least reliable. The resulting reconstructions may be incomplete, geometrically inconsistent, or entirely unsuccessful, limiting their usefulness for downstream tasks such as object tracking, trajectory estimation, manipulation planning, and scene understanding.
 
@@ -51,12 +50,12 @@ A complementary class of methods seeks to improve reconstruction quality without
 
 GGPT (Geometry-Grounded Point Transformer) is a geometry-refinement framework designed to enhance feed-forward three-dimensional reconstructions through geometry-guided correction~\cite{ggpt}. The method combines dense pointmap predictions with sparse geometric cues derived from an auxiliary SfM process, using a transformer-based refinement network to improve consistency and reconstruction quality. Conceptually, GGPT occupies a middle ground between classical optimisation-based reconstruction and purely feed-forward prediction: geometric structure is first estimated by a backbone model and subsequently refined using additional geometric evidence.
 
-Unlike spatial reconstruction and temporal reconstruction architectures, GGPT does not define a complete reconstruction pipeline in its own right. Instead, it functions as a model-agnostic refinement stage that can be applied to the outputs of existing reconstruction systems. This design makes it particularly relevant for understanding whether reconstruction quality is best improved through stronger backbone architectures, explicit temporal modelling, or post-hoc geometric refinement.
+Unlike spatial reconstruction and temporal reconstruction architectures, GGPT does not define a complete reconstruction pipeline in its own right. Instead, it functions as a model-agnostic refinement stage that can be applied to the outputs of existing reconstruction systems. By incorporating additional geometric constraints during refinement, GGPT aims to improve the consistency and quality of an existing reconstruction rather than generating geometry directly. Such refinement may also affect the temporal behaviour of reconstructed sequences, since stronger geometric regularisation can suppress frame-to-frame variations in the predicted geometry. This design makes GGPT particularly relevant for understanding whether reconstruction quality is best improved through stronger backbone architectures, explicit temporal modelling, or post-hoc geometric refinement.
 
 \subsection{Temporal Reconstruction Models}
 \label{sec:temporal_models}
 
-A common limitation of purely spatial reconstruction models is the absence of explicit temporal reasoning~\cite{vggt4d}: each frame or image set is reconstructed independently, meaning that geometric predictions may vary between consecutive frames even when the underlying scene remains static. Temporal reconstruction models address this by incorporating motion information and sequence-level reasoning during inference, jointly modelling geometry and temporal evolution rather than treating each frame as an isolated input~\cite{vggt4d}.
+A common limitation of purely spatial reconstruction models is the absence of explicit temporal reasoning: each frame or image set is reconstructed independently, meaning that geometric predictions may vary between consecutive frames even when the underlying scene remains static. Temporal reconstruction models address this by incorporating motion information and sequence-level reasoning during inference, jointly modelling geometry and temporal evolution rather than treating each frame as an isolated input~\cite{vggt4d}.
 
 \paragraph{VGGT4D.}
 
@@ -66,7 +65,7 @@ VGGT4D extends the VGGT architecture to four-dimensional reconstruction by incor
 
 MonoFusion approaches sparse-view four-dimensional reconstruction from a different perspective~\cite{monofusion}. Instead of relying solely on multi-view geometric constraints, it combines monocular depth priors with temporal fusion mechanisms to accumulate information across a sequence. This strategy enables reconstruction from extremely sparse camera configurations and provides an explicit mechanism for enforcing temporal coherence. The model reflects a growing trend toward integrating learned monocular geometry with multi-view reasoning to overcome the limitations of sparse observations~\cite{li2025mono3rexploitingmonocularcues, Jiang_2025_ICCV, Cheng2025MonSterUS}.
 
-While temporal architectures address an important limitation of spatial models by introducing sequence-level consistency, the incorporation of temporal information inevitably introduces additional modelling assumptions and complexity. This creates a trade-off between geometric precision and temporal stability that remains an active area of research, and one that the comparative evaluation in this thesis aims to illuminate under controlled sparse-view conditions.
+While temporal architectures address an important limitation of spatial models by introducing sequence-level consistency, the incorporation of temporal information inevitably introduces additional modelling assumptions and complexity. This creates a trade-off between geometric precision and temporal stability that remains an active area of research, and one that the comparative evaluation in this thesis aims to illuminate under controlled sparse-view conditions on two dynamic multi-view benchmarks.
 
 \section{SAM2 for Static and Dynamic Scene Segmentation}
 \label{sec:sam2_background}
@@ -86,13 +85,7 @@ Recent systems such as MonoFusion~\cite{monofusion} employ
 foreground-background segmentation to distinguish dynamic scene content from
 temporally stable geometry during reconstruction and optimisation.
 
-In this thesis, SAM2 is used to generate static and dynamic scene masks for
-evaluation and alignment purposes. These masks enable separate analysis of
-reconstruction quality in static and dynamic regions and provide the basis for
-the static-scene correspondences used by the temporal alignment methods
-introduced in Chapter~\ref{c:methodology}. The specific mask generation and
-integration procedures are described in Chapters~\ref{c:methodology} and
-\ref{c:implementation}.
+In this thesis, SAM2 is used to generate per-frame static and dynamic segmentation masks. These masks serve as a shared input to several downstream components: they enable separate evaluation of reconstruction quality in static and dynamic regions, provide the static-scene correspondences required by the temporal alignment strategies, and gate the confidence-weighted temporal smoothing filter so that only static-region predictions are smoothed across time. The specific procedures for mask generation and integration are described in Chapter~\ref{c:methodology}. %TODO: Actually Chapter 3.4, yet to be changed.
 
 \section{Mathematical Background}
 \label{sec:math_background}
@@ -116,9 +109,7 @@ is presented as a primary metric for evaluating reconstruction quality.
 
 \subsection{Similarity Transformations and Umeyama Alignment}
 
-A three-dimensional similarity transformation aligns two point clouds by accounting for differences in scale, rotation, and translation.
-
-A three-dimensional similarity transformation is defined as
+Reconstructions produced by the same model applied independently to successive frames generally differ by an arbitrary scale, rotation, and translation. A similarity transformation accounts for all three:
 
 \begin{equation}
 \mathbf{y}
@@ -224,17 +215,10 @@ d(\mathbf{R},\mathbf{R}_i),
 
 which corresponds to the geometric median on the rotation manifold.
 
-The optimisation is performed using a manifold adaptation of the Weiszfeld
-algorithm~\cite{weiszfeld1937point}. At each iteration, rotations are mapped
-to the tangent space of the current estimate via the logarithmic map, robustly
-averaged using distance-dependent weights, and projected back onto
-$\mathrm{SO}(3)$ through the exponential map. Compared with conventional L2
-averaging, this approach reduces the influence of unreliable pairwise
-transformations and yields more stable consensus rotations during pose-graph
-optimisation.
+The optimisation is performed using a manifold adaptation of the Weiszfeld algorithm~\cite{weiszfeld1937point}, an iteratively reweighted least-squares procedure in which each input is assigned a weight inversely proportional to its distance from the current estimate, causing outliers to receive progressively less influence. On the rotation manifold, the algorithm operates by mapping the current estimate and all input rotations into the local tangent space via the logarithmic map $\log: \mathrm{SO}(3) \to \mathfrak{so}(3)$ — the space of skew-symmetric matrices that captures small rotational displacements — computing a distance-weighted mean in that linear space, and projecting the result back onto $\mathrm{SO}(3)$ via the exponential map $\exp: \mathfrak{so}(3) \to \mathrm{SO}(3)$. This procedure is iterated until convergence, with a maximum of 50 iterations.
 
 \subsection{Chamfer Distance}
-
+\label{sec:chamfer_distance}
 Geometric reconstruction quality is evaluated throughout this thesis using a
 combination of distance-based and threshold-based metrics. The primary
 distance-based metric is the symmetric Chamfer distance, which measures the
@@ -257,18 +241,26 @@ d_{\mathrm{Chamfer}}(P,Q)
 \|\mathbf{q}-\mathbf{p}\|_2.
 \end{equation}
 
-The first term measures how accurately reconstructed points correspond to the
-reference geometry, while the second term measures how completely the
-reference geometry is represented by the reconstruction. Smaller values
-therefore indicate closer geometric agreement between the two point sets.
+It is worth noting that the two terms in this definition are not symmetric in
+meaning. The first term measures \emph{accuracy}: how well each reconstructed
+point finds a close match in the ground truth. The second term measures
+\emph{completeness}: how much of the ground truth geometry is covered by the
+reconstruction. Smaller values therefore indicate closer geometric agreement
+between the two point sets.
 
 Chamfer distance provides a global measure of reconstruction quality and is
-widely used in three-dimensional vision benchmarks. However, because average
-distances do not directly indicate whether a reconstruction satisfies the
-precision requirements of downstream applications, this thesis additionally
-employs threshold-based Accuracy and Completeness metrics, introduced in
-Chapter~\ref{c:methodology}, to quantify the proportion of reconstructed
-geometry lying within a specified error tolerance.
+widely used in three-dimensional vision benchmarks. However, for robotics
+applications that require precise geometric reasoning at a 1\,cm tolerance,
+averaged distances can obscure systematic failures in subsets of points.
+This thesis therefore complements Chamfer distance with threshold-based
+metrics — specifically Accuracy and Completeness at a 1\,cm threshold —
+which report the fraction of points whose nearest-neighbour distance falls
+below the required tolerance. These metrics are formally introduced in
+Chapter~\ref{c:methodology}.
+
+\subsection*{A Note on 3D-to-4D Consistency}
+
+A recurring quantity in this thesis is the difference between per-frame geometric error and sequence-level geometric error after temporal alignment. This difference, denoted $\Delta_{\text{consistency}}$ and defined formally in Chapter~\ref{c:methodology}, isolates the spatial degradation introduced purely by coordinate alignment rather than by the reconstruction model itself. Because the Chamfer distance is used as the underlying error measure, $\Delta_{\text{consistency}}$ inherits the properties discussed above: a value near zero indicates that alignment preserves per-frame geometry faithfully, while a large positive value indicates that the alignment strategy introduces geometric distortion. This quantity forms the primary basis for comparing temporal alignment strategies in Chapter~\ref{c:methodology}.
 
 The concepts introduced in this section provide the mathematical foundation
 for the temporal alignment and evaluation framework developed later in this
