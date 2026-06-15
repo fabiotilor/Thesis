@@ -2,7 +2,7 @@ import os
 import numpy as np
 import cv2
 from .umeyama_alignment import estimate_similarity_transform, apply_similarity_transform
-from .gt import DEPTH_MAX_M, load_gt_params
+from .gt import DEPTH_MAX_M, load_gt_params, build_gt_validity_masks
 from .camera_utils import discover_view_name
 from .temporal_metrics import compute_static_jitter
 from eval_config import CONF_PERCENTILE
@@ -356,21 +356,53 @@ def solve_final_gt_registration(frame_npz_paths, frame_transforms, dataset_root,
 
 def compute_4d_jitter_complete(frame_npz_paths, frame_transforms, s_glob, R_glob, tr_glob, dataset_root,
                                dataset_type="dex-ycb"):
-    all_pm_mv, all_masks_mv = [], []
+    all_pm_mv, all_masks_mv, all_validity_masks_mv, all_confs_mv = [], [], [], []
     for i, path in enumerate(frame_npz_paths):
         data = np.load(path)
         V, H, W = normalize_spatial_dims(data)
         if H == 0: continue
         pm = normalize_array(data['pointmaps'], V, H, W).astype(np.float32)
+        conf = (
+            normalize_array(data['pointmaps_confs'], V, H, W)
+            if 'pointmaps_confs' in data
+            else None
+        )
         s_i, R_i, tr_i = frame_transforms[i]
         s_tot, R_tot, tr_tot = s_glob * s_i, R_glob @ R_i, s_glob * (R_glob @ tr_i) + tr_glob
 
         aligned_pm = np.stack(
             [apply_similarity_transform(pm[v].reshape(-1, 3), s_tot, R_tot, tr_tot).reshape(H, W, 3) for v in range(V)])
         all_pm_mv.append(aligned_pm)
+        if conf is not None:
+            all_confs_mv.append(conf)
 
         # Use static masks for jitter computation
         m = normalize_array(data['masks_2d'], V, H, W, is_mask=True)
         all_masks_mv.append(m)
 
-    return compute_static_jitter(all_pm_mv, all_masks_mv)
+        t = int(data['frame_idx']) if 'frame_idx' in data else i
+        if 'view_names' in data:
+            view_names = (data['view_names'].tolist()
+                          if hasattr(data['view_names'], 'tolist')
+                          else list(data['view_names']))
+        else:
+            view_names = [
+                discover_view_name(dataset_root, k, dataset_type=dataset_type)
+                for k in data['Ks']
+            ]
+        vmasks = build_gt_validity_masks(
+            t, view_names, dataset_root,
+            target_hw=(H, W), dataset_type=dataset_type,
+        )
+        all_validity_masks_mv.append(np.array([
+            vmask if vmask is not None else np.ones((H, W), dtype=bool)
+            for vmask in vmasks
+        ], dtype=bool))
+
+    return compute_static_jitter(
+        all_pm_mv,
+        all_masks_mv,
+        validity_masks_per_frame=all_validity_masks_mv if all_validity_masks_mv else None,
+        confidences_per_frame=all_confs_mv if all_confs_mv else None,
+        conf_percentile=CONF_PERCENTILE,
+    )

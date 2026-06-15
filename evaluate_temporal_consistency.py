@@ -16,6 +16,10 @@ from pi3.utils.temporal_metrics import (
     compute_camera_metrics
 )
 from pi3.utils.umeyama_alignment import apply_similarity_transform
+from pi3.utils.alignment_4d import normalize_array
+from pi3.utils.camera_utils import discover_view_name
+from pi3.utils.gt import build_gt_validity_masks
+from eval_config import DATASETS, CONF_PERCENTILE
 
 SUBJECT_NAMES = [
     "20200709-subject-01__20200709_141754",
@@ -30,6 +34,13 @@ SUBJECT_NAMES = [
     "20201022-subject-10__20201022_112651",
 ]
 SUBJECT_BY_CODE = {name.split("subject-")[1][:2]: name for name in SUBJECT_NAMES}
+
+
+def _infer_dataset_root(path, dataset_type="dex-ycb"):
+    for subject_name in SUBJECT_NAMES:
+        if subject_name in path:
+            return os.path.join(DATASETS[dataset_type]["root"], subject_name)
+    return None
 
 
 def _plot_scatter_with_regression(x, y, xlabel, ylabel, title, save_path):
@@ -64,7 +75,7 @@ def _plot_scatter_with_regression(x, y, xlabel, ylabel, title, save_path):
     plt.close(fig)
 
 
-def evaluate_configuration(in_dir, out_plot_dir, plot_prefix=""):
+def evaluate_configuration(in_dir, out_plot_dir, plot_prefix="", dataset_root=None, dataset_type="dex-ycb"):
     files = sorted(glob.glob(os.path.join(in_dir, "frame_*.npz")))
     if not files:
         print(f"[WARN] No aligned output files found in {in_dir}; skipping.")
@@ -90,6 +101,8 @@ def evaluate_configuration(in_dir, out_plot_dir, plot_prefix=""):
     # Multi-view data for jitter
     all_pointmaps_mv = []  # list of (V, H, W, 3)
     all_masks_mv = []  # list of (V, H, W)
+    all_validity_masks_mv = []  # list of (V, H, W)
+    all_confs_mv = []  # list of (V, H, W)
     all_Ks_mv = []  # list of (V, 3, 3)
     all_R_ts_mv = []  # list of (V, 4, 4)
 
@@ -146,6 +159,7 @@ def evaluate_configuration(in_dir, out_plot_dir, plot_prefix=""):
         if 'pointmaps' in data and 'masks_2d' in data:
             pmaps = data['pointmaps']  # (V, H, W, 3) or (V, N, 3) flattened
             masks_2d_raw = data['masks_2d']  # (V, H', W')
+            confs_raw = data['pointmaps_confs'] if 'pointmaps_confs' in data else None
 
             # Ensure pointmaps have spatial dims: if (V, N, 3), reshape
             if pmaps.ndim == 3:
@@ -155,6 +169,8 @@ def evaluate_configuration(in_dir, out_plot_dir, plot_prefix=""):
                 H_pm = int(np.round(np.sqrt(N * H_mask / float(W_mask))))
                 W_pm = N // H_pm
                 pmaps = pmaps.reshape(pmaps.shape[0], H_pm, W_pm, 3)
+                if confs_raw is not None and confs_raw.ndim == 2:
+                    confs_raw = confs_raw.reshape(confs_raw.shape[0], H_pm, W_pm)
 
             # Apply Umeyama alignment to each view's pointmap
             if 'R' in data and 'tr' in data:
@@ -170,6 +186,34 @@ def evaluate_configuration(in_dir, out_plot_dir, plot_prefix=""):
                 all_pointmaps_mv.append(pmaps)
 
             all_masks_mv.append(masks_2d_raw.astype(bool))
+            if confs_raw is not None:
+                all_confs_mv.append(confs_raw)
+
+            if dataset_root is not None:
+                H_pm, W_pm = all_pointmaps_mv[-1].shape[1:3]
+                V_views = all_pointmaps_mv[-1].shape[0]
+                t = int(data['frame_idx']) if 'frame_idx' in data else i
+                if 'view_names' in data:
+                    view_names = (data['view_names'].tolist()
+                                  if hasattr(data['view_names'], 'tolist')
+                                  else list(data['view_names']))
+                elif 'Ks' in data:
+                    view_names = [
+                        discover_view_name(dataset_root, k, dataset_type=dataset_type)
+                        for k in data['Ks']
+                    ]
+                else:
+                    view_names = [None] * V_views
+
+                if all(v is not None for v in view_names):
+                    vmasks = build_gt_validity_masks(
+                        t, view_names, dataset_root,
+                        target_hw=(H_pm, W_pm), dataset_type=dataset_type,
+                    )
+                    all_validity_masks_mv.append(np.array([
+                        vmask if vmask is not None else np.ones((H_pm, W_pm), dtype=bool)
+                        for vmask in vmasks
+                    ], dtype=bool))
 
             if 'Ks' in data:
                 all_Ks_mv.append(data['Ks'])
@@ -206,13 +250,16 @@ def evaluate_configuration(in_dir, out_plot_dir, plot_prefix=""):
         print(f"Mean Focal Error:        {np.nanmean(focal_err_list):.5f} (rel)")
         print(f"Mean PP Error:           {np.nanmean(pp_err_list):.3f} px")
 
-    # Compute jitter with multi-view fusion
+    # Compute jitter with per-view persistent static anchors
     if len(all_pointmaps_mv) >= 2:
         jitter_results = compute_static_jitter(
             pointmaps_per_frame=all_pointmaps_mv,
             masks_per_frame=all_masks_mv,
             Ks_per_frame=all_Ks_mv if all_Ks_mv else None,
             R_ts_per_frame=all_R_ts_mv if all_R_ts_mv else None,
+            validity_masks_per_frame=all_validity_masks_mv if all_validity_masks_mv else None,
+            confidences_per_frame=all_confs_mv if all_confs_mv else None,
+            conf_percentile=CONF_PERCENTILE,
             n_anchors=5000,
         )
     else:
@@ -348,7 +395,7 @@ def plot_accuracy_vs_cameras(out_plot_dir, camera_counts, static_means, dynamic_
     plt.close()
 
 
-def evaluate_camera_configs(base_in_dir, out_plot_dir, camera_counts, plot_prefix=""):
+def evaluate_camera_configs(base_in_dir, out_plot_dir, camera_counts, plot_prefix="", dataset_root=None, dataset_type="dex-ycb"):
     results = {}
     available_counts = []
     for cam_count in camera_counts:
@@ -360,6 +407,8 @@ def evaluate_camera_configs(base_in_dir, out_plot_dir, camera_counts, plot_prefi
             in_dir=in_dir,
             out_plot_dir=out_plot_dir,
             plot_prefix=f"{plot_prefix}{cam_count}views_",
+            dataset_root=dataset_root,
+            dataset_type=dataset_type,
         )
         if metrics is None:
             continue
@@ -400,6 +449,7 @@ def get_selected_subject_names(args):
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--input_dir", type=str, default=None, help="Custom directory containing frame_*.npz files")
+    parser.add_argument("--data", type=str, choices=["dex-ycb", "hi4d"], default="dex-ycb", help="Dataset to use")
     parser.add_argument("--all", action="store_true", help="Evaluate all subjects (01..10).")
     for code in sorted(SUBJECT_BY_CODE.keys()):
         parser.add_argument(f"--{code}", dest=f"subject_{code}", action="store_true", help=f"Evaluate subject {code}.")
@@ -412,7 +462,12 @@ def main():
     if args.input_dir:
         in_dir = args.input_dir
         out_plot_dir = in_dir.replace("aligned_outputs", "plots")
-        metrics = evaluate_configuration(in_dir, out_plot_dir)
+        dataset_root = _infer_dataset_root(in_dir, args.data)
+        metrics = evaluate_configuration(
+            in_dir, out_plot_dir,
+            dataset_root=dataset_root,
+            dataset_type=args.data,
+        )
         if metrics is None:
             print(f"No aligned output files found in {in_dir}. Please run align_reconstruction_umeyama.py first.")
             return
@@ -441,10 +496,13 @@ def main():
             subject_name = os.path.basename(subject_dir)
             subject_plot_dir = os.path.join("plots", subject_name)
             print(f"\n=== Evaluating subject: {subject_name} ===")
+            dataset_root = os.path.join(DATASETS[args.data]["root"], subject_name)
             available_counts, results = evaluate_camera_configs(
                 base_in_dir=subject_dir,
                 out_plot_dir=subject_plot_dir,
                 camera_counts=camera_counts,
+                dataset_root=dataset_root,
+                dataset_type=args.data,
             )
             if not available_counts:
                 print(f"[WARN] No valid camera configuration outputs for {subject_name}, skipping.")
@@ -549,7 +607,11 @@ def main():
         camera_counts=camera_counts,
     )
     if not available_counts:
-        fallback_metrics = evaluate_configuration(base_in_dir, out_plot_dir)
+        fallback_metrics = evaluate_configuration(
+            base_in_dir, out_plot_dir,
+            dataset_root=_infer_dataset_root(base_in_dir, args.data),
+            dataset_type=args.data,
+        )
         if fallback_metrics is None:
             print("No valid aligned outputs found. Please run align_reconstruction_umeyama.py first.")
             return

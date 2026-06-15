@@ -91,6 +91,11 @@ def _parse_args():
         default=1.0,
         help="Blending factor for smoothing (0.0=original, 1.0=fully smoothed).",
     )
+    parser.add_argument(
+        "--jitter",
+        action="store_true",
+        help="After reconstruction/alignment, compute and save only jitter/drift metrics.",
+    )
 
     # Keep backward compatibility for subject flags if needed, or just use --subjects
     return parser.parse_known_args()[0]
@@ -160,11 +165,14 @@ def _target_views_for_nviews(nviews: int, dataset_config, subject_name=None):
     return target_views
 
 
-def _run_eval(code: str, view_counts: list[int], dataset_type: str, model_type: str, opt: bool = False):
+def _run_eval(code: str, view_counts: list[int], dataset_type: str, model_type: str, opt: bool = False,
+              jitter: bool = False):
     cmd = [sys.executable, "evaluate_4D.py", "--subjects", code, "--data", dataset_type, "--model", model_type,
            "--views"] + [str(v) for v in view_counts]
     if opt:
         cmd.append("--opt")
+    if jitter:
+        cmd.append("--jitter")
     print(f"\nRUNNING: {' '.join(cmd)}")
     subprocess.run(cmd, check=True)
 
@@ -205,7 +213,8 @@ def main():
 
     for subject_full, code in zip(selected_subjects, codes):
         safe_code = code.replace("/", "_")
-        csv_path = f"eval_summary_{args.model}_{dataset_type}_{safe_code}.csv"
+        csv_suffix = "_jitter" if args.jitter else ""
+        csv_path = f"eval_summary_{args.model}_{dataset_type}_{safe_code}{csv_suffix}.csv"
         if os.path.exists(csv_path):
             print(f"[INFO] Skipping subject {code} as evaluation results already exist: {csv_path}")
             continue
@@ -360,7 +369,7 @@ def main():
                     print(f"[ERROR] Not enough frames in {base_in_dir}.")
                     continue
 
-                optimize_temporal_consistency(
+                saved_paths = optimize_temporal_consistency(
                     frame_paths=base_frame_paths,
                     out_dir=opt_dir,
                     dataset_root=dataset_root,
@@ -368,6 +377,17 @@ def main():
                     alpha=args.opt_alpha,
                     dataset_type=args.data,
                 )
+
+                if not args.no_rerun and saved_paths:
+                    from pi3.utils.rerun_logging import log_gt_sequence, log_precomputed_sequence
+                    try:
+                        log_gt_sequence(saved_paths, log_root=view_root)
+                        log_precomputed_sequence(base_frame_paths, label="Unoptimised_Strategy_2", color=[255, 0, 255],
+                                                 log_root=view_root)
+                        log_precomputed_sequence(saved_paths, label="Optimised", color=[173, 216, 230],
+                                                 log_root=view_root)
+                    except Exception as e:
+                        print(f"[RERUN][WARN] Rerun logging failed for --opt: {e}")
             elif not args.opt:
                 s3_start = time.perf_counter()
                 tf_s3 = strategy3_pgo(frame_paths, dataset_root, num_iters=50, dataset_type=dataset_type)
@@ -402,13 +422,14 @@ def main():
 
         print(f"\n[INFO] Evaluating subject {code} across methods/views ...")
         if not args.pgo:
-            _run_eval(code, view_counts, dataset_type, args.model, opt=args.opt)
+            _run_eval(code, view_counts, dataset_type, args.model, opt=args.opt, jitter=args.jitter)
 
     # Aggregate results across selected subjects only.
     csv_files = []
     for code in codes:
         safe_code = code.replace("/", "_")
-        csv_path = f"eval_summary_{args.model}_{dataset_type}_{safe_code}.csv"
+        csv_suffix = "_jitter" if args.jitter else ""
+        csv_path = f"eval_summary_{args.model}_{dataset_type}_{safe_code}{csv_suffix}.csv"
         if os.path.exists(csv_path):
             csv_files.append(csv_path)
 
@@ -449,7 +470,8 @@ def main():
 
     print(aggregated[cols_to_show].to_string(index=False))
 
-    out_file = f"eval_summary_{args.model}_{dataset_type}_ALL_SUBJECTS.csv"
+    csv_suffix = "_jitter" if args.jitter else ""
+    out_file = f"eval_summary_{args.model}_{dataset_type}_ALL_SUBJECTS{csv_suffix}.csv"
     aggregated.to_csv(out_file, index=False)
     print(f"\n[INFO] Aggregated results saved to {out_file}")
 

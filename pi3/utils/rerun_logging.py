@@ -145,6 +145,19 @@ def log_gt_sequence(paths, log_root="4d_eval"):
         log_pointcloud(t, entity, gt_pts, color=[0, 255, 0])
 
 
+def log_precomputed_sequence(paths, label, color, log_root="4d_eval"):
+    """Logs precomputed aligned_pts from a list of NPZ paths."""
+    entity_root = f"{log_root}/{label}"
+    for p in paths:
+        data = np.load(p)
+        t = int(data['frame_idx'])
+        if 'aligned_pts' in data:
+            pts = data['aligned_pts']
+            if np.any(np.linalg.norm(pts, axis=-1) > 10.0):
+                pts = pts / 1000.0
+            log_pointcloud(t, f"{entity_root}/pointcloud", pts, color=color)
+
+
 def log_aligned_sequence(paths, frame_transforms, s_glob, R_glob, tr_glob, label, color, dataset_root,
                          log_root="4d_eval", dataset_type="dex-ycb"):
     """
