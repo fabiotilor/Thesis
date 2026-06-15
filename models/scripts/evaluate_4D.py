@@ -29,7 +29,12 @@ from utils.temporal_metrics import (
     compute_camera_metrics
 )
 from utils.alignment_4D import normalize_spatial_dims, normalize_array
-from eval_config import SUBJECT_NAMES, SUBJECT_BY_CODE, SUPPORTED_MODELS
+from utils.camera_utils import discover_view_name
+from utils.gt import build_gt_validity_masks
+from eval_config import (
+    SUBJECT_NAMES, SUBJECT_BY_CODE, SUPPORTED_MODELS,
+    DATASET_BASE_ROOT, CONF_PERCENTILE,
+)
 
 
 def print_metrics_summary(results_df, label):
@@ -53,7 +58,28 @@ def print_metrics_summary(results_df, label):
     print("=" * (len(label) + 25))
 
 
-def evaluate_strategy_dir(in_dir, out_plot_dir, strategy_label=""):
+def _stringify_array_metric(metrics, key):
+    if key in metrics:
+        metrics[key] = ",".join(str(int(v)) for v in np.asarray(metrics[key]).ravel())
+
+
+def _build_frame_validity_masks(data, dataset_root, H, W):
+    V = normalize_spatial_dims(data)[0]
+    t = int(data['frame_idx']) if 'frame_idx' in data else 0
+    if 'view_names' in data:
+        view_names = (data['view_names'].tolist()
+                      if hasattr(data['view_names'], 'tolist')
+                      else list(data['view_names']))
+    else:
+        view_names = [discover_view_name(dataset_root, k) for k in data['Ks']]
+    vmasks = build_gt_validity_masks(t, view_names, dataset_root, target_hw=(H, W))
+    return np.array([
+        vmask if vmask is not None else np.ones((H, W), dtype=bool)
+        for vmask in vmasks[:V]
+    ], dtype=bool)
+
+
+def evaluate_strategy_dir(in_dir, out_plot_dir, strategy_label="", dataset_root=None):
     files = sorted(glob.glob(os.path.join(in_dir, "frame_*.npz")))
     if not files:
         return None
@@ -69,6 +95,8 @@ def evaluate_strategy_dir(in_dir, out_plot_dir, strategy_label=""):
     # For Jitter & Camera Tracking
     all_pointmaps_mv = []
     all_masks_mv = []
+    all_validity_masks_mv = []
+    all_confs_mv = []
     ate_list, rpe_list, rot_err_list, focal_err_list, pp_err_list = [], [], [], [], []
 
     for f in files:
@@ -121,6 +149,11 @@ def evaluate_strategy_dir(in_dir, out_plot_dir, strategy_label=""):
             V, H, W = normalize_spatial_dims(data)
             pm = normalize_array(data[pointmap_key], V, H, W)
             m_norm = normalize_array(m_2d, V, H, W, is_mask=True)
+            conf_norm = (
+                normalize_array(data['pointmaps_confs'], V, H, W)
+                if 'pointmaps_confs' in data
+                else None
+            )
             aligned_pm = np.empty_like(pm)
             for vi in range(V):
                 aligned_pm[vi] = apply_similarity_transform(
@@ -128,6 +161,10 @@ def evaluate_strategy_dir(in_dir, out_plot_dir, strategy_label=""):
                 ).reshape(H, W, 3)
             all_pointmaps_mv.append(aligned_pm)
             all_masks_mv.append(m_norm.astype(bool))
+            if conf_norm is not None:
+                all_confs_mv.append(conf_norm)
+            if dataset_root is not None:
+                all_validity_masks_mv.append(_build_frame_validity_masks(data, dataset_root, H, W))
 
     # Calculate Aggregated Metrics
     m_static = np.nanmean(s_acc_list)
@@ -168,8 +205,18 @@ def evaluate_strategy_dir(in_dir, out_plot_dir, strategy_label=""):
     if len(all_pointmaps_mv) >= 2:
         # Optimization: compute_static_jitter uses the pre-computed masks_2d from the NPZ
         # No Farneback flow is recalculated here.
-        jitter = compute_static_jitter(all_pointmaps_mv, all_masks_mv, n_anchors=5000)
-        if jitter: metrics.update(jitter)
+        jitter = compute_static_jitter(
+            all_pointmaps_mv,
+            all_masks_mv,
+            validity_masks_per_frame=all_validity_masks_mv if all_validity_masks_mv else None,
+            confidences_per_frame=all_confs_mv if all_confs_mv else None,
+            conf_percentile=CONF_PERCENTILE,
+            n_anchors=5000,
+        )
+        if jitter:
+            metrics.update(jitter)
+            metrics.pop('per_frame_jitter', None)
+            _stringify_array_metric(metrics, 'per_view_anchor_counts')
 
     # Simple temporal plots
     os.makedirs(out_plot_dir, exist_ok=True)
@@ -180,6 +227,88 @@ def evaluate_strategy_dir(in_dir, out_plot_dir, strategy_label=""):
     plt.savefig(os.path.join(out_plot_dir, f'chamfer_{strategy_label}.png'))
     plt.close()
 
+    return metrics
+
+
+def evaluate_jitter_strategy_dir(in_dir, strategy_label="", dataset_root=None):
+    files = sorted(glob.glob(os.path.join(in_dir, "frame_*.npz")))
+    if not files:
+        return None
+
+    print(f"  [JITTER] {strategy_label}: {len(files)} frames...")
+    all_pointmaps_mv = []
+    all_masks_mv = []
+    all_validity_masks_mv = []
+    all_confs_mv = []
+
+    for i, f in enumerate(files):
+        data = np.load(f)
+        pointmap_key = 'world_points' if 'world_points' in data else ('pointmaps' if 'pointmaps' in data else None)
+        if pointmap_key is None or 'masks_2d' not in data:
+            print(f"  [WARN] {f}: missing pointmaps/world_points or masks_2d; skipping jitter data.")
+            continue
+
+        V, H, W = normalize_spatial_dims(data)
+        if H == 0:
+            continue
+
+        pm = normalize_array(data[pointmap_key], V, H, W).astype(np.float32)
+        masks = normalize_array(data['masks_2d'], V, H, W, is_mask=True)
+        conf = (
+            normalize_array(data['pointmaps_confs'], V, H, W)
+            if 'pointmaps_confs' in data
+            else None
+        )
+
+        s_val = data['scale'] if 'scale' in data else 1.0
+        R_val = data['R'] if 'R' in data else np.eye(3)
+        tr_val = data['tr'] if 'tr' in data else np.zeros(3)
+
+        aligned_pm = np.empty_like(pm)
+        for vi in range(V):
+            aligned_pm[vi] = apply_similarity_transform(
+                pm[vi].reshape(-1, 3), s_val, R_val, tr_val
+            ).reshape(H, W, 3)
+
+        all_pointmaps_mv.append(aligned_pm)
+        all_masks_mv.append(masks.astype(bool))
+        if conf is not None:
+            all_confs_mv.append(conf)
+        if dataset_root is not None:
+            all_validity_masks_mv.append(_build_frame_validity_masks(data, dataset_root, H, W))
+
+    metrics = {
+        'strategy': strategy_label,
+        'n_frames': len(files),
+    }
+    if len(all_pointmaps_mv) >= 2:
+        jitter = compute_static_jitter(
+            all_pointmaps_mv,
+            all_masks_mv,
+            validity_masks_per_frame=all_validity_masks_mv if all_validity_masks_mv else None,
+            confidences_per_frame=all_confs_mv if all_confs_mv else None,
+            conf_percentile=CONF_PERCENTILE,
+            n_anchors=5000,
+        )
+        if jitter:
+            metrics.update(jitter)
+            metrics.pop('per_frame_jitter', None)
+            _stringify_array_metric(metrics, 'per_view_anchor_counts')
+    else:
+        metrics.update({
+            'jitter_mean': np.nan, 'jitter_std': np.nan, 'jitter_p95': np.nan,
+            'jitter_max': np.nan, 'drift_mean': np.nan, 'hf_jitter': np.nan,
+            'n_anchors': 0, 'n_potential_anchors': 0,
+        })
+
+    timing_path = os.path.join(in_dir, "timing.json")
+    if os.path.exists(timing_path):
+        try:
+            with open(timing_path, "r", encoding="utf-8") as f:
+                timing = json.load(f)
+            metrics["align_frames"] = int(timing.get("n_frames", len(files)))
+        except Exception as e:
+            print(f"  [WARN] Failed to read timing file {timing_path}: {e}")
     return metrics
 
 
@@ -233,6 +362,7 @@ def main():
     parser.add_argument("--pgo", action="store_true", help="Evaluate only Strategy 3 outputs.")
     parser.add_argument("--views", nargs="+", type=int, help="Optional view counts to evaluate (e.g. --views 2 3 4).")
     parser.add_argument("--model", type=str, default="vggt-point", help="Model backbone used for inputs.")
+    parser.add_argument("--jitter", action="store_true", help="Compute and save only jitter/drift metrics.")
     for code in SUBJECT_BY_CODE.keys(): parser.add_argument(f"--{code}", action="store_true")
     args = parser.parse_args()
 
@@ -279,7 +409,15 @@ def main():
                 in_dir = os.path.join(subject_dir, view_dir)
                 plot_dir = os.path.join("plots", subject_full, method, view_dir)
                 strategy_label = f"{method}_{view_dir}"
-                res = evaluate_strategy_dir(in_dir, plot_dir, strategy_label=strategy_label)
+                dataset_root = os.path.join(DATASET_BASE_ROOT, subject_full)
+                if args.jitter:
+                    res = evaluate_jitter_strategy_dir(
+                        in_dir, strategy_label=strategy_label, dataset_root=dataset_root,
+                    )
+                else:
+                    res = evaluate_strategy_dir(
+                        in_dir, plot_dir, strategy_label=strategy_label, dataset_root=dataset_root,
+                    )
                 if res:
                     res["subject"] = subject_full
                     subject_results.append(res)
@@ -287,7 +425,8 @@ def main():
         if subject_results:
             df = add_delta_consistency(pd.DataFrame(subject_results))
             print_metrics_summary(df, subject_full)
-            out_csv = f"eval_summary_{args.model}_{scode}.csv"
+            suffix = "_jitter" if args.jitter else ""
+            out_csv = f"eval_summary_{args.model}_{scode}{suffix}.csv"
             df.to_csv(out_csv, index=False)
             print(f"[INFO] Saved combined report to {out_csv}")
             continue
@@ -317,7 +456,15 @@ def main():
         for strat in strategies:
             in_dir = os.path.join(base_dir, strat)
             plot_dir = os.path.join(plot_root, strat)
-            res = evaluate_strategy_dir(in_dir, plot_dir, strategy_label=strat)
+            dataset_root = os.path.join(DATASET_BASE_ROOT, subject_full)
+            if args.jitter:
+                res = evaluate_jitter_strategy_dir(
+                    in_dir, strategy_label=strat, dataset_root=dataset_root,
+                )
+            else:
+                res = evaluate_strategy_dir(
+                    in_dir, plot_dir, strategy_label=strat, dataset_root=dataset_root,
+                )
             if res:
                 res["subject"] = subject_full
                 subject_results.append(res)
@@ -325,7 +472,8 @@ def main():
         if subject_results:
             df = add_delta_consistency(pd.DataFrame(subject_results))
             print_metrics_summary(df, subject_full)
-            out_csv = f"eval_summary_{args.model}_{scode}.csv"
+            suffix = "_jitter" if args.jitter else ""
+            out_csv = f"eval_summary_{args.model}_{scode}{suffix}.csv"
             df.to_csv(out_csv, index=False)
             print(f"[INFO] Saved combined report to {out_csv}")
 

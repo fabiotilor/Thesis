@@ -209,7 +209,7 @@ def build_static_gt_pointcloud(t, view_names, dataset_root,
     return np.concatenate(all_pts, axis=0) if all_pts else None
 
 
-from eval_config import CONF_PERCENTILE
+from models.scripts.eval_config import CONF_PERCENTILE
 
 
 def get_static_correspondences(t, view_names, pts3d_list, confs, dataset_root,

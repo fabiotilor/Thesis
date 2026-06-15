@@ -92,6 +92,11 @@ def _parse_args():
         action="store_true",
         help="Experiment: Use Ground Truth intrinsics to rescale VGGT pointmaps and poses.",
     )
+    parser.add_argument(
+        "--jitter",
+        action="store_true",
+        help="After reconstruction/alignment, compute and save only jitter/drift metrics.",
+    )
     return parser.parse_args()
 
 
@@ -137,9 +142,11 @@ def _target_views_for_nviews(nviews: int):
     return target_views
 
 
-def _run_eval(code: str, view_counts: list[int], model: str):
+def _run_eval(code: str, view_counts: list[int], model: str, jitter: bool = False):
     eval_script = os.path.join(os.path.dirname(os.path.abspath(__file__)), "evaluate_4D.py")
     cmd = [sys.executable, eval_script, f"--{code}", "--model", model, "--views"] + [str(v) for v in view_counts]
+    if jitter:
+        cmd.append("--jitter")
     print(f"\nRUNNING: {' '.join(cmd)}")
     subprocess.run(cmd, check=True)
 
@@ -160,7 +167,8 @@ def main():
     os.makedirs(cache_root, exist_ok=True)
 
     for subject_full, code in zip(selected_subjects, codes):
-        csv_path = f"eval_summary_{code}.csv"
+        csv_suffix = "_jitter" if args.jitter else ""
+        csv_path = f"eval_summary_{args.model}_{code}{csv_suffix}.csv"
         if os.path.exists(csv_path):
             print(f"[INFO] {csv_path} already exists, skipping subject {code}.")
             continue
@@ -312,7 +320,7 @@ def main():
             )
 
         print(f"\n[INFO] Evaluating subject {code} across methods/views ...")
-        _run_eval(code, view_counts, args.model)
+        _run_eval(code, view_counts, args.model, jitter=args.jitter)
         print("-" * 80)
 
     print("\n[INFO] Aggregating multi-subject results...")
@@ -321,7 +329,8 @@ def main():
     # Load all individual CSVs
     csv_files = []
     for code in codes:
-        csv_path = f"eval_summary_{args.model}_{code}.csv"
+        csv_suffix = "_jitter" if args.jitter else ""
+        csv_path = f"eval_summary_{args.model}_{code}{csv_suffix}.csv"
         if os.path.exists(csv_path):
             csv_files.append(csv_path)
 
@@ -357,7 +366,8 @@ def main():
     cols_to_show = [c for c in cols_to_show if c in aggregated.columns]
     print(aggregated[cols_to_show].to_string(index=False))
 
-    out_file = f"eval_summary_ALL_{args.model}.csv"
+    csv_suffix = "_jitter" if args.jitter else ""
+    out_file = f"eval_summary_ALL_{args.model}{csv_suffix}.csv"
     aggregated.to_csv(out_file, index=False)
     print(f"\n[INFO] Aggregated results saved to {out_file}")
 

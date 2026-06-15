@@ -30,12 +30,16 @@ try:
     from eval_config import get_subject_by_code, get_dataset_root_for_subject, get_view_config, \
         get_pair_name_for_subject, get_dataset_config
     from utils.rerun_logging import configure_rerun_view_defaults, log_pointcloud, init_recording
+    from utils.camera_utils import get_rgb_path
+    from utils.optical_flow import compute_static_mask
 except ImportError:
     RERUN_ADDR = "rerun+http://127.0.0.1:9876/proxy"
     RERUN_EYE_UP = [0, -1, 0]
     configure_rerun_view_defaults = None
     log_pointcloud = None
     init_recording = None
+    get_rgb_path = None
+    compute_static_mask = None
 
 
 def parse_args():
@@ -244,6 +248,58 @@ def run_refinement(model, cfg, scene_dir, args, subj_code, n_views):
         V = n_views
         num_frames = vggt_pts_cpu.shape[0] // V
 
+        # ── Pre-compute per-frame static masks from optical flow / SAM2 ─────────
+        # The input scene_dir contains ff_outputs.bin with images but no static
+        # mask.  We recompute them from the dataset RGB frames exactly as Pi3's
+        # align_reconstruction_umeyama.py does, so that masks_2d correctly
+        # marks True=static, False=dynamic (arm / hand / can).
+        ds_root_for_masks = get_dataset_root_for_subject(dataset_type,
+                                                         full_subject_name) if dataset_type != "monofusion" else None
+        static_masks_all = None  # (num_frames * V, H_mod, W_mod) or None
+        if (get_rgb_path is not None and compute_static_mask is not None
+                and ds_root_for_masks is not None and os.path.isdir(ds_root_for_masks)
+                and len(view_name_list) > 0):
+            try:
+                H_mod, W_mod = vggt_pts_cpu.shape[1], vggt_pts_cpu.shape[2]
+                static_masks_list = []  # one (H_mod, W_mod) per (frame, view)
+                for t in range(num_frames):
+                    for v_idx in range(len(view_name_list)):
+                        from models.scripts.utils.camera_utils import discover_view_name as _discover_view_name
+                        vname = _discover_view_name(ds_root_for_masks, native_gt_Ks[v_idx], dataset_type=dataset_type)
+                        if vname is None:
+                            vname = view_name_list[v_idx]
+
+                        if dataset_type == "hi4d":
+                            view_dir = os.path.join(ds_root_for_masks, "images", vname)
+                        else:
+                            view_dir = os.path.join(ds_root_for_masks, vname)
+
+                        # Use two adjacent frames so flow can be computed
+                        rgb_paths = []
+                        for dt in [t, t + 1, t - 1]:
+                            p = get_rgb_path(view_dir, dt, dataset_type=dataset_type)
+                            if p is not None:
+                                rgb_paths.append(p)
+                            if len(rgb_paths) == 2:
+                                break
+                        mask = compute_static_mask(rgb_paths)
+                        if mask is None:
+                            print(
+                                f"[WARN] compute_static_mask returned None for view {vname} at t={t}. Falling back to all-static.")
+                            mask = np.ones((H_mod, W_mod), dtype=bool)
+                        elif mask.shape != (H_mod, W_mod):
+                            import cv2 as _cv2
+                            mask = _cv2.resize(
+                                mask.astype(np.uint8), (W_mod, H_mod),
+                                interpolation=_cv2.INTER_NEAREST,
+                            ).astype(bool)
+                        static_masks_list.append(mask)
+                static_masks_all = np.stack(static_masks_list)  # (num_frames * V, H_mod, W_mod)
+                print(f"[INFO] Computed static masks for {num_frames} frames × {len(view_name_list)} views.")
+            except Exception as e:
+                print(f"[WARN] Could not compute static masks, falling back to geo_msks: {e}")
+                static_masks_all = None
+
         for t in range(num_frames):
             start = t * V
             end = (t + 1) * V
@@ -253,8 +309,13 @@ def run_refinement(model, cfg, scene_dir, args, subj_code, n_views):
             f_w2c = ff_extri_cpu[start:end]
             f_intri = ff_intri_cpu[start:end]
             f_gt = gt_pts_cpu[start:end]
-            f_masks = geo_msks_cpu[start:end]
             f_gt_extri = gt_extri_cpu[start:end]
+
+            # Use SAM2/flow static masks if available, else fall back to geo_msks
+            if static_masks_all is not None:
+                f_masks = static_masks_all[start:end]  # True=static, False=dynamic
+            else:
+                f_masks = geo_msks_cpu[start:end]
 
             f_c2w = np.stack([np.linalg.inv(w2c) for w2c in f_w2c])
 

@@ -33,6 +33,7 @@ from eval_config import (
     RERUN_ADDR, RERUN_EYE_UP,
     get_dataset_config, get_subject_by_code, get_dataset_root_for_subject,
     get_view_config, get_pair_name_for_subject,
+    CONF_PERCENTILE,
 )
 from utils.umeyama_alignment import estimate_similarity_transform, apply_similarity_transform
 from utils.alignment_4D import (
@@ -260,7 +261,100 @@ def run_strategy_alignment(baseline_paths, dataset_root, strategy_func, out_dir,
 
 # ── Evaluation (adapted from evaluate_4D.py) ─────────────────────────────────
 
-def evaluate_strategy_dir(in_dir, strategy_label, dataset_type="dex-ycb"):
+def _stringify_array_metric(metrics, key):
+    if key in metrics:
+        metrics[key] = ",".join(str(int(v)) for v in np.asarray(metrics[key]).ravel())
+
+
+def _jitter_inputs_from_dir(in_dir, dataset_root, dataset_type="dex-ycb"):
+    files = _sorted_frame_paths(in_dir)
+    all_pm_mv, all_masks_mv, all_validity_masks_mv, all_confs_mv = [], [], [], []
+
+    for f in files:
+        data = np.load(f)
+        if "pointmaps" not in data or "masks_2d" not in data:
+            continue
+
+        V, H, W = normalize_spatial_dims(data)
+        if H == 0:
+            continue
+
+        pm = normalize_array(data["pointmaps"], V, H, W).astype(np.float32)
+        conf = normalize_array(data["pointmaps_confs"], V, H, W) if "pointmaps_confs" in data else None
+
+        m_2d_raw = data["masks_2d"]
+        m_2d_static = ~m_2d_raw if dataset_type == "hi4d" else m_2d_raw
+        masks = normalize_array(m_2d_static, V, H, W, is_mask=True)
+
+        s_val = data["scale"] if "scale" in data else 1.0
+        R_val = data["R"] if "R" in data else np.eye(3)
+        tr_val = data["tr"] if "tr" in data else np.zeros(3)
+
+        aligned_pm = np.empty_like(pm)
+        for vi in range(V):
+            aligned_pm[vi] = apply_similarity_transform(
+                pm[vi].reshape(-1, 3), s_val, R_val, tr_val
+            ).reshape(H, W, 3)
+
+        all_pm_mv.append(aligned_pm)
+        all_masks_mv.append(masks.astype(bool))
+        if conf is not None:
+            all_confs_mv.append(conf)
+
+        _, vmasks = get_view_names_and_masks(data, dataset_root, dataset_type=dataset_type)
+        all_validity_masks_mv.append(np.array([
+            vmask if vmask is not None else np.ones((H, W), dtype=bool)
+            for vmask in vmasks
+        ], dtype=bool))
+
+    return files, all_pm_mv, all_masks_mv, all_validity_masks_mv, all_confs_mv
+
+
+def evaluate_jitter_strategy_dir(in_dir, strategy_label, dataset_root, dataset_type="dex-ycb"):
+    files, all_pm_mv, all_masks_mv, all_validity_masks_mv, all_confs_mv = _jitter_inputs_from_dir(
+        in_dir, dataset_root, dataset_type=dataset_type,
+    )
+    if not files:
+        return None
+
+    print(f"    [JITTER][{strategy_label}] Evaluating {len(files)} frames from {in_dir}")
+    metrics = {
+        "strategy": strategy_label,
+        "n_frames": len(files),
+    }
+
+    if len(all_pm_mv) >= 2:
+        jitter = compute_static_jitter(
+            all_pm_mv,
+            all_masks_mv,
+            validity_masks_per_frame=all_validity_masks_mv if all_validity_masks_mv else None,
+            confidences_per_frame=all_confs_mv if all_confs_mv else None,
+            conf_percentile=CONF_PERCENTILE,
+            n_anchors=5000,
+        )
+        if jitter:
+            metrics.update(jitter)
+            metrics.pop("per_frame_jitter", None)
+            _stringify_array_metric(metrics, "per_view_anchor_counts")
+    else:
+        metrics.update({
+            "jitter_mean": np.nan, "jitter_std": np.nan, "jitter_p95": np.nan,
+            "jitter_max": np.nan, "drift_mean": np.nan, "hf_jitter": np.nan,
+            "n_anchors": 0, "n_potential_anchors": 0,
+        })
+
+    timing_path = os.path.join(in_dir, "timing.json")
+    if os.path.exists(timing_path):
+        try:
+            with open(timing_path) as f:
+                metrics["align_frames"] = int(json.load(f).get("n_frames", len(files)))
+        except Exception:
+            pass
+
+    return metrics
+
+
+def evaluate_strategy_dir(in_dir, strategy_label, dataset_root, dataset_type="dex-ycb"):
     """Evaluate a directory of aligned .npz frames. Returns metrics dict."""
     files = _sorted_frame_paths(in_dir)
     if not files:
@@ -271,7 +365,7 @@ def evaluate_strategy_dir(in_dir, strategy_label, dataset_type="dex-ycb"):
 
     cham, comp, acc, s_acc, d_acc, s_comp, d_comp = [], [], [], [], [], [], []
     ate_l, rpe_l, rot_l, focal_l, pp_l = [], [], [], [], []
-    all_pm_mv, all_masks_mv = [], []
+    all_pm_mv, all_masks_mv, all_validity_masks_mv, all_confs_mv = [], [], [], []
 
     for idx, f in enumerate(files):
         t0_frame = time.perf_counter()
@@ -348,6 +442,7 @@ def evaluate_strategy_dir(in_dir, strategy_label, dataset_type="dex-ycb"):
         if pm_key:
             V, H, W = normalize_spatial_dims(data)
             pm = normalize_array(data[pm_key], V, H, W)
+            conf = normalize_array(data["pointmaps_confs"], V, H, W) if "pointmaps_confs" in data else None
             m_norm = normalize_array(m_2d_static, V, H, W, is_mask=True)
             aligned_pm = np.empty_like(pm)
             for vi in range(V):
@@ -356,6 +451,13 @@ def evaluate_strategy_dir(in_dir, strategy_label, dataset_type="dex-ycb"):
                 ).reshape(H, W, 3)
             all_pm_mv.append(aligned_pm)
             all_masks_mv.append(m_norm.astype(bool))
+            if conf is not None:
+                all_confs_mv.append(conf)
+            _, vmasks = get_view_names_and_masks(data, dataset_root, dataset_type=dataset_type)
+            all_validity_masks_mv.append(np.array([
+                vmask if vmask is not None else np.ones((H, W), dtype=bool)
+                for vmask in vmasks
+            ], dtype=bool))
 
         t_frame_end = time.perf_counter()
         if (idx + 1) % 5 == 0 or idx == 0:
@@ -385,9 +487,18 @@ def evaluate_strategy_dir(in_dir, strategy_label, dataset_type="dex-ycb"):
             "pp_error": float(np.nanmean(pp_l)),
         })
     if len(all_pm_mv) >= 2:
-        jitter = compute_static_jitter(all_pm_mv, all_masks_mv, n_anchors=5000)
+        jitter = compute_static_jitter(
+            all_pm_mv,
+            all_masks_mv,
+            validity_masks_per_frame=all_validity_masks_mv if all_validity_masks_mv else None,
+            confidences_per_frame=all_confs_mv if all_confs_mv else None,
+            conf_percentile=CONF_PERCENTILE,
+            n_anchors=5000,
+        )
         if jitter:
             metrics.update(jitter)
+            metrics.pop("per_frame_jitter", None)
+            _stringify_array_metric(metrics, "per_view_anchor_counts")
             print(f"    [DEBUG][{strategy_label}] Jitter done in {time.perf_counter() - t_jitter_start:.2f}s")
 
     timing_path = os.path.join(in_dir, "timing.json")
@@ -404,7 +515,7 @@ def evaluate_strategy_dir(in_dir, strategy_label, dataset_type="dex-ycb"):
 def add_delta_consistency(df):
     """Δconsistency = Chamfer4D - Chamfer3D (baseline), per view-count."""
     import re
-    if df.empty or "strategy" not in df.columns:
+    if df.empty or "strategy" not in df.columns or "chamfer" not in df.columns:
         return df
     df = df.copy()
     df["delta_consistency"] = np.nan
@@ -442,6 +553,7 @@ def parse_args():
     parser.add_argument("--skip-refinement", action="store_true", help="Skip GGPT refinement, use existing .npz")
     parser.add_argument("--pgo-only", action="store_true", help="Run only Strategy 3 (PGO)")
     parser.add_argument("--base_input_dir", type=str, default=None, help="Base directory for refined inputs")
+    parser.add_argument("--jitter", action="store_true", help="Compute and save only jitter/drift metrics.")
     return parser.parse_args()
 
 
@@ -467,7 +579,7 @@ def main():
             if dataset_type == "hi4d":
                 args.base_input_dir = os.path.expanduser(f"~/Pi3/ggpt_inputs/hi4d/{args.model}")
             else:
-                args.base_input_dir = os.path.expanduser(f"~/Pi3/ggpt_inputs/{args.model}")
+                args.base_input_dir = os.path.expanduser(f"~/Pi3/ggpt_inputs/{dataset_type}/{args.model}")
         elif args.model == "vggt" and dataset_type == "hi4d":
             args.base_input_dir = os.path.expanduser("~/vggt/ggpt_inputs/hi4d")
         elif args.model == "vggt4d":
@@ -483,7 +595,7 @@ def main():
         elif dataset_type == "hi4d":
             args.base_input_dir = os.path.expanduser(f"~/{args.model}/ggpt_inputs/hi4d")
         else:
-            args.base_input_dir = os.path.expanduser(f"~/{args.model}/ggpt_inputs")
+            args.base_input_dir = os.path.expanduser(f"~/{args.model}/ggpt_inputs/{dataset_type}")
     else:
         args.base_input_dir = os.path.abspath(os.path.expanduser(args.base_input_dir))
 
@@ -569,7 +681,8 @@ def main():
             print(f"[WARN] Unknown subject code: {subj}")
             continue
 
-        csv_path = f"eval_summary_{refined_model}_{subj}.csv"
+        csv_suffix = "_jitter" if args.jitter else ""
+        csv_path = f"eval_summary_{refined_model}_{subj}{csv_suffix}.csv"
         if os.path.exists(csv_path):
             print(f"[SKIP] {csv_path} already exists, skipping evaluation for subject {subj}.")
             existing_df = pd.read_csv(csv_path)
@@ -639,7 +752,14 @@ def main():
 
             # Evaluate baseline
             print(f"  [EVAL] Starting baseline evaluation for {subj}/{nv}views...")
-            bl_metrics = evaluate_strategy_dir(baseline_out, f"baseline_{nv}views", dataset_type=dataset_type)
+            if args.jitter:
+                bl_metrics = evaluate_jitter_strategy_dir(
+                    baseline_out, f"baseline_{nv}views", dataset_root, dataset_type=dataset_type,
+                )
+            else:
+                bl_metrics = evaluate_strategy_dir(
+                    baseline_out, f"baseline_{nv}views", dataset_root, dataset_type=dataset_type,
+                )
             if bl_metrics:
                 print(f"  [EVAL] Baseline evaluation complete.")
                 bl_metrics["subject"] = subject_full
@@ -658,7 +778,14 @@ def main():
                                        f"global_{nv}views", dataset_type=dataset_type)
 
                 print(f"  [EVAL] Evaluating Global...")
-                glob_metrics = evaluate_strategy_dir(global_out, f"global_{nv}views", dataset_type=dataset_type)
+                if args.jitter:
+                    glob_metrics = evaluate_jitter_strategy_dir(
+                        global_out, f"global_{nv}views", dataset_root, dataset_type=dataset_type,
+                    )
+                else:
+                    glob_metrics = evaluate_strategy_dir(
+                        global_out, f"global_{nv}views", dataset_root, dataset_type=dataset_type,
+                    )
                 if glob_metrics:
                     glob_metrics["subject"] = subject_full
                     subject_results.append(glob_metrics)
@@ -682,7 +809,14 @@ def main():
                     run_strategy_alignment(baseline_paths, dataset_root, strategy1_reference, s1_dir,
                                            f"strategy1_{nv}views", dataset_type=dataset_type)
                     print(f"  [EVAL] Evaluating Strategy 1...")
-                    s1_metrics = evaluate_strategy_dir(s1_dir, f"strategy1_{nv}views", dataset_type=dataset_type)
+                    if args.jitter:
+                        s1_metrics = evaluate_jitter_strategy_dir(
+                            s1_dir, f"strategy1_{nv}views", dataset_root, dataset_type=dataset_type,
+                        )
+                    else:
+                        s1_metrics = evaluate_strategy_dir(
+                            s1_dir, f"strategy1_{nv}views", dataset_root, dataset_type=dataset_type,
+                        )
                     if s1_metrics:
                         s1_metrics["subject"] = subject_full
                         subject_results.append(s1_metrics)
@@ -705,7 +839,14 @@ def main():
                     print(f"\n[STAGE] Strategy 2: {subj}/{nv}views")
                     run_strategy_alignment(baseline_paths, dataset_root, strategy2_hierarchical, s2_dir,
                                            f"strategy2_{nv}views", dataset_type=dataset_type)
-                    s2_metrics = evaluate_strategy_dir(s2_dir, f"strategy2_{nv}views", dataset_type=dataset_type)
+                    if args.jitter:
+                        s2_metrics = evaluate_jitter_strategy_dir(
+                            s2_dir, f"strategy2_{nv}views", dataset_root, dataset_type=dataset_type,
+                        )
+                    else:
+                        s2_metrics = evaluate_strategy_dir(
+                            s2_dir, f"strategy2_{nv}views", dataset_root, dataset_type=dataset_type,
+                        )
                     if s2_metrics:
                         s2_metrics["subject"] = subject_full
                         subject_results.append(s2_metrics)
@@ -727,7 +868,14 @@ def main():
                 print(f"\n[STAGE] Strategy 3 (PGO): {subj}/{nv}views")
                 run_strategy_alignment(baseline_paths, dataset_root, strategy3_pgo, s3_dir,
                                        f"strategy3_{nv}views", dataset_type=dataset_type, num_iters=50)
-                s3_metrics = evaluate_strategy_dir(s3_dir, f"strategy3_{nv}views", dataset_type=dataset_type)
+                if args.jitter:
+                    s3_metrics = evaluate_jitter_strategy_dir(
+                        s3_dir, f"strategy3_{nv}views", dataset_root, dataset_type=dataset_type,
+                    )
+                else:
+                    s3_metrics = evaluate_strategy_dir(
+                        s3_dir, f"strategy3_{nv}views", dataset_root, dataset_type=dataset_type,
+                    )
                 if s3_metrics:
                     s3_metrics["subject"] = subject_full
                     subject_results.append(s3_metrics)
@@ -782,17 +930,20 @@ def main():
         if dataset_type == "hi4d":
             cols = [
                 "strategy", "n_frames", "chamfer", "delta_consistency", "accuracy", "completeness",
-                "ate", "rpe", "rot_error", "jitter_mean", "drift_mean", "hf_jitter"
+                "ate", "rpe", "rot_error", "jitter_mean", "jitter_std", "jitter_p95", "jitter_max", "drift_mean",
+                "hf_jitter"
             ]
         else:
             cols = [c for c in [
                 "strategy", "n_frames", "chamfer", "delta_consistency", "accuracy", "completeness",
                 "static_comp", "dyn_comp", "static_acc", "dyn_acc", "motion_gap",
-                "ate", "rpe", "rot_error", "jitter_mean", "drift_mean", "hf_jitter",
+                "ate", "rpe", "rot_error", "jitter_mean", "jitter_std", "jitter_p95", "jitter_max", "drift_mean",
+                "hf_jitter",
             ] if c in agg.columns]
         print(agg[cols].to_string(index=False))
 
-        agg_path = f"eval_summary_ALL_{refined_model}.csv"
+        csv_suffix = "_jitter" if args.jitter else ""
+        agg_path = f"eval_summary_ALL_{refined_model}{csv_suffix}.csv"
         agg.to_csv(agg_path, index=False)
         print(f"\n[INFO] Aggregated results saved to {agg_path}")
     else:

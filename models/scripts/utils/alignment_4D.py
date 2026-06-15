@@ -485,32 +485,34 @@ def solve_final_gt_registration(frame_npz_paths, frame_transforms, dataset_root,
 
 def compute_4d_jitter_complete(frame_npz_paths, frame_transforms, s_glob, R_glob, tr_glob,
                                dataset_root, dataset_type="dex-ycb"):
-    all_pm_mv, all_masks_mv = [], []
+    all_pm_mv, all_masks_mv, all_validity_masks_mv, all_confs_mv = [], [], [], []
     for i, path in enumerate(frame_npz_paths):
         data = np.load(path)
         V, H, W = normalize_spatial_dims(data)
         if H == 0: continue
         pm = normalize_array(data['pointmaps'], V, H, W).astype(np.float32)
+        conf = normalize_array(data['pointmaps_confs'], V, H, W) if 'pointmaps_confs' in data else None
         s_i, R_i, tr_i = frame_transforms[i]
         s_tot, R_tot, tr_tot = s_glob * s_i, R_glob @ R_i, s_glob * (R_glob @ tr_i) + tr_glob
 
         aligned_pm = np.stack(
             [apply_similarity_transform(pm[v].reshape(-1, 3), s_tot, R_tot, tr_tot).reshape(H, W, 3) for v in range(V)])
         all_pm_mv.append(aligned_pm)
+        if conf is not None:
+            all_confs_mv.append(conf)
 
         m = normalize_array(data['masks_2d'], V, H, W, is_mask=True)
-        view_names, _ = get_view_names_and_masks(data, dataset_root, dataset_type=dataset_type)
-        vms = build_gt_validity_masks(
-            int(data['frame_idx']),
-            [vn for vn in view_names if vn is not None],
-            dataset_root, target_hw=(H, W), dataset_type=dataset_type
-        )
-        vi = 0
-        for v in range(V):
-            if view_names[v] is not None and vi < len(vms):
-                if vms[vi] is not None:
-                    m[v] &= vms[vi]
-                vi += 1
         all_masks_mv.append(m)
+        _, vmasks = get_view_names_and_masks(data, dataset_root, dataset_type=dataset_type)
+        all_validity_masks_mv.append(np.array([
+            vmask if vmask is not None else np.ones((H, W), dtype=bool)
+            for vmask in vmasks
+        ], dtype=bool))
 
-    return compute_static_jitter(all_pm_mv, all_masks_mv)
+    return compute_static_jitter(
+        all_pm_mv,
+        all_masks_mv,
+        validity_masks_per_frame=all_validity_masks_mv if all_validity_masks_mv else None,
+        confidences_per_frame=all_confs_mv if all_confs_mv else None,
+        conf_percentile=CONF_PERCENTILE,
+    )

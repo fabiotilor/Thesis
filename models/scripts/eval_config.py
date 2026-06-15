@@ -33,7 +33,7 @@ SUBJECT_NAMES = [
 SUBJECT_BY_CODE = {name.split("subject-")[1][:2]: name for name in SUBJECT_NAMES}
 
 # ── Filtering ─────────────────────────────────────────────────────────────────
-CONF_PERCENTILE = 1.0  # Filter to retain the top 50% of points based on confidence
+CONF_PERCENTILE = 0.5  # Filter to retain the top 50% of points based on confidence on DEX-YCB dataset
 DEPTH_MAX_M = 1.5
 
 # ── Multi-Model / GGPT Support ────────────────────────────────────────────────

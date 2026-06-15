@@ -98,18 +98,22 @@ def compute_static_jitter(
         masks_per_frame: list[np.ndarray],
         Ks_per_frame: list[np.ndarray] = None,
         R_ts_per_frame: list[np.ndarray] = None,
+        validity_masks_per_frame: list[np.ndarray] = None,
+        confidences_per_frame: list[np.ndarray] = None,
+        conf_percentile: float = 0.5,
         n_anchors: int = 5000,
         seed: int = 42,
 ) -> dict:
     """
-    Measure frame-to-frame instability of the static reconstruction using
-    multi-view fused pointmap correspondences.
+    Measure frame-to-frame instability of static reconstruction samples using
+    per-view persistent pointmap anchors.
 
-    For each frame the V per-view pointmaps are fused into a single (H, W, 3)
-    pointmap via majority-vote static masking and mean-pooling of static-view
-    3D positions.  Persistent anchor pixels are sampled from the intersection
-    of fused static masks across all frames, and displacement statistics are
-    computed over the resulting trajectories.
+    Anchors are fixed pixel locations in fixed camera views, i.e. each anchor is
+    identified by (view, y, x).  A candidate anchor is kept only if it is static,
+    high-confidence when confidences are provided, finite/non-zero, and
+    optionally GT-valid in every frame.  Sampling from the union of all per-view
+    persistent anchors naturally allocates anchors proportionally to the number
+    of valid persistent locations in each view.
 
     Parameters
     ----------
@@ -121,8 +125,14 @@ def compute_static_jitter(
         T arrays, each (V, 3, 3).  Intrinsics (reserved for future use).
     R_ts_per_frame : list of np.ndarray, optional
         T arrays, each (V, 4, 4).  Extrinsics (reserved for future use).
+    validity_masks_per_frame : list of np.ndarray, optional
+        T arrays, each of shape (V, H, W).  True = GT-valid / evaluable pixel.
+    confidences_per_frame : list of np.ndarray, optional
+        T arrays, each of shape (V, H, W).  Model confidence values.
+    conf_percentile : float
+        Fraction of points to retain per frame/view when confidences are given.
     n_anchors : int
-        Number of anchor pixels to sample from the intersection mask.
+        Number of (view, pixel) anchors to sample from the persistent set.
     seed : int
         Random seed for reproducible anchor sampling.
 
@@ -139,94 +149,110 @@ def compute_static_jitter(
         n_anchors        : actual anchors used
         n_frames         : T
 
-    # CALLER NOTE: pointmaps_per_frame contains (V, H, W, 3) arrays — the full
-    # multi-view pointmaps saved during reconstruction.  Each view's pointmap
-    # must already be Umeyama-aligned into the GT coordinate frame.  The
-    # masks_per_frame are the per-view flow masks (V, H, W) from 'masks_2d'.
-    # Ks_per_frame and R_ts_per_frame are the per-view camera parameters from
-    # 'Ks' and 'R_ts' respectively.
+    # CALLER NOTE: pointmaps_per_frame contains (V, H, W, 3) arrays.  Each
+    # view's pointmap must already be Umeyama-aligned into the GT coordinate
+    # frame.  The masks_per_frame are the per-view static masks from 'masks_2d'.
     """
     import cv2
 
     nan_result = {
         'jitter_mean': np.nan, 'jitter_std': np.nan, 'jitter_p95': np.nan,
         'jitter_max': np.nan, 'drift_mean': np.nan, 'hf_jitter': np.nan,
-        'per_frame_jitter': np.array([]),
+        'per_frame_jitter': np.array([]), 'n_anchors': 0, 'n_frames': 0,
     }
 
     T = len(pointmaps_per_frame)
     if T < 2:
         return nan_result
+    if validity_masks_per_frame is not None and len(validity_masks_per_frame) != T:
+        print("[jitter] [WARN] Incomplete validity masks; falling back to static masks only.")
+        validity_masks_per_frame = None
+    if confidences_per_frame is not None and len(confidences_per_frame) != T:
+        print("[jitter] [WARN] Incomplete confidence maps; falling back to no confidence filtering.")
+        confidences_per_frame = None
 
-    # Determine spatial resolution from first frame, first view
     first_pm = pointmaps_per_frame[0]  # (V, H, W, 3)
     V, H, W, _ = first_pm.shape
 
-    # ── Fuse views per frame ─────────────────────────────────────────────
-    fused_pointmaps = []  # T x (H, W, 3)
-    fused_masks = []  # T x (H, W) bool
-
-    for t in range(T):
-        pm_t = pointmaps_per_frame[t]  # (V, H, W, 3)
-        mk_t = masks_per_frame[t]  # (V, H', W') — may need resize
-
-        # Resize masks to (V, H, W) if needed
-        resized_masks = np.empty((V, H, W), dtype=bool)
+    def _resize_mask_stack(mask_stack, fill=True):
+        if mask_stack is None:
+            return np.full((V, H, W), fill, dtype=bool)
+        resized = np.empty((V, H, W), dtype=bool)
         for vi in range(V):
-            m = mk_t[vi]
+            m = mask_stack[vi]
+            if m is None:
+                resized[vi] = fill
+                continue
             if m.shape != (H, W):
                 m = cv2.resize(
                     m.astype(np.uint8), (W, H),
                     interpolation=cv2.INTER_NEAREST,
                 ).astype(bool)
-            resized_masks[vi] = m
+            resized[vi] = m
+        return resized
 
-        # Majority-vote static mask: static in more than half of views
-        static_count = resized_masks.sum(axis=0)  # (H, W)
-        fused_mask_t = static_count > (V / 2.0)  # (H, W) bool
+    def _resize_conf_stack(conf_stack):
+        if conf_stack is None:
+            return None
+        resized = np.empty((V, H, W), dtype=np.float32)
+        for vi in range(V):
+            c = conf_stack[vi]
+            if c.shape != (H, W):
+                c = cv2.resize(
+                    c.astype(np.float32), (W, H),
+                    interpolation=cv2.INTER_NEAREST,
+                )
+            resized[vi] = c
+        return resized
 
-        # Mean of 3D positions from views where pixel is static
-        # Use masked operations: set non-static entries to NaN, then nanmean
-        pm_masked = pm_t.copy()  # (V, H, W, 3)
-        mask_expanded = resized_masks[:, :, :, np.newaxis]  # (V, H, W, 1)
-        pm_masked[~np.broadcast_to(mask_expanded, pm_masked.shape)] = np.nan
-
-        with np.errstate(all='ignore'):
-            fused_pm_t = np.nanmean(pm_masked, axis=0)  # (H, W, 3)
-
-        # Pixels where no view is static → NaN; mark as invalid
-        all_nan = np.all(np.isnan(fused_pm_t), axis=-1)  # (H, W)
-        fused_mask_t = fused_mask_t & (~all_nan)
-
-        fused_pointmaps.append(fused_pm_t)
-        fused_masks.append(fused_mask_t)
-
-    # ── Anchor intersection mask ─────────────────────────────────────────
-    anchor_mask = np.ones((H, W), dtype=bool)
+    valid_masks = []  # T x (V, H, W)
     for t in range(T):
-        anchor_mask &= fused_masks[t]
-        # Also require non-NaN in all 3 coords
-        anchor_mask &= ~np.any(np.isnan(fused_pointmaps[t]), axis=-1)
+        pm_t = pointmaps_per_frame[t]  # (V, H, W, 3)
+        static_mask = _resize_mask_stack(masks_per_frame[t], fill=False)
+        if validity_masks_per_frame is not None:
+            gt_valid = _resize_mask_stack(validity_masks_per_frame[t], fill=True)
+        else:
+            gt_valid = np.ones((V, H, W), dtype=bool)
+
+        if confidences_per_frame is not None:
+            conf_t = _resize_conf_stack(confidences_per_frame[t])
+            conf_mask = np.zeros((V, H, W), dtype=bool)
+            for vi in range(V):
+                c = conf_t[vi]
+                finite_conf = np.isfinite(c)
+                if np.any(finite_conf):
+                    thr = np.percentile(c[finite_conf], 100 * (1 - conf_percentile))
+                    conf_mask[vi] = finite_conf & (c > thr)
+        else:
+            conf_mask = np.ones((V, H, W), dtype=bool)
+
+        finite = np.isfinite(pm_t).all(axis=-1)
+        nonzero = np.linalg.norm(pm_t, axis=-1) > 1e-8
+        valid_masks.append(static_mask & gt_valid & conf_mask & finite & nonzero)
+
+    anchor_mask = np.ones((V, H, W), dtype=bool)
+    for valid_t in valid_masks:
+        anchor_mask &= valid_t
 
     flat_indices = np.where(anchor_mask.ravel())[0]
-    print(f"[jitter] Fused {V} views -> {len(flat_indices):,} potential anchors "
-          f"in intersection mask ({H}x{W}).")
+    per_view_counts = anchor_mask.reshape(V, -1).sum(axis=1)
+    print(f"[jitter] Per-view persistent anchors: "
+          f"{', '.join(str(int(c)) for c in per_view_counts)} "
+          f"(total={len(flat_indices):,}, resolution={H}x{W}).")
 
     if len(flat_indices) < 2:
         print("[jitter] [WARN] Fewer than 2 anchors; skipping jitter computation.")
         return nan_result
 
-    # ── Sample anchors ───────────────────────────────────────────────────
     rng = np.random.default_rng(seed)
     n_sample = min(n_anchors, len(flat_indices))
     sampled_indices = rng.choice(flat_indices, size=n_sample, replace=False)
     print(f"[jitter] Sampled {n_sample:,} anchors for measurement.")
 
-    v_idx, u_idx = np.unravel_index(sampled_indices, (H, W))
+    view_idx, y_idx, x_idx = np.unravel_index(sampled_indices, (V, H, W))
 
-    # ── Extract trajectories: (T, N, 3) ─────────────────────────────────
-    stacked = np.stack(fused_pointmaps)  # (T, H, W, 3)
-    trajectories = stacked[:, v_idx, u_idx]  # (T, N, 3)
+    stacked = np.stack(pointmaps_per_frame)  # (T, V, H, W, 3)
+    trajectories = stacked[:, view_idx, y_idx, x_idx]  # (T, N, 3)
 
     # ── Frame-to-frame displacement: (T-1, N) ───────────────────────────
     displacements = np.linalg.norm(
@@ -266,6 +292,8 @@ def compute_static_jitter(
         'per_frame_jitter': per_frame_jitter,
         'n_anchors': int(n_sample),
         'n_frames': int(T),
+        'n_potential_anchors': int(len(flat_indices)),
+        'per_view_anchor_counts': per_view_counts.astype(int),
     }
 
 
