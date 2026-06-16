@@ -33,11 +33,11 @@
 \contentsline {subsection}{\numberline {3.3.1}Geometric Metrics at 1\,cm Threshold}{22}{subsection.3.3.1}%
 \contentsline {subsubsection}{Static/Dynamic Decomposition and Motion Gap}{23}{equation.3.3}%
 \contentsline {subsection}{\numberline {3.3.2}Temporal Consistency Metrics (Jitter and Drift)}{23}{subsection.3.3.2}%
-\contentsline {subsection}{\numberline {3.3.3}Camera Pose Metrics}{24}{subsection.3.3.3}%
+\contentsline {subsection}{\numberline {3.3.3}Camera Pose Metrics}{25}{subsection.3.3.3}%
 \contentsline {subsubsection}{Absolute Trajectory Error (ATE)}{25}{subsection.3.3.3}%
 \contentsline {subsubsection}{Relative Pose Error (RPE)}{25}{equation.3.5}%
-\contentsline {subsubsection}{Rotation Error}{25}{equation.3.6}%
-\contentsline {subsubsection}{Intrinsic Error}{25}{equation.3.7}%
+\contentsline {subsubsection}{Rotation Error}{26}{equation.3.6}%
+\contentsline {subsubsection}{Intrinsic Error}{26}{equation.3.7}%
 \contentsline {subsection}{\numberline {3.3.4}The 3D-to-4D Consistency Metric $\Delta _{\text {consistency}}$}{26}{subsection.3.3.4}%
 \contentsline {chapter}{\numberline {4}System Implementation}{27}{chapter.4}%
 \contentsline {chapter}{\numberline {5}Results}{28}{chapter.5}%

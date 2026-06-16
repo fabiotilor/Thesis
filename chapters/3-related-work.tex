@@ -189,41 +189,49 @@ A positive motion gap indicates that the model reconstructs static scene parts b
 
 \subsection{Temporal Consistency Metrics (Jitter and Drift)}
 
-Temporal instability manifests as unwanted frame-to-frame movement of static scene points after alignment. To measure this, we first fuse the multiple views of each frame into a single 3D representation: for every pixel classified as static by the majority of views (based on SAM2 motion masks), we take the mean 3D position across views (invalid positions are ignored). We then build an anchor set consisting of pixels that are valid in \emph{all} frames of a sequence. From this intersection we randomly sample $5{,}000$ anchor pixels and extract
-their 3D trajectories $\{\mathbf{x}_a(t)\}_{t=1}^{T}$ over time. This sample
-size yields a worst-case margin of error of $1.96/(2\sqrt{5000}) \approx 1.4\%$
-at 95\% confidence, which is sufficient for reconstruction evaluation.
+Temporal instability manifests as unwanted frame‑to‑frame movement of scene regions that should remain static after alignment. Although the reconstruction pipeline stores an aligned 3D point cloud for each frame, these point clouds are unordered and have undergone confidence filtering, concatenation across views, and outlier removal. Consequently, they do not retain stable point identities over time. Measuring temporal jitter directly on these clouds would require nearest‑neighbour matching between frames, which can introduce additional correspondence errors and may hide small instabilities.
+
+For this reason, jitter and drift are computed from the saved dense per‑view pointmaps rather than from the final filtered point clouds. These pointmaps preserve the original image‑grid structure of each model prediction. For every frame $t$, each of the $V$ synchronised views provides a dense pointmap $\mathbf{P}_{t,v} \in \mathbb{R}^{H \times W \times 3}$ and a corresponding static mask $\mathbf{M}_{t,v}$ (from SAM2).
+
+A candidate anchor is defined by a specific view $v$ and a fixed pixel coordinate $(y,x)$ (i.e. a grid location in that camera’s image plane). For a candidate to be retained as a persistent anchor, it must satisfy all of the following conditions in every frame $t$ of the sequence:
+
+\begin{itemize}
+  \item The pixel is classified as static ($\mathbf{M}_{t,v}[y,x] = \text{True}$).
+  \item The corresponding 3D point $\mathbf{P}_{t,v}[y,x]$ is finite and non‑zero.
+  \item The pixel must be valid (i.e. within the evaluable region provided by the ground-truth validity masks).
+  \item The point must survive confidence filtering if applicable (for DEX-YCB).
+\end{itemize}
+
+The set of persistent anchors is the intersection of these valid static pixels across all frames. From the union of all persistent anchors across all views we randomly sample $N = 5{,}000$ anchors (fixed random seed for reproducibility) and extract their 3D trajectories $\{\mathbf{x}_a(t)\}_{t=1}^{T}$, where each trajectory uses the pointmap of its fixed view $v_a$ at pixel $(y_a, x_a)$. This sample size provides a dense yet computationally manageable coverage of static regions.
 
 Let $\mathbf{x}_a(t)$ be the position of anchor $a$ at frame $t$. The following metrics are then defined:
 
 \begin{itemize}
-  \item \textbf{Mean jitter}: average frame-to-frame displacement,
-  averaged over all anchors:
-  \[
-    \frac{1}{T-1}\sum_{t=1}^{T-1}
-    \|\mathbf{x}_a(t+1)-\mathbf{x}_a(t)\|_2
-  \]
+  \item \textbf{Mean jitter}: average frame‑to‑frame displacement,
+        averaged over all anchors:
+        \[
+          \frac{1}{N} \sum_{a=1}^{N} \left( \frac{1}{T-1} \sum_{t=1}^{T-1} \|\mathbf{x}_a(t+1) - \mathbf{x}_a(t)\|_2 \right).
+        \]
 
-  \item \textbf{Jitter standard deviation}: standard deviation of per-anchor
-  mean jitter, measuring how unevenly jitter is distributed across the scene.
+  \item \textbf{Jitter standard deviation}: standard deviation of per‑anchor
+        mean jitter, measuring how unevenly jitter is distributed across the scene.
 
-  \item \textbf{Jitter P95}: the 95th percentile of per-anchor mean jitter,
-  capturing worst-case instability while excluding extreme outliers.
+  \item \textbf{Jitter P95}: the 95th percentile of per‑anchor mean jitter,
+        capturing worst‑case instability while excluding extreme outliers.
 
-  \item \textbf{Jitter max}: the maximum per-anchor mean jitter.
+  \item \textbf{Jitter max}: the maximum per‑anchor mean jitter.
 
   \item \textbf{Drift}: cumulative displacement over the full sequence,
-  averaged over anchors:
-  \[
-    \|\mathbf{x}_a(T)-\mathbf{x}_a(1)\|_2
-  \]
+        averaged over anchors:
+        \[
+          \frac{1}{N} \sum_{a=1}^{N} \|\mathbf{x}_a(T) - \mathbf{x}_a(1)\|_2.
+        \]
 
-  \item \textbf{High-frequency jitter}: second-order temporal acceleration,
-  which isolates high-frequency fluctuations beyond linear motion:
-  \[
-    \frac{1}{T-2}\sum_{t=1}^{T-2}
-    \|\mathbf{x}_a(t+2)-2\mathbf{x}_a(t+1)+\mathbf{x}_a(t)\|_2
-  \]
+  \item \textbf{High‑frequency jitter}: second‑order temporal acceleration,
+        averaged over anchors:
+        \[
+          \frac{1}{N} \sum_{a=1}^{N} \left( \frac{1}{T-2} \sum_{t=1}^{T-2} \|\mathbf{x}_a(t+2) - 2\mathbf{x}_a(t+1) + \mathbf{x}_a(t)\|_2 \right).
+        \]
 \end{itemize}
 
 All jitter metrics are computed exclusively on static scene points, because dynamic points are supposed to move and therefore do not constitute an error.

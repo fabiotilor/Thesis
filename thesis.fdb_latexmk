@@ -1,12 +1,12 @@
 # Fdb version 4
-["biber thesis"] 1781255718.7926 "thesis.bcf" "thesis.bbl" "thesis" 1781255728.04204 0
+["biber thesis"] 1781530483.92548 "thesis.bcf" "thesis.bbl" "thesis" 1781530690.64075 0
   "resources/sources.bib" 1781251950.86966 10314 3151f7e64fd80737f12c66a73542d57c ""
-  "thesis.bcf" 1781255727.88713 113273 11720a6c016c2c2136e505f2a09713b0 "pdflatex"
+  "thesis.bcf" 1781530690.49175 113273 11720a6c016c2c2136e505f2a09713b0 "pdflatex"
   (generated)
   "thesis.bbl"
   "thesis.blg"
   (rewritten before read)
-["pdflatex"] 1781255724.24698 "thesis.tex" "thesis.pdf" "thesis" 1781255728.04239 0
+["pdflatex"] 1781530686.77094 "thesis.tex" "thesis.pdf" "thesis" 1781530690.6411 0
   "/Users/fabio/Library/TinyTeX/texmf-dist/fonts/enc/dvips/base/8r.enc" 1165713224 4850 80dc9bab7f31fb78a000ccfed0e27cab ""
   "/Users/fabio/Library/TinyTeX/texmf-dist/fonts/enc/dvips/lm/lm-ec.enc" 1254269338 2375 baa924870cfb487815765f9094cf3728 ""
   "/Users/fabio/Library/TinyTeX/texmf-dist/fonts/enc/dvips/lm/lm-mathex.enc" 1202520719 3486 c7eadf5dcc57b3b2d11736679f6636ba ""
@@ -295,7 +295,7 @@
   "chapters/0-acknowledgements.tex" 1777453310.64903 10 bd7b9df22726ef3bc5bd602f3fd773fe ""
   "chapters/1-introduction.tex" 1780935138.51362 10823 c6900921cf38d5ef60fd0ba8c794a822 ""
   "chapters/2-background-knowledge.tex" 1781254067.71412 24333 fd976a3cee63abe002466f99c4132eef ""
-  "chapters/3-related-work.tex" 1781255697.20917 24003 87bf02a83ad6880e63c871dd9663ce76 ""
+  "chapters/3-related-work.tex" 1781518374.158 25596 203771767533785d95681af5517b230d ""
   "chapters/4-methodology.tex" 1777453421.08795 64 471fc9d14c22d18dfb48190e295734ee ""
   "chapters/5-experiments.tex" 1777453428.86648 36 6264a3d1ab6defc91a8e41fb92da88e8 ""
   "chapters/6-limitations.tex" 1777453435.93437 61 99d56bca2656cf5b36907d7803b05153 ""
@@ -312,18 +312,18 @@
   "figures/HI4D4.png" 1781017653.73237 664878 f6c9deb77977bcab3d5f7c681630a75b ""
   "figures/dast-logo.png" 1777453310.65056 31592 a2a37dbef0c78cedabf47b463a99ebb4 ""
   "figures/logo-vlg-text.png" 1777453310.65126 90633 3ec0f80426e6069333de73e07397db89 ""
-  "figures/method_figure_cropped.pdf" 1781248176.38627 16646728 e6bc40da1428bac78225c22568fb6c1f ""
+  "figures/method_figure_cropped.pdf" 1781530665.03773 16705332 f3591c42b881ef65ec452a29a7da7ffa ""
   "figures/uzh_logo.png" 1777453310.65182 71629 012af9681700d2dbb78379a86a05e173 ""
   "resources/declaration_en.tex" 1777453310.65316 1731 f4cc8699d23c8b2bee4baaa480893617 ""
   "resources/glossary.tex" 1777453310.65324 172 bcdf6367bf3b23c5af0d702196c0e4d3 ""
   "resources/title-page.tex" 1777453310.65343 1861 59c522abcc032631a28aee500a32d1e7 ""
   "thesis.acr" 0 -1 0 ""
-  "thesis.aux" 1781255727.85143 20926 9f46e83ab604e3103dbd1391e532cc52 "pdflatex"
-  "thesis.bbl" 1781255720.48408 56857 37d9c0ceb716835f25af4907cff047b2 "biber thesis"
-  "thesis.out" 1781255727.8585 6555 ac49efacf176362f4ad40f342f7e61d2 "pdflatex"
-  "thesis.run.xml" 1781255727.89526 2421 26a53457dda4f5223f3b4e8643d070bb "pdflatex"
+  "thesis.aux" 1781530690.48294 20926 bad1d858465de73df868e9c2ea661727 "pdflatex"
+  "thesis.bbl" 1781530495.75318 56857 37d9c0ceb716835f25af4907cff047b2 "biber thesis"
+  "thesis.out" 1781530690.48881 6555 ac49efacf176362f4ad40f342f7e61d2 "pdflatex"
+  "thesis.run.xml" 1781530690.4925 2421 26a53457dda4f5223f3b4e8643d070bb "pdflatex"
   "thesis.tex" 1781192021.59476 1734 a38b555ae49da1e45362583e980db58a ""
-  "thesis.toc" 1781255727.89543 4081 5f0f23ee7482a22623464d01d49e0c0c "pdflatex"
+  "thesis.toc" 1781530690.49259 4081 a5ab1bcd647283c3e301cbac6b7da5c1 "pdflatex"
   (generated)
   "thesis.acn"
   "thesis.aux"
