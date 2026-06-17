@@ -1,22 +1,22 @@
 [0] Config.pm:328> INFO - This is Biber 2.21
 [0] Config.pm:331> INFO - Logfile is 'thesis.blg'
-[35] biber-darwin:342> INFO - === Wed Jun 17, 2026, 16:08:54
-[45] Biber.pm:421> INFO - Reading 'thesis.bcf'
-[88] Biber.pm:1002> INFO - Found 30 citekeys in bib section 0
-[96] Biber.pm:4487> INFO - Processing section 0
-[101] Biber.pm:4678> INFO - Looking for bibtex file 'resources/sources.bib' for section 0
-[103] bibtex.pm:1713> INFO - LaTeX decoding ...
-[116] bibtex.pm:1519> INFO - Found BibTeX data source 'resources/sources.bib'
-[282] UCollate.pm:68> INFO - Overriding locale 'en-US' defaults 'variable = shifted' with 'variable = non-ignorable'
-[283] UCollate.pm:68> INFO - Overriding locale 'en-US' defaults 'normalization = NFD' with 'normalization = prenormalized'
-[283] Biber.pm:4307> INFO - Sorting list 'nty/global//global/global/global' of type 'entry' with template 'nty' and locale 'en-US'
-[283] Biber.pm:4313> INFO - No sort tailoring available for locale 'en-US'
-[302] bbl.pm:676> INFO - Writing 'thesis.bbl' with encoding 'UTF-8'
-[312] bbl.pm:779> INFO - Output to thesis.bbl
-[313] Biber.pm:132> WARN - legacy month field 'October' in entry 'pi3' is not an integer - this will probably not sort properly.
-[313] Biber.pm:132> WARN - legacy month field 'October' in entry 'monofusion' is not an integer - this will probably not sort properly.
-[313] Biber.pm:132> WARN - legacy month field 'June' in entry 'Cin_2025_CVPR' is not an integer - this will probably not sort properly.
-[313] Biber.pm:132> WARN - legacy month field 'October' in entry 'Jiang_2025_ICCV' is not an integer - this will probably not sort properly.
-[313] Biber.pm:132> WARN - legacy month field 'June--July' in entry 'farneback2003two' is not an integer - this will probably not sort properly.
-[313] Biber.pm:132> WARN - legacy month field 'Oct.' in entry 'sturm12iros' is not an integer - this will probably not sort properly.
-[313] Biber.pm:134> INFO - WARNINGS: 6
+[34] biber-darwin:342> INFO - === Wed Jun 17, 2026, 17:24:01
+[43] Biber.pm:421> INFO - Reading 'thesis.bcf'
+[86] Biber.pm:1002> INFO - Found 30 citekeys in bib section 0
+[94] Biber.pm:4487> INFO - Processing section 0
+[100] Biber.pm:4678> INFO - Looking for bibtex file 'resources/sources.bib' for section 0
+[101] bibtex.pm:1713> INFO - LaTeX decoding ...
+[114] bibtex.pm:1519> INFO - Found BibTeX data source 'resources/sources.bib'
+[272] UCollate.pm:68> INFO - Overriding locale 'en-US' defaults 'normalization = NFD' with 'normalization = prenormalized'
+[272] UCollate.pm:68> INFO - Overriding locale 'en-US' defaults 'variable = shifted' with 'variable = non-ignorable'
+[272] Biber.pm:4307> INFO - Sorting list 'nty/global//global/global/global' of type 'entry' with template 'nty' and locale 'en-US'
+[272] Biber.pm:4313> INFO - No sort tailoring available for locale 'en-US'
+[291] bbl.pm:676> INFO - Writing 'thesis.bbl' with encoding 'UTF-8'
+[302] bbl.pm:779> INFO - Output to thesis.bbl
+[302] Biber.pm:132> WARN - legacy month field 'October' in entry 'pi3' is not an integer - this will probably not sort properly.
+[302] Biber.pm:132> WARN - legacy month field 'October' in entry 'monofusion' is not an integer - this will probably not sort properly.
+[302] Biber.pm:132> WARN - legacy month field 'June' in entry 'Cin_2025_CVPR' is not an integer - this will probably not sort properly.
+[302] Biber.pm:132> WARN - legacy month field 'October' in entry 'Jiang_2025_ICCV' is not an integer - this will probably not sort properly.
+[302] Biber.pm:132> WARN - legacy month field 'June--July' in entry 'farneback2003two' is not an integer - this will probably not sort properly.
+[302] Biber.pm:132> WARN - legacy month field 'Oct.' in entry 'sturm12iros' is not an integer - this will probably not sort properly.
+[302] Biber.pm:134> INFO - WARNINGS: 6

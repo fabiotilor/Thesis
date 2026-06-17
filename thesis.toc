@@ -35,25 +35,29 @@
 \contentsline {paragraph}{DEX-YCB.}{20}{section.4.1}%
 \contentsline {paragraph}{Hi4D.}{21}{section.4.1}%
 \contentsline {paragraph}{Camera configurations.}{21}{section.4.1}%
-\contentsline {section}{\numberline {4.2}Evaluation Pipeline}{22}{section.4.2}%
-\contentsline {subsection}{\numberline {4.2.1}Point Cloud Filtering}{23}{subsection.4.2.1}%
-\contentsline {paragraph}{Ground-truth validity masking.}{23}{subsection.4.2.1}%
-\contentsline {paragraph}{Confidence-based filtering.}{24}{subsection.4.2.1}%
-\contentsline {paragraph}{Statistical outlier removal.}{24}{subsection.4.2.1}%
-\contentsline {subsection}{\numberline {4.2.2}Correspondence Construction}{24}{subsection.4.2.2}%
-\contentsline {subsection}{\numberline {4.2.3}Per-Frame Similarity Alignment}{24}{subsection.4.2.3}%
-\contentsline {section}{\numberline {4.3}Metric Suite}{25}{section.4.3}%
-\contentsline {subsection}{\numberline {4.3.1}Geometric Metrics}{25}{subsection.4.3.1}%
-\contentsline {paragraph}{Static/dynamic decomposition and motion gap.}{25}{equation.4.3}%
-\contentsline {paragraph}{3D-to-4D consistency.}{26}{equation.4.4}%
-\contentsline {subsection}{\numberline {4.3.2}Temporal Consistency Metrics}{26}{subsection.4.3.2}%
-\contentsline {subsection}{\numberline {4.3.3}Camera Pose Metrics}{27}{subsection.4.3.3}%
-\contentsline {paragraph}{Absolute Trajectory Error (ATE).}{27}{subsection.4.3.3}%
-\contentsline {paragraph}{Relative Pose Error (RPE).}{27}{equation.4.6}%
-\contentsline {paragraph}{Rotation error.}{27}{equation.4.7}%
-\contentsline {paragraph}{Intrinsic error.}{27}{equation.4.7}%
-\contentsline {section}{\numberline {4.4}Implementation Details}{28}{section.4.4}%
-\contentsline {chapter}{\numberline {5}Results}{29}{chapter.5}%
-\contentsline {chapter}{\numberline {6}Discussion and Conclusion}{30}{chapter.6}%
-\contentsline {chapter}{Bibliography}{30}{section*.11}%
-\contentsline {chapter}{\numberline {A}Artifacts Availability}{34}{appendix.A}%
+\contentsline {section}{\numberline {4.2}Evaluation Pipeline}{24}{section.4.2}%
+\contentsline {subsection}{\numberline {4.2.1}Point Cloud Filtering}{24}{subsection.4.2.1}%
+\contentsline {paragraph}{Ground-truth validity masking.}{25}{subsection.4.2.1}%
+\contentsline {paragraph}{Confidence-based filtering.}{25}{subsection.4.2.1}%
+\contentsline {paragraph}{Statistical outlier removal.}{25}{subsection.4.2.1}%
+\contentsline {subsection}{\numberline {4.2.2}Correspondence Construction}{25}{subsection.4.2.2}%
+\contentsline {subsection}{\numberline {4.2.3}Per-Frame Similarity Alignment}{25}{subsection.4.2.3}%
+\contentsline {section}{\numberline {4.3}Metric Suite}{26}{section.4.3}%
+\contentsline {subsection}{\numberline {4.3.1}Geometric Metrics}{26}{subsection.4.3.1}%
+\contentsline {paragraph}{Static/dynamic decomposition and motion gap.}{26}{equation.4.3}%
+\contentsline {paragraph}{3D-to-4D consistency.}{27}{equation.4.4}%
+\contentsline {subsection}{\numberline {4.3.2}Temporal Consistency Metrics}{27}{subsection.4.3.2}%
+\contentsline {subsection}{\numberline {4.3.3}Camera Pose Metrics}{28}{subsection.4.3.3}%
+\contentsline {paragraph}{Absolute Trajectory Error (ATE).}{28}{subsection.4.3.3}%
+\contentsline {paragraph}{Relative Pose Error (RPE).}{28}{equation.4.6}%
+\contentsline {paragraph}{Rotation error.}{29}{equation.4.7}%
+\contentsline {paragraph}{Intrinsic error.}{29}{equation.4.7}%
+\contentsline {section}{\numberline {4.4}Implementation Details}{29}{section.4.4}%
+\contentsline {paragraph}{Checkpoints and inference settings.}{29}{section.4.4}%
+\contentsline {paragraph}{Hardware.}{29}{section.4.4}%
+\contentsline {paragraph}{Runtime.}{29}{section.4.4}%
+\contentsline {paragraph}{Software.}{30}{section.4.4}%
+\contentsline {chapter}{\numberline {5}Results}{31}{chapter.5}%
+\contentsline {chapter}{\numberline {6}Discussion and Conclusion}{32}{chapter.6}%
+\contentsline {chapter}{Bibliography}{32}{section*.10}%
+\contentsline {chapter}{\numberline {A}Artifacts Availability}{36}{appendix.A}%

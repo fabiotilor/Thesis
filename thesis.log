@@ -1,4 +1,4 @@
-This is pdfTeX, Version 3.141592653-2.6-1.40.28 (TeX Live 2025) (preloaded format=pdflatex 2026.4.17)  17 JUN 2026 16:08
+This is pdfTeX, Version 3.141592653-2.6-1.40.28 (TeX Live 2025) (preloaded format=pdflatex 2026.4.17)  17 JUN 2026 17:24
 entering extended mode
  restricted \write18 enabled.
  %&-line parsing enabled.
@@ -1337,81 +1337,93 @@ Chapter 4.
 [20
 
 ]
-Overfull \hbox (0.63689pt too wide) in paragraph at lines 62--67
-\T1/lmr/m/n/12 pro-vid-ing broad cov-er-age around the ma-nip-u-la-tion re-gion. For Hi4D, stronger
- []
-
 LaTeX Font Info:    External font `lmex10' loaded for size
-(Font)              <5> on input line 85.
-<figures/DEX2.png, id=551, 604.2575pt x 582.175pt>
+(Font)              <5> on input line 42.
+ [21]
+<figures/DEX2.png, id=562, 604.2575pt x 582.175pt>
 File: figures/DEX2.png Graphic file (type png)
 <use figures/DEX2.png>
-Package pdftex.def Info: figures/DEX2.png  used on input line 95.
-(pdftex.def)             Requested size: 124.80286pt x 120.23497pt.
-<figures/DEX3.png, id=552, 583.17876pt x 473.77pt>
+Package pdftex.def Info: figures/DEX2.png  used on input line 56.
+(pdftex.def)             Requested size: 187.19833pt x 180.3569pt.
+<figures/DEX3.png, id=563, 583.17876pt x 473.77pt>
 File: figures/DEX3.png Graphic file (type png)
 <use figures/DEX3.png>
-Package pdftex.def Info: figures/DEX3.png  used on input line 100.
-(pdftex.def)             Requested size: 124.80286pt x 101.38867pt.
-<figures/DEX4.png, id=553, 620.3175pt x 435.6275pt>
+Package pdftex.def Info: figures/DEX3.png  used on input line 60.
+(pdftex.def)             Requested size: 187.19833pt x 152.07939pt.
+<figures/DEX4.png, id=564, 620.3175pt x 435.6275pt>
 File: figures/DEX4.png Graphic file (type png)
 <use figures/DEX4.png>
-Package pdftex.def Info: figures/DEX4.png  used on input line 105.
-(pdftex.def)             Requested size: 124.80286pt x 87.64243pt.
-<figures/HI4D2.png, id=554, 1425.325pt x 517.935pt>
+Package pdftex.def Info: figures/DEX4.png  used on input line 64.
+(pdftex.def)             Requested size: 187.19833pt x 131.46031pt.
+<figures/HI4D2.png, id=565, 1425.325pt x 517.935pt>
 File: figures/HI4D2.png Graphic file (type png)
 <use figures/HI4D2.png>
-Package pdftex.def Info: figures/HI4D2.png  used on input line 117.
-(pdftex.def)             Requested size: 124.80286pt x 45.34764pt.
-<figures/HI4D3.png, id=555, 1565.85pt x 442.65375pt>
+Package pdftex.def Info: figures/HI4D2.png  used on input line 76.
+(pdftex.def)             Requested size: 187.19833pt x 68.02147pt.
+<figures/HI4D3.png, id=566, 1565.85pt x 442.65375pt>
 File: figures/HI4D3.png Graphic file (type png)
 <use figures/HI4D3.png>
-Package pdftex.def Info: figures/HI4D3.png  used on input line 122.
-(pdftex.def)             Requested size: 124.80286pt x 35.27792pt.
-<figures/HI4D4.png, id=556, 1333.98375pt x 407.5225pt>
+Package pdftex.def Info: figures/HI4D3.png  used on input line 80.
+(pdftex.def)             Requested size: 187.19833pt x 52.91351pt.
+<figures/HI4D4.png, id=567, 1333.98375pt x 407.5225pt>
 File: figures/HI4D4.png Graphic file (type png)
 <use figures/HI4D4.png>
-Package pdftex.def Info: figures/HI4D4.png  used on input line 127.
-(pdftex.def)             Requested size: 124.80286pt x 38.1243pt.
+Package pdftex.def Info: figures/HI4D4.png  used on input line 84.
+(pdftex.def)             Requested size: 187.19833pt x 57.18333pt.
 
-Overfull \hbox (4.3895pt too wide) in paragraph at lines 136--141
-[]\T1/lmr/m/n/12 The na-tive 4D models---VGGT4D and MonoFusion---receive the full multi-
+Underfull \hbox (badness 1043) in paragraph at lines 89--89
+[]\T1/lmr/m/n/12 Figure 4.2: |Hi4D cam-era con-fig-
  []
 
-[21]
-<figures/method_figure_cropped.pdf, id=567, 396.48125pt x 116.435pt>
+
+Underfull \hbox (badness 2384) in paragraph at lines 89--89
+\T1/lmr/m/n/12 u-ra-tions for the 2-, 3-, and 4-
+ []
+
+
+Underfull \hbox (badness 2922) in paragraph at lines 89--89
+\T1/lmr/m/n/12 view set-tings. Frontal cam-eras
+ []
+
+
+LaTeX Warning: Float too large for page by 37.69656pt on input line 92.
+
+[22] [23 <./figures/DEX2.png> <./figures/DEX3.png> <./figures/DEX4.png> <./figures/HI4D2.png> <./figures/HI4D3.png> <./figures/HI4D4.png>]
+<figures/method_figure_cropped.pdf, id=586, 396.48125pt x 116.435pt>
 File: figures/method_figure_cropped.pdf Graphic file (type pdf)
 <use figures/method_figure_cropped.pdf>
-Package pdftex.def Info: figures/method_figure_cropped.pdf  used on input line 155.
+Package pdftex.def Info: figures/method_figure_cropped.pdf  used on input line 106.
 (pdftex.def)             Requested size: 390.0pt x 114.53368pt.
- [22 <./figures/DEX2.png> <./figures/DEX3.png> <./figures/DEX4.png>] [23 <./figures/HI4D2.png> <./figures/HI4D3.png> <./figures/HI4D4.png> <./figures/method_figure_cropped.pdf>]
-Overfull \hbox (0.43399pt too wide) in paragraph at lines 207--210
-\T1/lmr/m/n/12 mates the sim-i-lar-ity trans-for-ma-tion $\OT1/lmr/m/n/12 (\OML/lmm/m/it/12 s; \OT1/lmr/bx/n/12 R\OML/lmm/m/it/12 ; \OT1/lmr/bx/n/12 t\OT1/lmr/m/n/12 )$ \T1/lmr/m/n/12 that min-imises the mean squared
- []
+ [24
 
-[24]
-Overfull \hbox (8.78145pt too wide) in paragraph at lines 239--242
+ <./figures/method_figure_cropped.pdf>] [25]
+Overfull \hbox (8.78145pt too wide) in paragraph at lines 163--164
 \T1/lmr/m/n/12 The pri-mary dis-tance met-ric is the sym-met-ric Cham-fer dis-tance (Sec-tion [][]2.4.4[][]).
  []
 
-[25] [26] [27]
-LaTeX Font Info:    Trying to load font information for T1+lmtt on input line 379.
+[26] [27] [28] [29]
+LaTeX Font Info:    Trying to load font information for T1+lmtt on input line 269.
  (/Users/fabio/Library/TinyTeX/texmf-dist/tex/latex/lm/t1lmtt.fd
 File: t1lmtt.fd 2015/05/01 v1.6.1 Font defs for Latin Modern
-)) (./chapters/5-experiments.tex [28]
+)) (./chapters/5-experiments.tex
+Overfull \hbox (18.86285pt too wide) in paragraph at lines 269--1
+\T1/lmr/m/n/12 met-ric com-pu-ta-tions are im-ple-mented in Python us-ing \T1/lmtt/m/n/12 scipy.spatial.cKDTree\T1/lmr/m/n/12 .
+ []
+
+[30]
 Chapter 5.
-) (./chapters/6-limitations.tex [29
+) (./chapters/6-limitations.tex [31
 
 ]
 Chapter 6.
-) [30
+) [32
 
 ]
 Overfull \hbox (3.01653pt too wide) in paragraph at lines 55--55
 []\T1/lmr/m/n/12 Yu-Wei Chao \T1/lmr/m/it/12 et al\T1/lmr/m/n/12 . ^^P  DexYCB: A Bench-mark for Cap-tur-ing Hand Grasp-
  []
 
-[31
+[33
 
 ]
 Overfull \hbox (5.85074pt too wide) in paragraph at lines 55--55
@@ -1423,10 +1435,10 @@ Overfull \hbox (2.71123pt too wide) in paragraph at lines 55--55
 \T1/lmr/m/it/12 Structure-from-Motion\T1/lmr/m/n/12 . 2025. arXiv: [][]$\T1/lmtt/m/n/12 2504 . 20040$ [cs.CV][][]\T1/lmr/m/n/12 . \T1/lmr/m/sc/12 url\T1/lmr/m/n/12 : [][]$\T1/lmtt/m/n/12 https :
  []
 
-[32] [33] (./chapters/A-appendix.tex
+[34] [35] (./chapters/A-appendix.tex
 Appendix A.
 Package hyperref Info: bookmark level for unknown todo defaults to 0 on input line 4.
-) (./resources/declaration_en.tex [34
+) (./resources/declaration_en.tex [36
 
 
 ]
@@ -1463,24 +1475,24 @@ L3 programming layer <2026-01-19>
 LaTeX Warning: There were undefined references.
 
 Package rerunfilecheck Info: File `thesis.out' has not changed.
-(rerunfilecheck)             Checksum: 8630DA5BAEB2215DEE43C194DC78A017;7034.
+(rerunfilecheck)             Checksum: EBADB7DEBF6EACE2A4EE0EB3B75D2CFD;7034.
 Package logreq Info: Writing requests to 'thesis.run.xml'.
 \openout1 = `thesis.run.xml'.
 
  ) 
 Here is how much of TeX's memory you used:
- 43804 strings out of 469443
- 873553 string characters out of 5466399
- 1819773 words of memory out of 5000000
+ 43805 strings out of 469443
+ 873550 string characters out of 5466399
+ 1819733 words of memory out of 5000000
  71637 multiletter control sequences out of 15000+600000
  751583 words of font info for 137 fonts, out of 8000000 for 9000
  38 hyphenation exceptions out of 8191
  132i,12n,135p,2593b,2463s stack positions out of 10000i,1000n,20000p,200000b,200000s
 </Users/fabio/Library/TinyTeX/texmf-dist/fonts/type1/public/amsfonts/euler/eufm10.pfb></Users/fabio/Library/TinyTeX/texmf-dist/fonts/type1/public/lm/lmbx12.pfb></Users/fabio/Library/TinyTeX/texmf-dist/fonts/type1/public/lm/lmbx8.pfb></Users/fabio/Library/TinyTeX/texmf-dist/fonts/type1/public/lm/lmcsc10.pfb></Users/fabio/Library/TinyTeX/texmf-dist/fonts/type1/public/lm/lmex10.pfb></Users/fabio/Library/TinyTeX/texmf-dist/fonts/type1/public/lm/lmmi12.pfb></Users/fabio/Library/TinyTeX/texmf-dist/fonts/type1/public/lm/lmmi8.pfb></Users/fabio/Library/TinyTeX/texmf-dist/fonts/type1/public/lm/lmr10.pfb></Users/fabio/Library/TinyTeX/texmf-dist/fonts/type1/public/lm/lmr12.pfb></Users/fabio/Library/TinyTeX/texmf-dist/fonts/type1/public/lm/lmr7.pfb></Users/fabio/Library/TinyTeX/texmf-dist/fonts/type1/public/lm/lmr8.pfb></Users/fabio/Library/TinyTeX/texmf-dist/fonts/type1/public/lm/lmri12.pfb></Users/fabio/Library/TinyTeX/texmf-dist/fonts/type1/public/lm/lmsy10.pfb></Users/fabio/Library/TinyTeX/texmf-dist/fonts/type1/public/lm/lmsy6.pfb></Users/fabio/Library/TinyTeX/texmf-dist/fonts/type1/public/lm/lmsy7.pfb></Users/fabio/Library/TinyTeX/texmf-dist/fonts/type1/public/lm/lmsy8.pfb></Users/fabio/Library/TinyTeX/texmf-dist/fonts/type1/public/lm/lmtt10.pfb></Users/fabio/Library/TinyTeX/texmf-dist/fonts/type1/public/lm/lmtt12.pfb></Users/fabio/Library/TinyTeX/texmf-dist/fonts/type1/public/amsfonts/symbols/msbm10.pfb></Users/fabio/Library/TinyTeX/texmf-dist/fonts/type1/urw/helvetic/uhvb8a.pfb></Users/fabio/Library/TinyTeX/texmf-dist/fonts/type1/urw/helvetic/uhvr8a.pfb>
-Output written on thesis.pdf (41 pages, 21451040 bytes).
+Output written on thesis.pdf (43 pages, 21453116 bytes).
 PDF statistics:
- 868 PDF objects out of 1000 (max. 8388607)
- 689 compressed objects within 7 object streams
- 138 named destinations out of 1000 (max. 500000)
+ 884 PDF objects out of 1000 (max. 8388607)
+ 702 compressed objects within 8 object streams
+ 139 named destinations out of 1000 (max. 500000)
  379 words of extra memory for PDF output out of 10000 (max. 10000000)
 

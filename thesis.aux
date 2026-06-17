@@ -250,62 +250,64 @@
 \@writefile{lot}{\contentsline {table}{\numberline {4.1}{\ignorespaces Camera configurations used for sparse-view evaluation on DEX-YCB and Hi4D.}}{22}{table.caption.7}\protected@file@percent }
 \newlabel{tab:camera_configs}{{4.1}{22}{Camera configurations used for sparse-view evaluation on DEX-YCB and Hi4D}{table.caption.7}{}}
 \newlabel{tab:camera_configs@cref}{{[table][1][4]4.1}{[1][21][]22}{}{}{}}
-\@writefile{lof}{\contentsline {figure}{\numberline {4.1}{\ignorespaces DEX-YCB camera configurations for the 2-, 3-, and 4-view evaluation settings. Cameras span frontal and rear viewpoints to provide broad coverage of the manipulation region while maintaining inter-view overlap.}}{22}{figure.caption.8}\protected@file@percent }
-\newlabel{fig:dex_configs}{{4.1}{22}{DEX-YCB camera configurations for the 2-, 3-, and 4-view evaluation settings. Cameras span frontal and rear viewpoints to provide broad coverage of the manipulation region while maintaining inter-view overlap}{figure.caption.8}{}}
-\newlabel{fig:dex_configs@cref}{{[figure][1][4]4.1}{[1][21][]22}{}{}{}}
-\@writefile{toc}{\contentsline {section}{\numberline {4.2}Evaluation Pipeline}{22}{section.4.2}\protected@file@percent }
-\newlabel{sec:evaluation_pipeline}{{4.2}{22}{Evaluation Pipeline}{section.4.2}{}}
-\newlabel{sec:evaluation_pipeline@cref}{{[section][2][4]4.2}{[1][22][]22}{}{}{}}
-\@writefile{lof}{\contentsline {figure}{\numberline {4.2}{\ignorespaces Hi4D camera configurations for the 2-, 3-, and 4-view evaluation settings. Frontal cameras are preferred due to stronger self-occlusions in human--human interaction sequences.}}{23}{figure.caption.9}\protected@file@percent }
-\newlabel{fig:hi4d_configs}{{4.2}{23}{Hi4D camera configurations for the 2-, 3-, and 4-view evaluation settings. Frontal cameras are preferred due to stronger self-occlusions in human--human interaction sequences}{figure.caption.9}{}}
-\newlabel{fig:hi4d_configs@cref}{{[figure][2][4]4.2}{[1][21][]23}{}{}{}}
-\@writefile{lof}{\contentsline {figure}{\numberline {4.3}{\ignorespaces Evaluation pipeline overview. The top row shows the per-frame baseline path: raw model outputs are filtered (ground-truth validity, confidence, statistical outlier removal), pixel-wise correspondences are established via projection, and Umeyama similarity alignment registers each frame to its ground truth, producing 3D metrics. The bottom row previews the 4D path: an additional temporal alignment stage (Chapter~\ref {c:methodology}) first brings independently reconstructed frames into a shared coordinate system using static masks, after which the concatenated sequence is aligned globally to ground truth to produce 4D metrics.}}{23}{figure.caption.10}\protected@file@percent }
-\newlabel{fig:evaluation_pipeline}{{4.3}{23}{Evaluation pipeline overview. The top row shows the per-frame baseline path: raw model outputs are filtered (ground-truth validity, confidence, statistical outlier removal), pixel-wise correspondences are established via projection, and Umeyama similarity alignment registers each frame to its ground truth, producing 3D metrics. The bottom row previews the 4D path: an additional temporal alignment stage (Chapter~\ref {c:methodology}) first brings independently reconstructed frames into a shared coordinate system using static masks, after which the concatenated sequence is aligned globally to ground truth to produce 4D metrics}{figure.caption.10}{}}
-\newlabel{fig:evaluation_pipeline@cref}{{[figure][3][4]4.3}{[1][22][]23}{}{}{}}
-\@writefile{toc}{\contentsline {subsection}{\numberline {4.2.1}Point Cloud Filtering}{23}{subsection.4.2.1}\protected@file@percent }
-\@writefile{toc}{\contentsline {paragraph}{Ground-truth validity masking.}{23}{subsection.4.2.1}\protected@file@percent }
+\@writefile{lof}{\contentsline {figure}{\numberline {4.1}{\ignorespaces DEX-YCB camera configurations for the 2-, 3-, and 4-view settings. Cameras span frontal and rear viewpoints to maximise coverage of the manipulation region while maintaining inter-view overlap.}}{23}{figure.caption.8}\protected@file@percent }
+\newlabel{fig:dex_configs}{{4.1}{23}{DEX-YCB camera configurations for the 2-, 3-, and 4-view settings. Cameras span frontal and rear viewpoints to maximise coverage of the manipulation region while maintaining inter-view overlap}{figure.caption.8}{}}
+\newlabel{fig:dex_configs@cref}{{[figure][1][4]4.1}{[1][22][]23}{}{}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {4.2}{\ignorespaces Hi4D camera configurations for the 2-, 3-, and 4-view settings. Frontal cameras are preferred due to stronger self-occlusions in human--human interaction sequences.}}{23}{figure.caption.8}\protected@file@percent }
+\newlabel{fig:hi4d_configs}{{4.2}{23}{Hi4D camera configurations for the 2-, 3-, and 4-view settings. Frontal cameras are preferred due to stronger self-occlusions in human--human interaction sequences}{figure.caption.8}{}}
+\newlabel{fig:hi4d_configs@cref}{{[figure][2][4]4.2}{[1][22][]23}{}{}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {4.2}Evaluation Pipeline}{24}{section.4.2}\protected@file@percent }
+\newlabel{sec:evaluation_pipeline}{{4.2}{24}{Evaluation Pipeline}{section.4.2}{}}
+\newlabel{sec:evaluation_pipeline@cref}{{[section][2][4]4.2}{[1][24][]24}{}{}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {4.3}{\ignorespaces Evaluation pipeline overview. The top row shows the per-frame baseline path: raw model outputs are filtered (ground-truth validity, confidence, statistical outlier removal), pixel-wise correspondences are established via projection, and Umeyama similarity alignment registers each frame to its ground truth, producing 3D metrics. The bottom row shows the 4D path: the temporal alignment stage of Chapter~\ref {c:methodology} first brings independently reconstructed frames into a shared coordinate system using static masks, after which the concatenated sequence is aligned globally to ground truth to produce 4D metrics.}}{24}{figure.caption.9}\protected@file@percent }
+\newlabel{fig:evaluation_pipeline}{{4.3}{24}{Evaluation pipeline overview. The top row shows the per-frame baseline path: raw model outputs are filtered (ground-truth validity, confidence, statistical outlier removal), pixel-wise correspondences are established via projection, and Umeyama similarity alignment registers each frame to its ground truth, producing 3D metrics. The bottom row shows the 4D path: the temporal alignment stage of Chapter~\ref {c:methodology} first brings independently reconstructed frames into a shared coordinate system using static masks, after which the concatenated sequence is aligned globally to ground truth to produce 4D metrics}{figure.caption.9}{}}
+\newlabel{fig:evaluation_pipeline@cref}{{[figure][3][4]4.3}{[1][24][]24}{}{}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {4.2.1}Point Cloud Filtering}{24}{subsection.4.2.1}\protected@file@percent }
 \abx@aux@cite{0}{rusu2008statistical}
 \abx@aux@segm{0}{0}{rusu2008statistical}
-\abx@aux@cite{0}{umeyama1991least}
-\abx@aux@segm{0}{0}{umeyama1991least}
-\@writefile{toc}{\contentsline {paragraph}{Confidence-based filtering.}{24}{subsection.4.2.1}\protected@file@percent }
-\@writefile{toc}{\contentsline {paragraph}{Statistical outlier removal.}{24}{subsection.4.2.1}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsection}{\numberline {4.2.2}Correspondence Construction}{24}{subsection.4.2.2}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsection}{\numberline {4.2.3}Per-Frame Similarity Alignment}{24}{subsection.4.2.3}\protected@file@percent }
-\@writefile{toc}{\contentsline {section}{\numberline {4.3}Metric Suite}{25}{section.4.3}\protected@file@percent }
-\newlabel{sec:metrics}{{4.3}{25}{Metric Suite}{section.4.3}{}}
-\newlabel{sec:metrics@cref}{{[section][3][4]4.3}{[1][25][]25}{}{}{}}
-\@writefile{toc}{\contentsline {subsection}{\numberline {4.3.1}Geometric Metrics}{25}{subsection.4.3.1}\protected@file@percent }
-\@writefile{toc}{\contentsline {paragraph}{Static/dynamic decomposition and motion gap.}{25}{equation.4.3}\protected@file@percent }
-\@writefile{toc}{\contentsline {paragraph}{3D-to-4D consistency.}{26}{equation.4.4}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsection}{\numberline {4.3.2}Temporal Consistency Metrics}{26}{subsection.4.3.2}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Ground-truth validity masking.}{25}{subsection.4.2.1}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Confidence-based filtering.}{25}{subsection.4.2.1}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Statistical outlier removal.}{25}{subsection.4.2.1}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {4.2.2}Correspondence Construction}{25}{subsection.4.2.2}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {4.2.3}Per-Frame Similarity Alignment}{25}{subsection.4.2.3}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {4.3}Metric Suite}{26}{section.4.3}\protected@file@percent }
+\newlabel{sec:metrics}{{4.3}{26}{Metric Suite}{section.4.3}{}}
+\newlabel{sec:metrics@cref}{{[section][3][4]4.3}{[1][26][]26}{}{}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {4.3.1}Geometric Metrics}{26}{subsection.4.3.1}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Static/dynamic decomposition and motion gap.}{26}{equation.4.3}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{3D-to-4D consistency.}{27}{equation.4.4}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {4.3.2}Temporal Consistency Metrics}{27}{subsection.4.3.2}\protected@file@percent }
 \abx@aux@cite{0}{sturm12iros}
 \abx@aux@segm{0}{0}{sturm12iros}
-\@writefile{toc}{\contentsline {subsection}{\numberline {4.3.3}Camera Pose Metrics}{27}{subsection.4.3.3}\protected@file@percent }
-\@writefile{toc}{\contentsline {paragraph}{Absolute Trajectory Error (ATE).}{27}{subsection.4.3.3}\protected@file@percent }
-\@writefile{toc}{\contentsline {paragraph}{Relative Pose Error (RPE).}{27}{equation.4.6}\protected@file@percent }
-\@writefile{toc}{\contentsline {paragraph}{Rotation error.}{27}{equation.4.7}\protected@file@percent }
-\@writefile{toc}{\contentsline {paragraph}{Intrinsic error.}{27}{equation.4.7}\protected@file@percent }
-\@writefile{toc}{\contentsline {section}{\numberline {4.4}Implementation Details}{28}{section.4.4}\protected@file@percent }
-\newlabel{sec:implementation_details}{{4.4}{28}{Implementation Details}{section.4.4}{}}
-\newlabel{sec:implementation_details@cref}{{[section][4][4]4.4}{[1][27][]28}{}{}{}}
-\@writefile{toc}{\contentsline {chapter}{\numberline {5}Results}{29}{chapter.5}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {4.3.3}Camera Pose Metrics}{28}{subsection.4.3.3}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Absolute Trajectory Error (ATE).}{28}{subsection.4.3.3}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Relative Pose Error (RPE).}{28}{equation.4.6}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Rotation error.}{29}{equation.4.7}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Intrinsic error.}{29}{equation.4.7}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {4.4}Implementation Details}{29}{section.4.4}\protected@file@percent }
+\newlabel{sec:implementation_details}{{4.4}{29}{Implementation Details}{section.4.4}{}}
+\newlabel{sec:implementation_details@cref}{{[section][4][4]4.4}{[1][29][]29}{}{}{}}
+\@writefile{toc}{\contentsline {paragraph}{Checkpoints and inference settings.}{29}{section.4.4}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Hardware.}{29}{section.4.4}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Runtime.}{29}{section.4.4}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Software.}{30}{section.4.4}\protected@file@percent }
+\@writefile{toc}{\contentsline {chapter}{\numberline {5}Results}{31}{chapter.5}\protected@file@percent }
 \@writefile{lof}{\addvspace {10\p@ }}
 \@writefile{lot}{\addvspace {10\p@ }}
-\newlabel{c:results}{{5}{29}{Results}{chapter.5}{}}
-\newlabel{c:results@cref}{{[chapter][5][]5}{[1][29][]29}{}{}{}}
-\@writefile{toc}{\contentsline {chapter}{\numberline {6}Discussion and Conclusion}{30}{chapter.6}\protected@file@percent }
+\newlabel{c:results}{{5}{31}{Results}{chapter.5}{}}
+\newlabel{c:results@cref}{{[chapter][5][]5}{[1][31][]31}{}{}{}}
+\@writefile{toc}{\contentsline {chapter}{\numberline {6}Discussion and Conclusion}{32}{chapter.6}\protected@file@percent }
 \@writefile{lof}{\addvspace {10\p@ }}
 \@writefile{lot}{\addvspace {10\p@ }}
-\newlabel{c:discussion_and_conclusion}{{6}{30}{Discussion and Conclusion}{chapter.6}{}}
-\newlabel{c:discussion_and_conclusion@cref}{{[chapter][6][]6}{[1][30][]30}{}{}{}}
-\@writefile{toc}{\contentsline {chapter}{Bibliography}{30}{section*.11}\protected@file@percent }
-\@writefile{toc}{\contentsline {chapter}{\numberline {A}Artifacts Availability}{34}{appendix.A}\protected@file@percent }
+\newlabel{c:discussion_and_conclusion}{{6}{32}{Discussion and Conclusion}{chapter.6}{}}
+\newlabel{c:discussion_and_conclusion@cref}{{[chapter][6][]6}{[1][32][]32}{}{}{}}
+\@writefile{toc}{\contentsline {chapter}{Bibliography}{32}{section*.10}\protected@file@percent }
+\@writefile{toc}{\contentsline {chapter}{\numberline {A}Artifacts Availability}{36}{appendix.A}\protected@file@percent }
 \@writefile{lof}{\addvspace {10\p@ }}
 \@writefile{lot}{\addvspace {10\p@ }}
-\newlabel{a:appendix}{{A}{34}{Artifacts Availability}{appendix.A}{}}
-\newlabel{a:appendix@cref}{{[chapter][1][]A}{[1][34][]34}{}{}{}}
-\@writefile{tdo}{\contentsline {todo}{Upload your Code to GitLab rather than attaching it to the PDF.}{34}{section*.14}\protected@file@percent }
+\newlabel{a:appendix}{{A}{36}{Artifacts Availability}{appendix.A}{}}
+\newlabel{a:appendix@cref}{{[chapter][1][]A}{[1][36][]36}{}{}{}}
+\@writefile{tdo}{\contentsline {todo}{Upload your Code to GitLab rather than attaching it to the PDF.}{36}{section*.13}\protected@file@percent }
 \pgfsyspdfmark {pgfid1}{32326942}{30242325}
 \pgfsyspdfmark {pgfid4}{35762937}{30259249}
 \pgfsyspdfmark {pgfid5}{38543572}{29988373}
@@ -340,4 +342,4 @@
 \abx@aux@defaultrefcontext{0}{monofusion}{nty/global//global/global/global}
 \abx@aux@defaultrefcontext{0}{weiszfeld1937point}{nty/global//global/global/global}
 \abx@aux@defaultrefcontext{0}{hi4d}{nty/global//global/global/global}
-\gdef \@abspage@last{41}
+\gdef \@abspage@last{43}

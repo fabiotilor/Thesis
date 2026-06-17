@@ -2437,8 +2437,7 @@
     <bcf:citekey order="50" intorder="1">dexycb</bcf:citekey>
     <bcf:citekey order="51" intorder="1">hi4d</bcf:citekey>
     <bcf:citekey order="52" intorder="1">rusu2008statistical</bcf:citekey>
-    <bcf:citekey order="53" intorder="1">umeyama1991least</bcf:citekey>
-    <bcf:citekey order="54" intorder="1">sturm12iros</bcf:citekey>
+    <bcf:citekey order="53" intorder="1">sturm12iros</bcf:citekey>
   </bcf:section>
   <!-- SORTING TEMPLATES -->
   <bcf:sortingtemplate name="nty">
