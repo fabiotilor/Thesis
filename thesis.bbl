@@ -433,6 +433,44 @@
       \verb https://openreview.net/forum?id=5uw1GRBFoT
       \endverb
     \endentry
+    \entry{farneback2003two}{inproceedings}{}{}
+      \name{author}{1}{}{%
+        {{hash=7bda08f257f451eba0f1d8902689c8fb}{%
+           family={Farnebäck},
+           familyi={F\bibinitperiod},
+           given={Gunnar},
+           giveni={G\bibinitperiod}}}%
+      }
+      \list{location}{1}{%
+        {Gothenburg, Sweden}%
+      }
+      \list{publisher}{1}{%
+        {Springer}%
+      }
+      \strng{namehash}{7bda08f257f451eba0f1d8902689c8fb}
+      \strng{fullhash}{7bda08f257f451eba0f1d8902689c8fb}
+      \strng{fullhashraw}{7bda08f257f451eba0f1d8902689c8fb}
+      \strng{bibnamehash}{7bda08f257f451eba0f1d8902689c8fb}
+      \strng{authorbibnamehash}{7bda08f257f451eba0f1d8902689c8fb}
+      \strng{authornamehash}{7bda08f257f451eba0f1d8902689c8fb}
+      \strng{authorfullhash}{7bda08f257f451eba0f1d8902689c8fb}
+      \strng{authorfullhashraw}{7bda08f257f451eba0f1d8902689c8fb}
+      \field{sortinit}{F}
+      \field{sortinithash}{2638baaa20439f1b5a8f80c6c08a13b4}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{booktitle}{Proceedings of the 13th Scandinavian Conference on Image Analysis (SCIA)}
+      \field{month}{6}
+      \field{series}{Lecture Notes in Computer Science}
+      \field{title}{Two-Frame Motion Estimation Based on Polynomial Expansion}
+      \field{volume}{2749}
+      \field{year}{2003}
+      \field{pages}{363\bibrangedash 370}
+      \range{pages}{8}
+      \verb{doi}
+      \verb 10.1007/3-540-45103-X_50
+      \endverb
+    \endentry
     \entry{hartley2004multiple}{book}{}{}
       \name{author}{2}{}{%
         {{hash=d0465e31872bd5a1d01ac67d592146e9}{%
@@ -704,6 +742,55 @@
       \endverb
       \verb{url}
       \verb https://arxiv.org/abs/2504.13419
+      \endverb
+    \endentry
+    \entry{pan2024glomap}{misc}{}{}
+      \name{author}{4}{}{%
+        {{hash=83a07d3020374593a3a85b56cdb3839b}{%
+           family={Pan},
+           familyi={P\bibinitperiod},
+           given={Linfei},
+           giveni={L\bibinitperiod}}}%
+        {{hash=423f5224a7eacac1b9c7ae9d01aa10ef}{%
+           family={Baráth},
+           familyi={B\bibinitperiod},
+           given={Dániel},
+           giveni={D\bibinitperiod}}}%
+        {{hash=501629493a5ead2d23ee597103478ce8}{%
+           family={Pollefeys},
+           familyi={P\bibinitperiod},
+           given={Marc},
+           giveni={M\bibinitperiod}}}%
+        {{hash=85c10679ad8f08c2b0ea65e5de627728}{%
+           family={Schönberger},
+           familyi={S\bibinitperiod},
+           given={Johannes\bibnamedelima L.},
+           giveni={J\bibinitperiod\bibinitdelim L\bibinitperiod}}}%
+      }
+      \strng{namehash}{474be6812dff1c7c7146a8353be0343b}
+      \strng{fullhash}{becd558b7ace2097319892943e0faecd}
+      \strng{fullhashraw}{becd558b7ace2097319892943e0faecd}
+      \strng{bibnamehash}{474be6812dff1c7c7146a8353be0343b}
+      \strng{authorbibnamehash}{474be6812dff1c7c7146a8353be0343b}
+      \strng{authornamehash}{474be6812dff1c7c7146a8353be0343b}
+      \strng{authorfullhash}{becd558b7ace2097319892943e0faecd}
+      \strng{authorfullhashraw}{becd558b7ace2097319892943e0faecd}
+      \field{sortinit}{P}
+      \field{sortinithash}{ff3bcf24f47321b42cb156c2cc8a8422}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{eprintclass}{cs.CV}
+      \field{eprinttype}{arXiv}
+      \field{title}{Global Structure-from-Motion Revisited}
+      \field{year}{2024}
+      \verb{eprint}
+      \verb 2407.20219
+      \endverb
+      \verb{urlraw}
+      \verb https://arxiv.org/abs/2407.20219
+      \endverb
+      \verb{url}
+      \verb https://arxiv.org/abs/2407.20219
       \endverb
     \endentry
     \entry{pataki2025mpsfmmonocularsurfacepriors}{misc}{}{}
