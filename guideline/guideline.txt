@@ -1,0 +1,233 @@
+How to write a technical paper (e.g., a CVPR)?
+By Alex Alahi, VITA lab (EPFL)
+ 
+
+
+Disclosure: The below comments are only suggestions. There are many ways to write a paper. I have shared in this document the most common comments I have given to students after reviewing their first draft of a paper.
+
+First and foremost, read the book: 
+"Style: the basics of clarity and grace", by J. Williams.”
+ A summary is available here. For instance, you should use short sentences! But that is not it! Many more tips are shared in the book.
+Here is another interesting book, “writing science” J. Schimel:
+https://edisciplinas.usp.br/pluginfile.php/7583208/mod_folder/content/0/Writing%20science.pdf?forcedownload=1
+
+
+Let’s now dive into the structure of a paper. Here is a typical outline:
+0. Abstract
+1. Introduction
+2. Related Works
+3. Method/Model 
+4. Experiments
+5. Conclusions
+6. Acknowledgments
+7. References
+ 
+(Note that other sections are possible)
+ 
+When using overleaf, I would suggest using a single tex file (as opposed to one tex file per section) to ease the search/replace tools within the whole paper. 
+
+In the rest of this document, I share some tips on how to write each section…
+
+------------------------------------------------------------------------------------------------------------------------------
+0. How to write the Abstract?
+
+#0.1- Summarize main contributions and results. 
+#0.2- It is a teaser. The reader should be motivated to read the rest of the article.
+
+------------------------------------------------------------------------------------------------------------------------------
+1. How to write the Introduction?
+
+#1.1- Intro is very important. Please make sure it cuts to the chase fast, and clearly spell out the problem statement, the challenges, the key previous work (1-3, not all of them), and your contributions.
+ 
+#1.2- ONE strong contribution is always better than three small ones!
+ 
+#1.3- Pull figure (first figure) is NOT a system figure. It’s a figure that you will use in Paragraph 1 or 2 of your Intro, i.e., the intuitive idea, or a nugget for inspiration.
+ 
+#1.4- Intro and Experiments need to echo well — Experiments show that your paper has addressed the challenges in the Intro; and please make sure that your model compares (well) to the key previous work mentioned in the Intro
+ 
+#1.5- Don’t promise too much but capture attention
+#1.6- Be careful on the jumps of ideas, the flow between ideas…
+ 
+#1.7- Here is an example of flow:
+
+Sec. 1: Intro:
+1st paragraph:
+-1-2 sentences on what is the motivation
+        	- “The recent development of new technology, especially DL has achieved successes in many perceptual visual tasks such as… Yet the status quo of cv is still far from matching human capabilities, especially when it comes to …”
+ 
+- transition sentence (optional)
+- Why is it important? refer to applications (briefly, not too long)
+ 
+2nd paragraph:
+- Clearly state the problem: with details on input / output (refer to pull figure maybe if needed)
+ 
+3rd paragraph:
+- What is prev work? Tribute to major prev work (it can be combined with 2nd paragraph),
+Pick one or 2 main previous work. For each work:
+        	- 1 positive sentence  (cite author by name)
+        	- 1 sentence on what is lacking
+ 
+        	“Pioneering work in …., … show promising results. These works aimed at 
+ 
+4th paragraph:
+- Then, summarize challenges (it could be referred to as what was lacking in prev work)
+ 
+5th paragraph:
+- Introduce the proposed method. Refer to any technical work you are following.
+- Be clear on contributions 
+        	- “Motivated by the goal of
+- (one contribution is better than a bullet list…)
+- It might not be what you did differently
+
+---------------------------------------------------------------------------------------------------------------------------- 
+Notes on pull figure:
+#1.8- It should not be the results
+#1.9- It should not be the system figure
+#1.10- It can be “cute” / describing the problem…
+
+----------------------------------------------------------------------------------------------------------------------------
+2. How to write related works?
+ 
+Sec. 2: Related work:
+#2.1- Group papers, no need to go too wordy about each paper…
+#2.2- At the end of a paper or a group, share weakness/limitation
+#2.3- Missing citations can easily kill a paper. We must not miss a reference.
+ 
+----------------------------------------------------------------------------------------------------------------------------
+3. How to write Method/Model?
+ 
+#3.1- The Method section is not a laundry list of a technical brain dump. It’s a coherent story about what highlights your technical contribution(s) in order to address the fundamental challenges that your paper is aimed to solve
+ 
+#3.2- Not as a how-to … or system…
+#3.3- Not a diary dump But present high level grounding…
+ 
+#3.4- 1st paragraph can present the overall model with a reference to a system figure.
+#3.5- For the system figure, you can anchor your text with the system figure, and dissect each section clearly.
+#3.6- Motivate every component of your model according to the intended contribution(s).
+#3.7- Define, define, define :).
+#3.8- Make all the math and equations very rigorous, and only highlight your novelty when it comes to math.
+ 
+(Sec 3 can be broken down into many sections, e.g., pb formulation, method…)
+
+----------------------------------------------------------------------------------------------------------------------------
+ Comment on Equations:
+#3.9- Equations have punctuation. An equation is followed by a comma after it is presented (especially when followed by descriptions of its individual members) or by a period if the sentence has ended.
+
+-------------------------------------------------------------------------------------------------------------------------------
+4. How to write Experiments?
+#4.1- All your claims (from the intro) need evidence in the experiments (quantitative & qualitative evidence).
+
+#4.2- Sec. 4. Experiments:
+- Datasets & metrics (setup)
+- Implementation details
+- Your task
+        	4.2.1 baselines (other methods)
+        	4.2.1 Discussions     	
+Break down into quantitative and qualitative
+        	4.2.1 Limitations
+ 
+On the results, if possible:
+- One main Table/plot describing the performance of your method against comparable baselines.
+- One additional Table/plot describing the performance of your method against other methods that do not use the same constraints (but similar task).
+- An ablation study table of your own method
+ 
+- Beautiful qualitative results (heatmaps :-P).
+
+----------------------------------------------------------------------------------------------------------------------------
+On Results
+#4.3- Do not use subjective statements such as  “we outperform previous work by a large margin”, etc… 
+#4.4- Be explicit, share quantitative gain. “we outperform previous work by 15%”
+#4.5- Be transparent. Share strengths and weaknesses/limitations 
+----------------------------------------------------------------------------------------------------------------------------
+5. How to write Conclusion?
+#5.1- Remind contributions, lessons learned, including caveats
+#5.2- Finish with some future work. 
+
+------------------------------------------------------------------------------------------------------------------------------- 
+6. On Acknowledgments
+#6.1- don’t forget it for the final camera-ready ;)
+#6.2- Must acknowledge source of funding. 
+#6.3- You can add your lab mates who reviewed the manuscript.
+
+----------------------------------------------------------------------------------------------------------------------------
+7. On Reference
+#7.1- Check them! Simply copy/pasting google scholar bibtex could lead to incomplete references. You want to make sure that the full venue (conference/journal) is written. 
+#7.2- Do not cite the arxiv reference when a paper is accepted to a journal or conference. Cite the venue…
+
+
+-------------------------------------------------------------------------------------------------------------------------------
+-------------------------------------------------------------------------------------------------------------------------------
+-------------------------------------------------------------------------------------------------------------------------------
+
+GENERAL COMMENTS
+
+#8.1- Notes On figures:
+- describe them in detail in the caption, 
+®
+- check font to match text size…
+- look in BW, don t make it too complicated
+
+----------------------------------------------------------------------------------------------------------------------------
+Notes on i.e., and e.g., :
+#8.2- both “i.e.,” and “e.g.,”  have a comma at the end and can be italic
+----------------------------------------------------------------------------------------------------------------------------
+Notes on each sections:
+#8.3- At the beginning of each section, the 1st sentence should remind the readers the pb and/or motivation
+ 
+#8.4- Each section should be read independently. Remind/Repeat motivations/pb at the beginning of each section. It should start:
+What is the pb? Why? How are…
+
+(some reviewers jump sections…It is always nice to remind the goal at the beginning of a section to be self readable…)
+
+----------------------------------------------------------------------------------------------------------------------------
+On title of Section, sub-sections, etc…
+#8.5- Be consistent with the use of capital. For instance, use Capital for the first word only in all sections/sub-sections...
+
+----------------------------------------------------------------------------------------------------------------------------
+On Consistency: 
+#8.6- Refer to your task the same way in the whole document:
+	e.g., do not change between “human trajectory prediction” to human trajectory forecasting”
+
+#8.7- Refer to a concept the same way over the whole document: 
+	E.g., do not say  “Autonomous driving is… Then, Autonomous vehicles do… then ego vehicles…” => Use the same term for all. You can even refer back to its acronym (e.g., AV).
+
+----------------------------------------------------------------------------------------------------------------------------
+On quotations:
+#8.8- When using quotations “”. In latex, you should use: `` … “ instead of “...”. 
+
+----------------------------------------------------------------------------------------------------------------------------
+On writting
+#9.1- Read your text aloud. 
+#9.2- Short sentences.
+#9.3- Active voice is better than passive
+e.g., Active voice: (S&W rule 14) For example, use "Figure X shows ..." rather than "... as shown in Figure X."
+#9.4- A paragraph is about a single idea, with a single key topic sentence. This sentence is almost always the first, but sometimes the last sentence of the paragraph and the rest of the sentences somehow support that topic sentence.
+ 
+#9.5- It is much better to mention a Figure that summarizes a lot of information early in a paragraph rather than go into details and mention the figure at the end. Therefore, it gives the reader a framework to refer to while reading the text.
+  
+#9.6- Ambiguous use of the pronoun "This" to summarize sense of previous sentence. (S&W page 16)
+The writing is virtually always clearer if you sane for every occurrence of "This" (case sensitive) or "This is" and put a noun after "This" to make it clear what you are referring to. So search for "This " in your text to see if a noun follows.
+  
+#9.7- "While" instead of "and", "but", "although". (S&W pages 63-64)
+In general, while should be used only in the strict sense of "during the time"; S&W gives several better ways to convey the same message. So search for "While " in your text to see if the sentence is about time, or could be replaced with "Although".
+ 
+#9.8- Avoid a single numbered subsection
+It s strange to have a single subsection (e.g., 5.2.1 in section 5.2). Why do you need to number it if there is only one? Either eliminate the single subsection or change the part that precedes the subsection into a second subsection
+  
+#9.9- Referring to Sections, Figures, Tables.
+It s not easy to understand the rule, but normally these names are capitalized when used to refer to a specific number. So it s Chapter 1, Table 3.1, Figure 1.2. Section 3.2…
+ 
+Additional links:
+ 
+Bill Freeman’s take on the same topic: http://billf.mit.edu/sites/default/files/documents/cvprPapers.pdf
+American journal expert  to correct
+Use Grammarly. It helps to find typos…
+The craft of writing effectively: 
+https://www.youtube.com/watch?v=vtIzMaLkCaM&ab_channel=UChicagoSocialSciences
+
+“Know the words -code of your community- that create value” 
+Common phrases for papers, categorized by means of the sentence, so nice: https://www.phrasebank.manchester.ac.uk/introducing-work/ 
+
+
+Acknowledgments
+Many of the above recommendations are suggestions I have received myself from my advisors and now friends. I particularly thank Murat Kunt, Michel Bierlaire, Pierre Vandergheynst, Silvio Savarese, Fei-Fei Li and all my co-authors. 

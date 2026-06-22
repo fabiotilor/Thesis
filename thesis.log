@@ -1,4 +1,4 @@
-This is pdfTeX, Version 3.141592653-2.6-1.40.28 (TeX Live 2025) (preloaded format=pdflatex 2026.4.17)  17 JUN 2026 17:24
+This is pdfTeX, Version 3.141592653-2.6-1.40.28 (TeX Live 2025) (preloaded format=pdflatex 2026.4.17)  22 JUN 2026 09:48
 entering extended mode
  restricted \write18 enabled.
  %&-line parsing enabled.
@@ -1069,44 +1069,49 @@ Package caption Info: New subtype `subtable' on input line 238.
 \c@subtable=\count524
 ) (/Users/fabio/Library/TinyTeX/texmf-dist/tex/latex/placeins/placeins.sty
 Package: placeins 2005/04/18  v 2.2
+) (/Users/fabio/Library/TinyTeX/texmf-dist/tex/latex/multirow/multirow.sty
+Package: multirow 2024/11/12 v2.9 Span multiple rows of a table
+\multirow@colwidth=\skip110
+\multirow@cntb=\count525
+\multirow@dima=\skip111
+\bigstrutjot=\dimen326
 )
 Package csquotes Info: Checking for multilingual support...
 Package csquotes Info: ... found 'babel' package.
 Package csquotes Info: Adjusting default style.
 Package csquotes Info: Redefining alias 'default' -> 'english'.
-LaTeX Font Info:    Trying to load font information for T1+lmr on input line 20.
+LaTeX Font Info:    Trying to load font information for T1+lmr on input line 23.
  (/Users/fabio/Library/TinyTeX/texmf-dist/tex/latex/lm/t1lmr.fd
 File: t1lmr.fd 2015/05/01 v1.6.1 Font defs for Latin Modern
 ) (./thesis.aux)
 \openout1 = `thesis.aux'.
 
-LaTeX Font Info:    Checking defaults for OML/cmm/m/it on input line 20.
-LaTeX Font Info:    ... okay on input line 20.
-LaTeX Font Info:    Checking defaults for OMS/cmsy/m/n on input line 20.
-LaTeX Font Info:    ... okay on input line 20.
-LaTeX Font Info:    Checking defaults for OT1/cmr/m/n on input line 20.
-LaTeX Font Info:    ... okay on input line 20.
-LaTeX Font Info:    Checking defaults for T1/cmr/m/n on input line 20.
-LaTeX Font Info:    ... okay on input line 20.
-LaTeX Font Info:    Checking defaults for TS1/cmr/m/n on input line 20.
-LaTeX Font Info:    ... okay on input line 20.
-LaTeX Font Info:    Checking defaults for OMX/cmex/m/n on input line 20.
-LaTeX Font Info:    ... okay on input line 20.
-LaTeX Font Info:    Checking defaults for U/cmr/m/n on input line 20.
-LaTeX Font Info:    ... okay on input line 20.
-LaTeX Font Info:    Checking defaults for PD1/pdf/m/n on input line 20.
-LaTeX Font Info:    ... okay on input line 20.
-LaTeX Font Info:    Checking defaults for PU/pdf/m/n on input line 20.
-LaTeX Font Info:    ... okay on input line 20.
-\c@lstlisting=\count525
+LaTeX Font Info:    Checking defaults for OML/cmm/m/it on input line 23.
+LaTeX Font Info:    ... okay on input line 23.
+LaTeX Font Info:    Checking defaults for OMS/cmsy/m/n on input line 23.
+LaTeX Font Info:    ... okay on input line 23.
+LaTeX Font Info:    Checking defaults for OT1/cmr/m/n on input line 23.
+LaTeX Font Info:    ... okay on input line 23.
+LaTeX Font Info:    Checking defaults for T1/cmr/m/n on input line 23.
+LaTeX Font Info:    ... okay on input line 23.
+LaTeX Font Info:    Checking defaults for TS1/cmr/m/n on input line 23.
+LaTeX Font Info:    ... okay on input line 23.
+LaTeX Font Info:    Checking defaults for OMX/cmex/m/n on input line 23.
+LaTeX Font Info:    ... okay on input line 23.
+LaTeX Font Info:    Checking defaults for U/cmr/m/n on input line 23.
+LaTeX Font Info:    ... okay on input line 23.
+LaTeX Font Info:    Checking defaults for PD1/pdf/m/n on input line 23.
+LaTeX Font Info:    ... okay on input line 23.
+LaTeX Font Info:    Checking defaults for PU/pdf/m/n on input line 23.
+LaTeX Font Info:    ... okay on input line 23.
+\c@lstlisting=\count526
  (/Users/fabio/Library/TinyTeX/texmf-dist/tex/latex/epstopdf-pkg/epstopdf-base.sty
 Package: epstopdf-base 2020-01-24 v2.11 Base part for package epstopdf
 Package epstopdf-base Info: Redefining graphics rule for `.eps' on input line 485.
  (/Users/fabio/Library/TinyTeX/texmf-dist/tex/latex/latexconfig/epstopdf-sys.cfg
 File: epstopdf-sys.cfg 2010/07/13 v1.3 Configuration of (r)epstopdf for TeX Live
 ))
-Package hyperref Info: Link coloring ON on input line 20.
- (./thesis.out) (./thesis.out)
+Package hyperref Info: Link coloring ON on input line 23.
 \@outlinefile=\write8
 \openout8 = `thesis.out'.
 
@@ -1137,8 +1142,8 @@ Package biblatex Info: Automatic encoding selection.
 Package biblatex Info: Trying to load bibliographic data...
 Package biblatex Info: ... file 'thesis.bbl' found.
  (./thesis.bbl)
-Package biblatex Info: Reference section=0 on input line 20.
-Package biblatex Info: Reference segment=0 on input line 20.
+Package biblatex Info: Reference section=0 on input line 23.
+Package biblatex Info: Reference segment=0 on input line 23.
 Package caption Info: Begin \AtBeginDocument code.
 Package caption Info: End \AtBeginDocument code.
  (./resources/title-page.tex
@@ -1150,22 +1155,22 @@ Underfull \hbox (badness 10000) in paragraph at lines 37--37
 
  []
 
-<figures/uzh_logo.png, id=155, 287.3937pt x 99.4917pt>
+<figures/uzh_logo.png, id=7, 287.3937pt x 99.4917pt>
 File: figures/uzh_logo.png Graphic file (type png)
 <use figures/uzh_logo.png>
 Package pdftex.def Info: figures/uzh_logo.png  used on input line 45.
 (pdftex.def)             Requested size: 82.1887pt x 28.45274pt.
-<figures/dast-logo.png, id=157, 621.82312pt x 165.61874pt>
+<figures/dast-logo.png, id=9, 621.82312pt x 165.61874pt>
 File: figures/dast-logo.png Graphic file (type png)
 <use figures/dast-logo.png>
 Package pdftex.def Info: figures/dast-logo.png  used on input line 46.
 (pdftex.def)             Requested size: 106.81865pt x 28.45274pt.
-<figures/ETHlogo.pdf, id=158, 179.67125pt x 45.16875pt>
+<figures/ETHlogo.pdf, id=10, 179.67125pt x 45.16875pt>
 File: figures/ETHlogo.pdf Graphic file (type pdf)
 <use figures/ETHlogo.pdf>
 Package pdftex.def Info: figures/ETHlogo.pdf  used on input line 49.
 (pdftex.def)             Requested size: 113.17976pt x 28.45274pt.
-<figures/logo-vlg-text.png, id=159, 2739.23375pt x 711.65875pt>
+<figures/logo-vlg-text.png, id=11, 2739.23375pt x 711.65875pt>
 File: figures/logo-vlg-text.png Graphic file (type png)
 <use figures/logo-vlg-text.png>
 Package pdftex.def Info: figures/logo-vlg-text.png  used on input line 50.
@@ -1183,7 +1188,7 @@ Overfull \hbox (82.86652pt too wide) in paragraph at lines 59--60
 pdfTeX warning (ext4): destination with the same identifier (name{page.i}) has been already used, duplicate ignored
 <to be read again> 
                    \relax 
-l.30 \begin{abstractde}
+l.33 \begin{abstractde}
                         [1
 
 {/Users/fabio/Library/TinyTeX/texmf-dist/fonts/enc/dvips/lm/lm-ec.enc}] (./chapters/0-abstract-de.tex) [2
@@ -1195,61 +1200,107 @@ Package lipsum Warning: Unknown language 'latin'. Hyphenation patterns for
 
 [3
 
-] (./thesis.toc
-LaTeX Font Info:    Trying to load font information for OT1+lmr on input line 3.
- (/Users/fabio/Library/TinyTeX/texmf-dist/tex/latex/lm/ot1lmr.fd
+]
+No file thesis.toc.
+\tf@toc=\write9
+\openout9 = `thesis.toc'.
+
+[4
+
+] (./chapters/1-introduction.tex
+Chapter 1.
+
+LaTeX Warning: Citation 'hartley2004multiple' on page 1 undefined on input line 5.
+
+
+LaTeX Warning: Citation 'schoenberger2016sfm' on page 1 undefined on input line 9.
+
+
+LaTeX Warning: Citation 'hartley2004multiple' on page 1 undefined on input line 9.
+
+
+Overfull \hbox (80.59874pt too wide) in paragraph at lines 3--10
+\T1/lmr/m/n/12 ob-ject track-ing, and robotic ma-nip-u-la-tion [[], []]. 
+ []
+
+
+LaTeX Warning: Citation 'mast3r' on page 1 undefined on input line 11.
+
+
+LaTeX Warning: Citation 'vggt' on page 1 undefined on input line 12.
+
+
+LaTeX Warning: Citation 'pi3' on page 1 undefined on input line 12.
+
+
+LaTeX Warning: Citation 'ggpt' on page 1 undefined on input line 21.
+
+LaTeX Font Info:    Trying to load font information for OT1+lmr on input line 22.
+(/Users/fabio/Library/TinyTeX/texmf-dist/tex/latex/lm/ot1lmr.fd
 File: ot1lmr.fd 2015/05/01 v1.6.1 Font defs for Latin Modern
 )
-LaTeX Font Info:    Trying to load font information for OML+lmm on input line 3.
+LaTeX Font Info:    Trying to load font information for OML+lmm on input line 22.
  (/Users/fabio/Library/TinyTeX/texmf-dist/tex/latex/lm/omllmm.fd
 File: omllmm.fd 2015/05/01 v1.6.1 Font defs for Latin Modern
 )
-LaTeX Font Info:    Trying to load font information for OMS+lmsy on input line 3.
+LaTeX Font Info:    Trying to load font information for OMS+lmsy on input line 22.
  (/Users/fabio/Library/TinyTeX/texmf-dist/tex/latex/lm/omslmsy.fd
 File: omslmsy.fd 2015/05/01 v1.6.1 Font defs for Latin Modern
 )
-LaTeX Font Info:    Trying to load font information for OMX+lmex on input line 3.
+LaTeX Font Info:    Trying to load font information for OMX+lmex on input line 22.
  (/Users/fabio/Library/TinyTeX/texmf-dist/tex/latex/lm/omxlmex.fd
 File: omxlmex.fd 2015/05/01 v1.6.1 Font defs for Latin Modern
 )
 LaTeX Font Info:    External font `lmex10' loaded for size
-(Font)              <12> on input line 3.
+(Font)              <12> on input line 22.
 LaTeX Font Info:    External font `lmex10' loaded for size
-(Font)              <8> on input line 3.
+(Font)              <8> on input line 22.
 LaTeX Font Info:    External font `lmex10' loaded for size
-(Font)              <6> on input line 3.
-LaTeX Font Info:    Trying to load font information for U+msa on input line 3.
+(Font)              <6> on input line 22.
+LaTeX Font Info:    Trying to load font information for U+msa on input line 22.
  (/Users/fabio/Library/TinyTeX/texmf-dist/tex/latex/amsfonts/umsa.fd
 File: umsa.fd 2013/01/14 v3.01 AMS symbols A
 )
-LaTeX Font Info:    Trying to load font information for U+msb on input line 3.
+LaTeX Font Info:    Trying to load font information for U+msb on input line 22.
  (/Users/fabio/Library/TinyTeX/texmf-dist/tex/latex/amsfonts/umsb.fd
 File: umsb.fd 2013/01/14 v3.01 AMS symbols B
 )
-LaTeX Font Info:    Trying to load font information for U+rsfs on input line 3.
+LaTeX Font Info:    Trying to load font information for U+rsfs on input line 22.
  (/Users/fabio/Library/TinyTeX/texmf-dist/tex/latex/jknapltx/ursfs.fd
 File: ursfs.fd 1998/03/24 rsfs font definition file (jk)
-) [4
+)
 
-{/Users/fabio/Library/TinyTeX/texmf-dist/fonts/enc/dvips/lm/lm-rm.enc}])
-\tf@toc=\write9
-\openout9 = `thesis.toc'.
+LaTeX Warning: Citation 'vggt4d' on page 1 undefined on input line 23.
 
- [5] (./chapters/1-introduction.tex
-Chapter 1.
 
-Overfull \hbox (4.79178pt too wide) in paragraph at lines 11--19
-\T1/lmr/m/n/12 MASt3R-SfM [[][]14[][]], VGGT [[][]25[][]], PI3, and PI3X [[][]27[][]] regress dense 3D pointmaps
- []
+LaTeX Warning: Citation 'monofusion' on page 1 undefined on input line 24.
 
 [1
 
 
-{/Users/fabio/Library/TinyTeX/texmf-dist/fonts/enc/dvips/lm/lm-mathit.enc}{/Users/fabio/Library/TinyTeX/texmf-dist/fonts/enc/dvips/lm/lm-mathsy.enc}]
+{/Users/fabio/Library/TinyTeX/texmf-dist/fonts/enc/dvips/lm/lm-rm.enc}{/Users/fabio/Library/TinyTeX/texmf-dist/fonts/enc/dvips/lm/lm-mathit.enc}{/Users/fabio/Library/TinyTeX/texmf-dist/fonts/enc/dvips/lm/lm-mathsy.enc}]
+
+LaTeX Warning: Citation 'dexycb' on page 2 undefined on input line 39.
+
+
+LaTeX Warning: Citation 'hi4d' on page 2 undefined on input line 39.
+
 LaTeX Font Info:    Trying to load font information for TS1+lmr on input line 51.
- (/Users/fabio/Library/TinyTeX/texmf-dist/tex/latex/lm/ts1lmr.fd
+(/Users/fabio/Library/TinyTeX/texmf-dist/tex/latex/lm/ts1lmr.fd
 File: ts1lmr.fd 2015/05/01 v1.6.1 Font defs for Latin Modern
 )
+
+LaTeX Warning: Citation 'dexycb' on page 2 undefined on input line 53.
+
+
+LaTeX Warning: Citation 'hi4d' on page 2 undefined on input line 54.
+
+
+LaTeX Warning: Reference `c:methodology' on page 1 undefined on input line 56.
+
+
+LaTeX Warning: Reference `c:methodology' on page 1 undefined on input line 61.
+
 
 LaTeX Warning: Reference `c:refinement' on page 1 undefined on input line 69.
 
@@ -1266,106 +1317,432 @@ Overfull \hbox (13.94884pt too wide) in paragraph at lines 1--1
  []
 
 
+LaTeX Warning: Reference `sec:sfm_mvs_foundations' on page 4 undefined on input line 4.
+
+
+LaTeX Warning: Reference `sec:foundation_models' on page 4 undefined on input line 4.
+
+
+LaTeX Warning: Reference `sec:sam2_background' on page 4 undefined on input line 4.
+
+
+LaTeX Warning: Reference `sec:math_background' on page 4 undefined on input line 4.
+
+
 Overfull \hbox (14.97005pt too wide) in paragraph at lines 6--6
 |[]\T1/phv/b/n/17.28 Structure-from-Motion and Multi-View Stereo
  []
 
+
+LaTeX Warning: Citation 'hartley2004multiple' on page 4 undefined on input line 9.
+
+
+LaTeX Warning: Citation 'schoenberger2016sfm' on page 4 undefined on input line 9.
+
+
+LaTeX Warning: Citation 'schoenberger2016mvs' on page 4 undefined on input line 9.
+
+
+LaTeX Warning: Citation 'hartley2004multiple' on page 4 undefined on input line 11.
+
+
+LaTeX Warning: Citation 'schoenberger2016sfm' on page 4 undefined on input line 11.
+
+
+LaTeX Warning: Citation 'schoenberger2016sfm' on page 4 undefined on input line 11.
+
+
+LaTeX Warning: Citation 'pan2024glomap' on page 4 undefined on input line 11.
+
+
+LaTeX Warning: Citation 'pataki2025mpsfmmonocularsurfacepriors' on page 4 undefined on input line 11.
+
+
+Overfull \hbox (97.82195pt too wide) in paragraph at lines 11--12
+[]\T1/lmr/m/n/12 ]. Es-tab-lished SfM sys-tems such as COLMAP [[]]
+ []
+
+
+Overfull \hbox (3.6402pt too wide) in paragraph at lines 11--12
+\T1/lmr/m/n/12 re-pro-jec-tion er-ror. More re-cent sys-tems such as GLOMAP [[]]
+ []
+
 [4
 
-] [5] [6] [7]
-Overfull \hbox (0.98065pt too wide) in paragraph at lines 51--52
-[] []\T1/lmr/bx/n/12 GGPT.[] \T1/lmr/m/n/12 GGPT [[][]4[][]] (Geometry-Grounded Point Trans-former) is a geometry-
+]
+
+LaTeX Warning: Citation 'schoenberger2016mvs' on page 5 undefined on input line 13.
+
+
+LaTeX Warning: Citation 'seitz2006comparison' on page 5 undefined on input line 13.
+
+
+LaTeX Warning: Citation 'schoenberger2016mvs' on page 5 undefined on input line 13.
+
+
+LaTeX Warning: Citation 'hartley2004multiple' on page 5 undefined on input line 16.
+
+
+LaTeX Warning: Citation 'pataki2025mpsfmmonocularsurfacepriors' on page 5 undefined on input line 16.
+
+
+LaTeX Warning: Citation 'hartley2004multiple' on page 5 undefined on input line 16.
+
+
+LaTeX Warning: Citation 'schoenberger2016sfm' on page 5 undefined on input line 16.
+
+
+LaTeX Warning: Citation 'dust3r' on page 5 undefined on input line 16.
+
+
+LaTeX Warning: Citation 'mast3r' on page 5 undefined on input line 16.
+
+
+LaTeX Warning: Citation 'Cin_2025_CVPR' on page 5 undefined on input line 16.
+
+
+Overfull \hbox (6.86288pt too wide) in paragraph at lines 15--17
+\T1/lmr/m/n/12 tion [[], []].
  []
 
 
-Overfull \hbox (17.1978pt too wide) in paragraph at lines 62--63
-[] []\T1/lmr/bx/n/12 VGGT4D.[] \T1/lmr/m/n/12 VGGT4D [[][]12[][]] ex-tends the VGGT ar-chi-tec-ture to four-dimensional
+Overfull \hbox (77.87267pt too wide) in paragraph at lines 15--17
+\T1/lmr/m/n/12 depth un-cer-tainty grows rapidly as the tri-an-gu-la-tion an-gle de-creases [[],
  []
 
-[8] [9]
+[5]
+
+LaTeX Warning: Citation 'dust3r' on page 6 undefined on input line 23.
+
+
+LaTeX Warning: Citation 'mast3r' on page 6 undefined on input line 23.
+
+
+LaTeX Warning: Citation 'vggt' on page 6 undefined on input line 23.
+
+
+LaTeX Warning: Reference `c:methodology' on page 6 undefined on input line 25.
+
+
+LaTeX Warning: Reference `c:results' on page 6 undefined on input line 25.
+
+[6]
+
+LaTeX Warning: Citation 'mast3rsfm' on page 7 undefined on input line 34.
+
+
+LaTeX Warning: Citation 'dust3r' on page 7 undefined on input line 34.
+
+
+LaTeX Warning: Citation 'mast3r' on page 7 undefined on input line 34.
+
+
+Overfull \hbox (20.9311pt too wide) in paragraph at lines 34--35
+[] []\T1/lmr/bx/n/12 MASt3R-SfM.[] \T1/lmr/m/n/12 MASt3R-SfM [[]] is a hy-brid re-con-struc-tion pipeline
+ []
+
+
+Overfull \hbox (9.86362pt too wide) in paragraph at lines 34--35
+\T1/lmr/m/n/12 The ap-proach builds upon DUSt3R [[]], which in-tro-duced dense pointmap
+ []
+
+
+LaTeX Warning: Citation 'vggt' on page 7 undefined on input line 38.
+
+
+LaTeX Warning: Citation 'pi3' on page 7 undefined on input line 42.
+
+[7]
+
+LaTeX Warning: Citation 'ggpt' on page 8 undefined on input line 51.
+
+
+Overfull \hbox (21.35567pt too wide) in paragraph at lines 51--52
+[] []\T1/lmr/bx/n/12 GGPT.[] \T1/lmr/m/n/12 GGPT [[]] (Geometry-Grounded Point Trans-former) is a geometry-
+ []
+
+
+LaTeX Warning: Citation 'vggt4d' on page 8 undefined on input line 58.
+
+[8]
+
+LaTeX Warning: Citation 'vggt4d' on page 9 undefined on input line 62.
+
+
+LaTeX Warning: Citation 'monofusion' on page 9 undefined on input line 66.
+
+
+LaTeX Warning: Citation 'li2025mono3rexploitingmonocularcues' on page 9 undefined on input line 66.
+
+
+LaTeX Warning: Citation 'Jiang_2025_ICCV' on page 9 undefined on input line 66.
+
+
+LaTeX Warning: Citation 'Cheng2025MonSterUS' on page 9 undefined on input line 66.
+
+
+Overfull \hbox (44.56552pt too wide) in paragraph at lines 66--67
+[] []\T1/lmr/bx/n/12 Mono-Fu-sion.[] \T1/lmr/m/n/12 Mono-Fu-sion [[]] ap-proaches sparse-view four-dimensional
+ []
+
+
+LaTeX Warning: Citation 'sam2' on page 9 undefined on input line 73.
+
+[9]
+
+LaTeX Warning: Citation 'monofusion' on page 10 undefined on input line 75.
+
+
+LaTeX Warning: Reference `c:methodology' on page 10 undefined on input line 77.
+
+
+LaTeX Warning: Reference `sec:foundation_models' on page 10 undefined on input line 82.
+
+
+LaTeX Warning: Reference `c:methodology' on page 10 undefined on input line 84.
+
+
 Overfull \hbox (9.01953pt too wide) in paragraph at lines 86--86
 |[]\T1/phv/b/n/14.4 Similarity Trans-for-ma-tions and Umeyama Align-ment| 
  []
 
 [10]
+
+LaTeX Warning: Citation 'umeyama1991least' on page 11 undefined on input line 94.
+
+
+LaTeX Warning: Reference `c:methodology' on page 11 undefined on input line 96.
+
 LaTeX Font Info:    External font `lmex10' loaded for size
 (Font)              <14.4> on input line 98.
 LaTeX Font Info:    External font `lmex10' loaded for size
 (Font)              <10> on input line 98.
 LaTeX Font Info:    External font `lmex10' loaded for size
 (Font)              <7> on input line 98.
- [11{/Users/fabio/Library/TinyTeX/texmf-dist/fonts/enc/dvips/lm/lm-mathex.enc}]
+
+LaTeX Warning: Citation 'absil2008optimization' on page 11 undefined on input line 105.
+
+
+LaTeX Warning: Citation 'chirikjian2011stochastic' on page 11 undefined on input line 105.
+
+
+Overfull \hbox (64.66463pt too wide) in paragraph at lines 105--106
+\T1/lmr/m/n/12 ces that no longer sat-isfy the or-thog-o-nal-ity con-straints of $[]\OT1/lmr/m/n/12 (3)$ \T1/lmr/m/n/12 [[],
+ []
+
+
+LaTeX Warning: Citation 'hartley2013rotation' on page 11 undefined on input line 111.
+
+[11{/Users/fabio/Library/TinyTeX/texmf-dist/fonts/enc/dvips/lm/lm-mathex.enc}]
+
+LaTeX Warning: Citation 'weiszfeld1937point' on page 12 undefined on input line 128.
+
 LaTeX Font Info:    Trying to load font information for U+euf on input line 128.
- (/Users/fabio/Library/TinyTeX/texmf-dist/tex/latex/amsfonts/ueuf.fd
+(/Users/fabio/Library/TinyTeX/texmf-dist/tex/latex/amsfonts/ueuf.fd
 File: ueuf.fd 2013/01/14 v3.01 Euler Fraktur
 )
 Overfull \hbox (4.86215pt too wide) in paragraph at lines 128--129
 []\T1/lmr/m/n/12 The op-ti-mi-sa-tion is per-formed us-ing a man-i-fold adap-ta-tion of the Weiszfeld
  []
 
-) (./chapters/3-related-work.tex [12] [13]
+
+Overfull \hbox (0.3931pt too wide) in paragraph at lines 128--129
+\T1/lmr/m/n/12 al-go-rithm [[]], an it-er-a-tively reweighted least-squares pro-
+ []
+
+
+LaTeX Warning: Citation 'chamfer1977image' on page 12 undefined on input line 133.
+
+[12]
+
+LaTeX Warning: Reference `c:methodology' on page 13 undefined on input line 142.
+
+) (./chapters/3-related-work.tex [13]
 Chapter 3.
 
 Overfull \hbox (18.22754pt too wide) in paragraph at lines 1--1
 |\T1/phv/b/n/24.88 Methodology: Tem-po-ral Align-ment
  []
 
+
+LaTeX Warning: Reference `c:background' on page 14 undefined on input line 4.
+
+
+LaTeX Warning: Reference `sec:alignment_strategies' on page 14 undefined on input line 9.
+
+
+LaTeX Warning: Reference `fig:strategies' on page 14 undefined on input line 11.
+
+
+LaTeX Warning: Reference `sec:opt' on page 14 undefined on input line 12.
+
+
+LaTeX Warning: Reference `sec:math_background' on page 14 undefined on input line 24.
+
 [14
 
 ]
-<figures/farneback_07.png, id=418, 642.4pt x 481.8pt>
+
+LaTeX Warning: Reference `fig:static_mask_derivation' on page 15 undefined on input line 34.
+
+
+LaTeX Warning: Citation 'sam2' on page 15 undefined on input line 39.
+
+
+LaTeX Warning: Reference `sec:sam2_background' on page 15 undefined on input line 39.
+
+
+LaTeX Warning: Reference `sec:datasets' on page 15 undefined on input line 48.
+
+<figures/farneback_07.png, id=139, 642.4pt x 481.8pt>
 File: figures/farneback_07.png Graphic file (type png)
 <use figures/farneback_07.png>
 Package pdftex.def Info: figures/farneback_07.png  used on input line 54.
 (pdftex.def)             Requested size: 187.19833pt x 140.39476pt.
-<figures/sam2_07.png, id=419, 642.4pt x 481.8pt>
+<figures/sam2_07.png, id=140, 642.4pt x 481.8pt>
 File: figures/sam2_07.png Graphic file (type png)
 <use figures/sam2_07.png>
 Package pdftex.def Info: figures/sam2_07.png  used on input line 61.
 (pdftex.def)             Requested size: 187.19833pt x 140.39476pt.
-<figures/strategies_figure_cropped.pdf, id=425, 306.14375pt x 128.48pt>
+
+LaTeX Warning: Citation 'farneback2003two' on page 15 undefined on input line 70.
+
+
+LaTeX Warning: Citation 'sam2' on page 15 undefined on input line 70.
+
+
+LaTeX Warning: Citation 'farneback2003two' on page 15 undefined on input line 70.
+
+
+LaTeX Warning: Citation 'sam2' on page 15 undefined on input line 70.
+
+
+LaTeX Warning: Reference `fig:strategies' on page 15 undefined on input line 77.
+
+<figures/strategies_figure_cropped.pdf, id=141, 306.14375pt x 128.48pt>
 File: figures/strategies_figure_cropped.pdf Graphic file (type pdf)
 <use figures/strategies_figure_cropped.pdf>
 Package pdftex.def Info: figures/strategies_figure_cropped.pdf  used on input line 86.
 (pdftex.def)             Requested size: 390.0pt x 163.68141pt.
- [15] [16 <./figures/farneback_07.png (PNG copy)> <./figures/sam2_07.png (PNG copy)>] [17 <./figures/strategies_figure_cropped.pdf>] [18]
+[15] [16 <./figures/farneback_07.png (PNG copy)> <./figures/sam2_07.png (PNG copy)>]
+
+LaTeX Warning: Reference `sec:math_background' on page 17 undefined on input line 141.
+
+[17 <./figures/strategies_figure_cropped.pdf>]
+
+LaTeX Warning: Reference `c:results' on page 18 undefined on input line 157.
+
+
+LaTeX Warning: Reference `c:results' on page 18 undefined on input line 168.
+
+[18]
+
+LaTeX Warning: Reference `c:results' on page 19 undefined on input line 217.
+
 
 LaTeX Warning: Reference `c:discussion' on page 19 undefined on input line 231.
 
 ) (./chapters/4-methodology.tex [19]
 Chapter 4.
+
+LaTeX Warning: Reference `c:background' on page 20 undefined on input line 4.
+
+
+LaTeX Warning: Reference `sec:datasets' on page 20 undefined on input line 4.
+
+
+LaTeX Warning: Reference `tab:camera_configs' on page 20 undefined on input line 4.
+
+
+LaTeX Warning: Reference `fig:dex_configs' on page 20 undefined on input line 4.
+
+
+LaTeX Warning: Reference `fig:hi4d_configs' on page 20 undefined on input line 4.
+
+
+LaTeX Warning: Reference `sec:evaluation_pipeline' on page 20 undefined on input line 4.
+
+
+LaTeX Warning: Reference `fig:evaluation_pipeline' on page 20 undefined on input line 4.
+
+
+LaTeX Warning: Reference `sec:metrics' on page 20 undefined on input line 4.
+
+
+LaTeX Warning: Reference `sec:implementation_details' on page 20 undefined on input line 4.
+
+
+LaTeX Warning: Citation 'dexycb' on page 20 undefined on input line 10.
+
+
+LaTeX Warning: Citation 'hi4d' on page 20 undefined on input line 10.
+
+
+Overfull \hbox (28.14604pt too wide) in paragraph at lines 10--11
+\T1/lmr/m/n/12 The eval-u-a-tion uses two com-ple-men-tary bench-mark datasets: DEX-YCB [[]]
+ []
+
+
+LaTeX Warning: Citation 'dexycb' on page 20 undefined on input line 13.
+
 [20
 
 ]
+
+LaTeX Warning: Citation 'hi4d' on page 21 undefined on input line 16.
+
+
+Overfull \hbox (7.43813pt too wide) in paragraph at lines 16--17
+\T1/lmr/m/n/12 YCB, it con-tains sub-stan-tially larger non-rigid mo-tion, stronger self-occlusions,
+ []
+
+
+LaTeX Warning: Reference `sec:evaluation_pipeline' on page 21 undefined on input line 18.
+
+
+LaTeX Warning: Reference `sec:metrics' on page 21 undefined on input line 18.
+
+
+LaTeX Warning: Reference `tab:camera_configs' on page 21 undefined on input line 21.
+
+
+LaTeX Warning: Reference `fig:dex_configs' on page 21 undefined on input line 21.
+
+
+LaTeX Warning: Reference `fig:hi4d_configs' on page 21 undefined on input line 21.
+
+
+LaTeX Warning: Reference `c:methodology' on page 21 undefined on input line 21.
+
 LaTeX Font Info:    External font `lmex10' loaded for size
 (Font)              <5> on input line 42.
- [21]
-<figures/DEX2.png, id=562, 604.2575pt x 582.175pt>
+[21]
+<figures/DEX2.png, id=260, 604.2575pt x 582.175pt>
 File: figures/DEX2.png Graphic file (type png)
 <use figures/DEX2.png>
 Package pdftex.def Info: figures/DEX2.png  used on input line 56.
 (pdftex.def)             Requested size: 187.19833pt x 180.3569pt.
-<figures/DEX3.png, id=563, 583.17876pt x 473.77pt>
+<figures/DEX3.png, id=261, 583.17876pt x 473.77pt>
 File: figures/DEX3.png Graphic file (type png)
 <use figures/DEX3.png>
 Package pdftex.def Info: figures/DEX3.png  used on input line 60.
 (pdftex.def)             Requested size: 187.19833pt x 152.07939pt.
-<figures/DEX4.png, id=564, 620.3175pt x 435.6275pt>
+<figures/DEX4.png, id=262, 620.3175pt x 435.6275pt>
 File: figures/DEX4.png Graphic file (type png)
 <use figures/DEX4.png>
 Package pdftex.def Info: figures/DEX4.png  used on input line 64.
 (pdftex.def)             Requested size: 187.19833pt x 131.46031pt.
-<figures/HI4D2.png, id=565, 1425.325pt x 517.935pt>
+<figures/HI4D2.png, id=263, 1425.325pt x 517.935pt>
 File: figures/HI4D2.png Graphic file (type png)
 <use figures/HI4D2.png>
 Package pdftex.def Info: figures/HI4D2.png  used on input line 76.
 (pdftex.def)             Requested size: 187.19833pt x 68.02147pt.
-<figures/HI4D3.png, id=566, 1565.85pt x 442.65375pt>
+<figures/HI4D3.png, id=264, 1565.85pt x 442.65375pt>
 File: figures/HI4D3.png Graphic file (type png)
 <use figures/HI4D3.png>
 Package pdftex.def Info: figures/HI4D3.png  used on input line 80.
 (pdftex.def)             Requested size: 187.19833pt x 52.91351pt.
-<figures/HI4D4.png, id=567, 1333.98375pt x 407.5225pt>
+<figures/HI4D4.png, id=265, 1333.98375pt x 407.5225pt>
 File: figures/HI4D4.png Graphic file (type png)
 <use figures/HI4D4.png>
 Package pdftex.def Info: figures/HI4D4.png  used on input line 84.
@@ -1389,56 +1766,226 @@ Underfull \hbox (badness 2922) in paragraph at lines 89--89
 LaTeX Warning: Float too large for page by 37.69656pt on input line 92.
 
 [22] [23 <./figures/DEX2.png> <./figures/DEX3.png> <./figures/DEX4.png> <./figures/HI4D2.png> <./figures/HI4D3.png> <./figures/HI4D4.png>]
-<figures/method_figure_cropped.pdf, id=586, 396.48125pt x 116.435pt>
+
+LaTeX Warning: Reference `c:methodology' on page 24 undefined on input line 96.
+
+
+LaTeX Warning: Reference `fig:evaluation_pipeline' on page 24 undefined on input line 102.
+
+
+LaTeX Warning: Reference `c:methodology' on page 24 undefined on input line 102.
+
+<figures/method_figure_cropped.pdf, id=283, 396.48125pt x 116.435pt>
 File: figures/method_figure_cropped.pdf Graphic file (type pdf)
 <use figures/method_figure_cropped.pdf>
 Package pdftex.def Info: figures/method_figure_cropped.pdf  used on input line 106.
 (pdftex.def)             Requested size: 390.0pt x 114.53368pt.
- [24
 
- <./figures/method_figure_cropped.pdf>] [25]
-Overfull \hbox (8.78145pt too wide) in paragraph at lines 163--164
-\T1/lmr/m/n/12 The pri-mary dis-tance met-ric is the sym-met-ric Cham-fer dis-tance (Sec-tion [][]2.4.4[][]).
+LaTeX Warning: Reference `c:methodology' on page 24 undefined on input line 114.
+
+
+LaTeX Warning: Reference `c:methodology' on page 24 undefined on input line 114.
+
+[24
+
+ <./figures/method_figure_cropped.pdf>]
+
+LaTeX Warning: Reference `sec:datasets' on page 25 undefined on input line 128.
+
+
+LaTeX Warning: Citation 'rusu2008statistical' on page 25 undefined on input line 131.
+
+
+Overfull \hbox (97.8824pt too wide) in paragraph at lines 131--132
+[] []\T1/lmr/bx/n/12 Sta-tis-ti-cal out-lier re-moval.[] \T1/lmr/m/n/12 KDTree-based sta-tis-ti-cal out-lier re-moval [[]]
  []
 
-[26] [27] [28] [29]
-LaTeX Font Info:    Trying to load font information for T1+lmtt on input line 269.
- (/Users/fabio/Library/TinyTeX/texmf-dist/tex/latex/lm/t1lmtt.fd
+
+LaTeX Warning: Reference `sec:math_background' on page 25 undefined on input line 140.
+
+[25]
+
+LaTeX Warning: Reference `c:methodology' on page 26 undefined on input line 153.
+
+
+LaTeX Warning: Reference `sec:evaluation_pipeline' on page 26 undefined on input line 159.
+
+
+LaTeX Warning: Reference `sec:chamfer_distance' on page 26 undefined on input line 163.
+
+
+LaTeX Warning: Reference `sec:sam2_background' on page 26 undefined on input line 179.
+
+[26] [27]
+
+LaTeX Warning: Citation 'sturm12iros' on page 28 undefined on input line 228.
+
+
+LaTeX Warning: Reference `sec:math_background' on page 28 undefined on input line 248.
+
+[28]
+Overfull \hbox (9.48291pt too wide) in paragraph at lines 263--268
+[]\T1/lmr/m/n/12 Experiments are con-ducted on two hard-ware con-fig-u-ra-tions. Most models---
+ []
+
+LaTeX Font Info:    Trying to load font information for T1+lmtt on input line 270.
+(/Users/fabio/Library/TinyTeX/texmf-dist/tex/latex/lm/t1lmtt.fd
 File: t1lmtt.fd 2015/05/01 v1.6.1 Font defs for Latin Modern
-)) (./chapters/5-experiments.tex
-Overfull \hbox (18.86285pt too wide) in paragraph at lines 269--1
-\T1/lmr/m/n/12 met-ric com-pu-ta-tions are im-ple-mented in Python us-ing \T1/lmtt/m/n/12 scipy.spatial.cKDTree\T1/lmr/m/n/12 .
- []
-
-[30]
+)) (./chapters/5-experiments.tex [29]
 Chapter 5.
-) (./chapters/6-limitations.tex [31
+
+LaTeX Warning: Reference `sec:3d_baseline' on page 30 undefined on input line 5.
+
+
+LaTeX Warning: Reference `sec:alignment_comparison' on page 30 undefined on input line 7.
+
+
+LaTeX Warning: Reference `sec:sparse_view' on page 30 undefined on input line 8.
+
+
+LaTeX Warning: Reference `sec:native4d_baselines' on page 30 undefined on input line 9.
+
+
+LaTeX Warning: Reference `sec:opt_results' on page 30 undefined on input line 10.
+
+
+LaTeX Warning: Reference `sec:qualitative' on page 30 undefined on input line 11.
+
+
+LaTeX Warning: Reference `tab:baseline_control_ggpt' on page 30 undefined on input line 17.
+
+
+Overfull \hbox (18.40363pt too wide) in paragraph at lines 27--73
+ [][] 
+ []
+
+[30
 
 ]
+
+LaTeX Warning: Reference `sec:datasets' on page 31 undefined on input line 94.
+
+
+LaTeX Warning: Reference `fig:model_ranking' on page 31 undefined on input line 96.
+
+<figures/plotB_ranking_all_models.pdf, id=377, 505.64862pt x 231.02261pt>
+File: figures/plotB_ranking_all_models.pdf Graphic file (type pdf)
+<use figures/plotB_ranking_all_models.pdf>
+Package pdftex.def Info: figures/plotB_ranking_all_models.pdf  used on input line 105.
+(pdftex.def)             Requested size: 390.0pt x 178.1911pt.
+
+LaTeX Warning: Reference `tab:strategy_extended' on page 31 undefined on input line 120.
+
+[31 <./figures/plotB_ranking_all_models.pdf>]
+Overfull \hbox (4.11261pt too wide) in paragraph at lines 128--203
+ [][] 
+ []
+
+
+LaTeX Warning: Float too large for page by 99.68793pt on input line 205.
+
+
+LaTeX Warning: Reference `sec:datasets' on page 32 undefined on input line 219.
+
+
+LaTeX Warning: Reference `sec:opt_results' on page 32 undefined on input line 226.
+
+
+LaTeX Warning: Reference `tab:global_performance_dex_ycb' on page 32 undefined on input line 235.
+
+
+Overfull \hbox (194.57498pt too wide) in paragraph at lines 243--303
+ [][] 
+ []
+
+[32]
+
+LaTeX Warning: Reference `tab:baseline_control_ggpt' on page 33 undefined on input line 331.
+
+
+Overfull \hbox (3.13713pt too wide) in paragraph at lines 329--338
+[] []\T1/lmr/bx/n/12 VGGT4D.[] \T1/lmr/m/n/12 VGGT4D en-forces sequence-level tem-po-ral con-sis-tency through
+ []
+
+
+Overfull \hbox (0.81927pt too wide) in paragraph at lines 340--348
+\T1/lmr/m/n/12 meth-ods at two and four views (0.001m mean jit-ter), match-ing Opt-smoothed
+ []
+
+[33]
+
+LaTeX Warning: Reference `sec:native4d_baselines' on page 34 undefined on input line 366.
+
+
+LaTeX Warning: Reference `fig:pareto' on page 34 undefined on input line 367.
+
+
+LaTeX Warning: Reference `fig:pipeline_progression' on page 34 undefined on input line 368.
+
+
+LaTeX Warning: Reference `fig:jitter_chamfer_delta' on page 34 undefined on input line 368.
+
+
+LaTeX Warning: Reference `fig:pi3_case_study' on page 34 undefined on input line 369.
+
+<figures/plotA_pareto_jitter_chamfer_v3.pdf, id=403, 252.66661pt x 216.56862pt>
+File: figures/plotA_pareto_jitter_chamfer_v3.pdf Graphic file (type pdf)
+<use figures/plotA_pareto_jitter_chamfer_v3.pdf>
+Package pdftex.def Info: figures/plotA_pareto_jitter_chamfer_v3.pdf  used on input line 374.
+(pdftex.def)             Requested size: 331.50238pt x 284.14975pt.
+<figures/plotC_pipeline_progression.pdf, id=404, 505.6633pt x 225.11102pt>
+File: figures/plotC_pipeline_progression.pdf Graphic file (type pdf)
+<use figures/plotC_pipeline_progression.pdf>
+Package pdftex.def Info: figures/plotC_pipeline_progression.pdf  used on input line 387.
+(pdftex.def)             Requested size: 390.0pt x 173.62111pt.
+<figures/plotD_jitter_reduction_vs_chamfer_delta_v3.pdf, id=405, 252.72847pt x 216.56862pt>
+File: figures/plotD_jitter_reduction_vs_chamfer_delta_v3.pdf Graphic file (type pdf)
+<use figures/plotD_jitter_reduction_vs_chamfer_delta_v3.pdf>
+Package pdftex.def Info: figures/plotD_jitter_reduction_vs_chamfer_delta_v3.pdf  used on input line 400.
+(pdftex.def)             Requested size: 331.50238pt x 284.08035pt.
+
+LaTeX Warning: Reference `c:discussion' on page 34 undefined on input line 430.
+
+
+LaTeX Warning: Reference `fig:pi3_case_study' on page 34 undefined on input line 433.
+
+
+Overfull \hbox (8.71086pt too wide) in paragraph at lines 433--441
+\T1/lmr/m/n/12 PI3+Opt vs. VGGT4D com-par-i-son across view counts. At two views, PI3+Opt
+ []
+
+[34]
+<figures/plotE_pi3_case_study.pdf, id=411, 505.64862pt x 212.96965pt>
+File: figures/plotE_pi3_case_study.pdf Graphic file (type pdf)
+<use figures/plotE_pi3_case_study.pdf>
+Package pdftex.def Info: figures/plotE_pi3_case_study.pdf  used on input line 444.
+(pdftex.def)             Requested size: 390.0pt x 164.26659pt.
+
+
+LaTeX Warning: Reference `fig:jitter_chamfer_delta' on page 35 undefined on input line 458.
+
+[35 <./figures/plotA_pareto_jitter_chamfer_v3.pdf>]
+<figures/qualitative_results.png, id=425, 1142.2675pt x 542.025pt>
+File: figures/qualitative_results.png Graphic file (type png)
+<use figures/qualitative_results.png>
+Package pdftex.def Info: figures/qualitative_results.png  used on input line 474.
+(pdftex.def)             Requested size: 390.0pt x 185.06349pt.
+
+
+LaTeX Warning: Reference `tab:global_performance_dex_ycb' on page 36 undefined on input line 495.
+
+) (./chapters/6-limitations.tex [36 <./figures/plotC_pipeline_progression.pdf>] [37 <./figures/plotD_jitter_reduction_vs_chamfer_delta_v3.pdf>] [38 <./figures/plotE_pi3_case_study.pdf>] [39] [40] [41] [42 <./figures/qualitative_results.png>]
 Chapter 6.
-) [32
+)
 
-]
-Overfull \hbox (3.01653pt too wide) in paragraph at lines 55--55
-[]\T1/lmr/m/n/12 Yu-Wei Chao \T1/lmr/m/it/12 et al\T1/lmr/m/n/12 . ^^P  DexYCB: A Bench-mark for Cap-tur-ing Hand Grasp-
- []
+LaTeX Warning: Empty bibliography on input line 57.
 
-[33
+[43
 
-]
-Overfull \hbox (5.85074pt too wide) in paragraph at lines 55--55
-\T1/lmr/m/it/12 form-ers for 4D Scene Re-con-struc-tion\T1/lmr/m/n/12 . 2025. arXiv: [][]$\T1/lmtt/m/n/12 2511 . 19971$ [cs.CV][][]\T1/lmr/m/n/12 .
- []
-
-
-Overfull \hbox (2.71123pt too wide) in paragraph at lines 55--55
-\T1/lmr/m/it/12 Structure-from-Motion\T1/lmr/m/n/12 . 2025. arXiv: [][]$\T1/lmtt/m/n/12 2504 . 20040$ [cs.CV][][]\T1/lmr/m/n/12 . \T1/lmr/m/sc/12 url\T1/lmr/m/n/12 : [][]$\T1/lmtt/m/n/12 https :
- []
-
-[34] [35] (./chapters/A-appendix.tex
+] (./chapters/A-appendix.tex
 Appendix A.
 Package hyperref Info: bookmark level for unknown todo defaults to 0 on input line 4.
-) (./resources/declaration_en.tex [36
+) (./resources/declaration_en.tex [44
 
 
 ]
@@ -1474,25 +2021,39 @@ L3 programming layer <2026-01-19>
 
 LaTeX Warning: There were undefined references.
 
-Package rerunfilecheck Info: File `thesis.out' has not changed.
-(rerunfilecheck)             Checksum: EBADB7DEBF6EACE2A4EE0EB3B75D2CFD;7034.
+
+LaTeX Warning: Label(s) may have changed. Rerun to get cross-references right.
+
+
+Package rerunfilecheck Warning: File `thesis.out' has changed.
+(rerunfilecheck)                Rerun to get outlines right
+(rerunfilecheck)                or use package `bookmark'.
+
+Package rerunfilecheck Info: Checksums for `thesis.out':
+(rerunfilecheck)             Before: <no file>
+(rerunfilecheck)             After:  750660F380084701D55E0CCE09930146;8238.
+
+Package biblatex Warning: Please (re)run Biber on the file:
+(biblatex)                thesis
+(biblatex)                and rerun LaTeX afterwards.
+
 Package logreq Info: Writing requests to 'thesis.run.xml'.
 \openout1 = `thesis.run.xml'.
 
  ) 
 Here is how much of TeX's memory you used:
- 43805 strings out of 469443
- 873550 string characters out of 5466399
- 1819733 words of memory out of 5000000
- 71637 multiletter control sequences out of 15000+600000
- 751583 words of font info for 137 fonts, out of 8000000 for 9000
+ 43774 strings out of 469443
+ 871644 string characters out of 5466399
+ 1872160 words of memory out of 5000000
+ 71617 multiletter control sequences out of 15000+600000
+ 751783 words of font info for 137 fonts, out of 8000000 for 9000
  38 hyphenation exceptions out of 8191
  132i,12n,135p,2593b,2463s stack positions out of 10000i,1000n,20000p,200000b,200000s
-</Users/fabio/Library/TinyTeX/texmf-dist/fonts/type1/public/amsfonts/euler/eufm10.pfb></Users/fabio/Library/TinyTeX/texmf-dist/fonts/type1/public/lm/lmbx12.pfb></Users/fabio/Library/TinyTeX/texmf-dist/fonts/type1/public/lm/lmbx8.pfb></Users/fabio/Library/TinyTeX/texmf-dist/fonts/type1/public/lm/lmcsc10.pfb></Users/fabio/Library/TinyTeX/texmf-dist/fonts/type1/public/lm/lmex10.pfb></Users/fabio/Library/TinyTeX/texmf-dist/fonts/type1/public/lm/lmmi12.pfb></Users/fabio/Library/TinyTeX/texmf-dist/fonts/type1/public/lm/lmmi8.pfb></Users/fabio/Library/TinyTeX/texmf-dist/fonts/type1/public/lm/lmr10.pfb></Users/fabio/Library/TinyTeX/texmf-dist/fonts/type1/public/lm/lmr12.pfb></Users/fabio/Library/TinyTeX/texmf-dist/fonts/type1/public/lm/lmr7.pfb></Users/fabio/Library/TinyTeX/texmf-dist/fonts/type1/public/lm/lmr8.pfb></Users/fabio/Library/TinyTeX/texmf-dist/fonts/type1/public/lm/lmri12.pfb></Users/fabio/Library/TinyTeX/texmf-dist/fonts/type1/public/lm/lmsy10.pfb></Users/fabio/Library/TinyTeX/texmf-dist/fonts/type1/public/lm/lmsy6.pfb></Users/fabio/Library/TinyTeX/texmf-dist/fonts/type1/public/lm/lmsy7.pfb></Users/fabio/Library/TinyTeX/texmf-dist/fonts/type1/public/lm/lmsy8.pfb></Users/fabio/Library/TinyTeX/texmf-dist/fonts/type1/public/lm/lmtt10.pfb></Users/fabio/Library/TinyTeX/texmf-dist/fonts/type1/public/lm/lmtt12.pfb></Users/fabio/Library/TinyTeX/texmf-dist/fonts/type1/public/amsfonts/symbols/msbm10.pfb></Users/fabio/Library/TinyTeX/texmf-dist/fonts/type1/urw/helvetic/uhvb8a.pfb></Users/fabio/Library/TinyTeX/texmf-dist/fonts/type1/urw/helvetic/uhvr8a.pfb>
-Output written on thesis.pdf (43 pages, 21453116 bytes).
+</Users/fabio/Library/TinyTeX/texmf-dist/fonts/type1/public/amsfonts/euler/eufm10.pfb></Users/fabio/Library/TinyTeX/texmf-dist/fonts/type1/public/lm/lmbx12.pfb></Users/fabio/Library/TinyTeX/texmf-dist/fonts/type1/public/lm/lmbx8.pfb></Users/fabio/Library/TinyTeX/texmf-dist/fonts/type1/public/lm/lmex10.pfb></Users/fabio/Library/TinyTeX/texmf-dist/fonts/type1/public/lm/lmmi12.pfb></Users/fabio/Library/TinyTeX/texmf-dist/fonts/type1/public/lm/lmmi8.pfb></Users/fabio/Library/TinyTeX/texmf-dist/fonts/type1/public/lm/lmr10.pfb></Users/fabio/Library/TinyTeX/texmf-dist/fonts/type1/public/lm/lmr12.pfb></Users/fabio/Library/TinyTeX/texmf-dist/fonts/type1/public/lm/lmr7.pfb></Users/fabio/Library/TinyTeX/texmf-dist/fonts/type1/public/lm/lmr8.pfb></Users/fabio/Library/TinyTeX/texmf-dist/fonts/type1/public/lm/lmri12.pfb></Users/fabio/Library/TinyTeX/texmf-dist/fonts/type1/public/lm/lmsy10.pfb></Users/fabio/Library/TinyTeX/texmf-dist/fonts/type1/public/lm/lmsy6.pfb></Users/fabio/Library/TinyTeX/texmf-dist/fonts/type1/public/lm/lmsy7.pfb></Users/fabio/Library/TinyTeX/texmf-dist/fonts/type1/public/lm/lmsy8.pfb></Users/fabio/Library/TinyTeX/texmf-dist/fonts/type1/public/lm/lmtt10.pfb></Users/fabio/Library/TinyTeX/texmf-dist/fonts/type1/public/lm/lmtt12.pfb></Users/fabio/Library/TinyTeX/texmf-dist/fonts/type1/public/amsfonts/symbols/msbm10.pfb></Users/fabio/Library/TinyTeX/texmf-dist/fonts/type1/urw/helvetic/uhvb8a.pfb></Users/fabio/Library/TinyTeX/texmf-dist/fonts/type1/urw/helvetic/uhvr8a.pfb>
+Output written on thesis.pdf (50 pages, 22203037 bytes).
 PDF statistics:
- 884 PDF objects out of 1000 (max. 8388607)
- 702 compressed objects within 8 object streams
- 139 named destinations out of 1000 (max. 500000)
- 379 words of extra memory for PDF output out of 10000 (max. 10000000)
+ 656 PDF objects out of 1000 (max. 8388607)
+ 439 compressed objects within 5 object streams
+ 130 named destinations out of 1000 (max. 500000)
+ 113 words of extra memory for PDF output out of 10000 (max. 10000000)
 

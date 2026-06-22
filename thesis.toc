@@ -17,7 +17,7 @@
 \contentsline {section}{\numberline {2.4}Mathematical Background}{10}{section.2.4}%
 \contentsline {subsection}{\numberline {2.4.1}Similarity Transformations and Umeyama Alignment}{10}{subsection.2.4.1}%
 \contentsline {subsection}{\numberline {2.4.2}Rotation Geometry on $\mathrm {SO}(3)$}{11}{subsection.2.4.2}%
-\contentsline {subsection}{\numberline {2.4.3}Geodesic Rotation Averaging}{11}{subsection.2.4.3}%
+\contentsline {subsection}{\numberline {2.4.3}Geodesic Rotation Averaging}{12}{subsection.2.4.3}%
 \contentsline {subsection}{\numberline {2.4.4}Chamfer Distance}{12}{subsection.2.4.4}%
 \contentsline {chapter}{\numberline {3}Methodology: Temporal Alignment and Refinement}{14}{chapter.3}%
 \contentsline {section}{\numberline {3.1}Temporal alignment strategies}{14}{section.3.1}%
@@ -53,11 +53,20 @@
 \contentsline {paragraph}{Rotation error.}{29}{equation.4.7}%
 \contentsline {paragraph}{Intrinsic error.}{29}{equation.4.7}%
 \contentsline {section}{\numberline {4.4}Implementation Details}{29}{section.4.4}%
-\contentsline {paragraph}{Checkpoints and inference settings.}{29}{section.4.4}%
-\contentsline {paragraph}{Hardware.}{29}{section.4.4}%
-\contentsline {paragraph}{Runtime.}{29}{section.4.4}%
-\contentsline {paragraph}{Software.}{30}{section.4.4}%
-\contentsline {chapter}{\numberline {5}Results}{31}{chapter.5}%
-\contentsline {chapter}{\numberline {6}Discussion and Conclusion}{32}{chapter.6}%
-\contentsline {chapter}{Bibliography}{32}{section*.10}%
-\contentsline {chapter}{\numberline {A}Artifacts Availability}{36}{appendix.A}%
+\contentsline {chapter}{\numberline {5}Results}{30}{chapter.5}%
+\contentsline {section}{\numberline {5.1}3D Baseline Results}{30}{section.5.1}%
+\contentsline {section}{\numberline {5.2}Alignment Strategy Comparison}{32}{section.5.2}%
+\contentsline {section}{\numberline {5.3}Sparse-View Sensitivity}{32}{section.5.3}%
+\contentsline {section}{\numberline {5.4}Native 4D Architectures and Geometry Refinement}{33}{section.5.4}%
+\contentsline {paragraph}{VGGT4D.}{33}{section.5.4}%
+\contentsline {paragraph}{MonoFusion.}{33}{section.5.4}%
+\contentsline {paragraph}{GGPT.}{33}{section.5.4}%
+\contentsline {section}{\numberline {5.5}Temporal Smoothing Refinement}{34}{section.5.5}%
+\contentsline {paragraph}{Jitter reduction.}{34}{figure.caption.16}%
+\contentsline {paragraph}{Geometric cost.}{34}{figure.caption.16}%
+\contentsline {paragraph}{Comparison with native 4D architectures.}{35}{figure.caption.16}%
+\contentsline {paragraph}{Comparison with GGPT.}{36}{figure.caption.17}%
+\contentsline {section}{\numberline {5.6}Qualitative Analysis}{36}{section.5.6}%
+\contentsline {chapter}{\numberline {6}Discussion and Conclusion}{43}{chapter.6}%
+\contentsline {chapter}{Bibliography}{43}{section*.19}%
+\contentsline {chapter}{\numberline {A}Artifacts Availability}{44}{appendix.A}%
