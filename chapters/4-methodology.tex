@@ -132,7 +132,18 @@ KDTree-based statistical outlier removal~\cite{rusu2008statistical} eliminates i
 
 \subsection{Correspondence Construction}
 
-Projecting both reconstructed and ground-truth point sets into each camera view, using known camera intrinsics, establishes pixel-wise 3D--3D correspondences. For a given camera view, let $\mathbf{p}_{\text{est}}(u,v) \in \mathbb{R}^3$ and $\mathbf{p}_{\text{gt}}(u,v) \in \mathbb{R}^3$ denote the reconstructed and ground-truth points at pixel $(u,v)$, respectively. For every pixel where both are valid after filtering, the pair $(\mathbf{p}_{\text{est}},\,\mathbf{p}_{\text{gt}})$ constitutes a correspondence. When multiple reconstructed points project to the same pixel, the pipeline retains the one with highest confidence. Pixels where only one of the two point sets is valid are excluded.
+Projecting both reconstructed and ground-truth point sets into each camera view,
+using known camera intrinsics, establishes pixel-wise 3D--3D correspondences.
+For a given camera view, let $\mathbf{p}_{\text{est}}(u,v) \in \mathbb{R}^3$ and
+$\mathbf{p}_{\text{gt}}(u,v) \in \mathbb{R}^3$ denote the reconstructed and
+ground-truth points at pixel $(u,v)$, respectively. For every pixel where both
+are valid after filtering, the pair $(\mathbf{p}_{\text{est}},\,\mathbf{p}_{\text{gt}})$
+constitutes a correspondence. When multiple reconstructed points project to the same
+pixel, the pipeline retains the one with highest confidence. Pixels where only one
+of the two point sets is valid are excluded. This exclusion ensures that every
+correspondence connects a reconstructed surface point to its true counterpart,
+preventing unmatched geometry from biasing the Umeyama solver and producing a
+more faithful alignment between reconstruction and ground truth.
 
 \subsection{Per-Frame Similarity Alignment}
 
