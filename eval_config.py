@@ -4,7 +4,7 @@ import torch
 # ── Global Configuration ──────────────────────────────────────────────────────
 DEVICE = "cuda" if torch.cuda.is_available() else ("mps" if torch.backends.mps.is_available() else "cpu")
 VGGT4D_CHECKPOINT = "ckpts/model_tracker_fixed_e20.pt"
-CONF_PERCENTILE = 1.0 # Retain top 50% of points based on confidence for dex-ycb. 100% for hi4d
+CONF_PERCENTILE = 0.5  # Retain top 50% of points based on confidence (matches Pi3 semantics)
 DEPTH_MAX_M = 1.5
 
 # ── Paths ─────────────────────────────────────────────────────────────────────

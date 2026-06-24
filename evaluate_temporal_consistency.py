@@ -16,6 +16,7 @@ from vggt.utils.temporal_metrics import (
     compute_camera_metrics
 )
 from vggt.utils.umeyama_alignment import apply_similarity_transform
+from eval_config import CONF_PERCENTILE
 
 SUBJECT_NAMES = [
     "20200709-subject-01__20200709_141754",
@@ -90,6 +91,7 @@ def evaluate_configuration(in_dir, out_plot_dir, plot_prefix=""):
     # Multi-view data for jitter
     all_pointmaps_mv = []  # list of (V, H, W, 3)
     all_masks_mv = []  # list of (V, H, W)
+    all_confs_mv = []  # list of (V, H, W) float32
     all_Ks_mv = []  # list of (V, 3, 3)
     all_R_ts_mv = []  # list of (V, 4, 4)
 
@@ -146,6 +148,7 @@ def evaluate_configuration(in_dir, out_plot_dir, plot_prefix=""):
         if 'pointmaps' in data and 'masks_2d' in data:
             pmaps = data['pointmaps']  # (V, H, W, 3) or (V, N, 3) flattened
             masks_2d_raw = data['masks_2d']  # (V, H', W')
+            confs_raw = data['pointmaps_confs'] if 'pointmaps_confs' in data else None
 
             # Ensure pointmaps have spatial dims: if (V, N, 3), reshape
             if pmaps.ndim == 3:
@@ -170,6 +173,10 @@ def evaluate_configuration(in_dir, out_plot_dir, plot_prefix=""):
                 all_pointmaps_mv.append(pmaps)
 
             all_masks_mv.append(masks_2d_raw.astype(bool))
+            if confs_raw is not None:
+                if confs_raw.ndim == 2 and pmaps.ndim == 4:
+                    confs_raw = confs_raw.reshape(pmaps.shape[:3])
+                all_confs_mv.append(confs_raw.astype(np.float32))
 
             if 'Ks' in data:
                 all_Ks_mv.append(data['Ks'])
@@ -213,6 +220,8 @@ def evaluate_configuration(in_dir, out_plot_dir, plot_prefix=""):
             masks_per_frame=all_masks_mv,
             Ks_per_frame=all_Ks_mv if all_Ks_mv else None,
             R_ts_per_frame=all_R_ts_mv if all_R_ts_mv else None,
+            confidences_per_frame=all_confs_mv if all_confs_mv else None,
+            conf_percentile=CONF_PERCENTILE,
             n_anchors=5000,
         )
     else:

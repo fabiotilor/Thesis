@@ -80,6 +80,11 @@ def _parse_args():
         action="store_true",
         help="Disable Rerun logging to prevent blocking when data channel is saturated.",
     )
+    parser.add_argument(
+        "--jitter",
+        action="store_true",
+        help="Run jitter-only evaluation on the outputs (skip other metrics).",
+    )
     return parser.parse_known_args()[0]
 
 
@@ -102,12 +107,15 @@ def _selected_subjects(args):
     return [subj_map[c] for c in codes], codes
 
 
-def _run_eval(code: str, view_counts: list[int], dataset_type: str = "dex-ycb", no_rerun: bool = False):
+def _run_eval(code: str, view_counts: list[int], dataset_type: str = "dex-ycb", no_rerun: bool = False,
+              jitter: bool = False):
     cmd = [sys.executable, "evaluate_4D.py", "--subjects", code, "--data", dataset_type, "--views"] + [
         str(v) for v in view_counts
     ]
     if no_rerun:
         cmd.append("--no-rerun")
+    if jitter:
+        cmd.append("--jitter")
     print(f"\nRUNNING: {' '.join(cmd)}")
     subprocess.run(cmd, check=True)
 
@@ -140,7 +148,8 @@ def main():
     codes_to_process = []
     for subject_full, code in zip(selected_subjects, codes):
         safe_code = code.replace("/", "_")
-        csv_path = f"eval_summary_{dataset_type}_{safe_code}.csv"
+        suffix = "_jitter" if args.jitter else ""
+        csv_path = f"eval_summary_{dataset_type}_{safe_code}{suffix}.csv"
         if os.path.exists(csv_path) and not args.eval_only:
             print(f"[SKIP] Subject {code} already exists ({csv_path}).")
         else:
@@ -208,13 +217,14 @@ def main():
 
         # ══════════════════════════════════════════════════════════════════
         print(f"\n[STAGE 2] Evaluating subject {code} ...")
-        _run_eval(code, view_counts, dataset_type=dataset_type, no_rerun=args.no_rerun)
+        _run_eval(code, view_counts, dataset_type=dataset_type, no_rerun=args.no_rerun, jitter=args.jitter)
 
     # ── Aggregate results across selected subjects ───────────────────────
     csv_files = []
+    suffix = "_jitter" if args.jitter else ""
     for code in codes:
         safe_code = code.replace("/", "_")
-        csv_path = f"eval_summary_{dataset_type}_{safe_code}.csv"
+        csv_path = f"eval_summary_{dataset_type}_{safe_code}{suffix}.csv"
         if os.path.exists(csv_path):
             csv_files.append(csv_path)
 
@@ -252,7 +262,7 @@ def main():
     cols_to_show = [c for c in cols_to_show if c in aggregated.columns]
     print(aggregated[cols_to_show].to_string(index=False))
 
-    out_file = f"eval_summary_{dataset_type}_ALL_SUBJECTS.csv"
+    out_file = f"eval_summary_{dataset_type}_ALL_SUBJECTS{suffix}.csv"
     aggregated.to_csv(out_file, index=False)
     print(f"\n[INFO] Aggregated results saved to {out_file}")
 

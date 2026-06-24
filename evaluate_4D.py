@@ -79,6 +79,7 @@ def _compute_metrics_for_alignment(
         gt_registration=None,
         out_plot_dir=None,
         dataset_type="dex-ycb",
+        jitter_only=False,
 ):
     """
     Compute the full metric suite for one alignment mode.
@@ -96,6 +97,7 @@ def _compute_metrics_for_alignment(
     s_comp_list, d_comp_list = [], []
     ate_list, rpe_list, rot_err_list, focal_err_list, pp_err_list = [], [], [], [], []
     all_pointmaps_mv, all_masks_mv = [], []
+    all_confs_mv, all_validity_masks_mv = [], []
 
     for f in files:
         data = np.load(f, allow_pickle=True)
@@ -190,41 +192,42 @@ def _compute_metrics_for_alignment(
         est_pts = est_pts[valid_est]
 
         # ── Chamfer & accuracy ───────────────────────────────────────────
-        if len(est_pts) > 0 and len(gt_pts) > 0:
-            cham_dist.append(compute_chamfer_distance(est_pts, gt_pts))
-            comp_score.append(compute_completeness(est_pts, gt_pts, tau=0.01))
-            acc_score.append(compute_accuracy(est_pts, gt_pts, tau=0.01))
+        if not jitter_only:
+            if len(est_pts) > 0 and len(gt_pts) > 0:
+                cham_dist.append(compute_chamfer_distance(est_pts, gt_pts))
+                comp_score.append(compute_completeness(est_pts, gt_pts, tau=0.01))
+                acc_score.append(compute_accuracy(est_pts, gt_pts, tau=0.01))
 
-            if dataset_type == "dex-ycb" and m_2d is not None:
-                s_p, d_p = split_points_by_mask(est_pts, m_2d, ks, rts)
-                g_s, g_d = split_points_by_mask(gt_pts, m_2d, ks, rts)
+                if dataset_type == "dex-ycb" and m_2d is not None:
+                    s_p, d_p = split_points_by_mask(est_pts, m_2d, ks, rts)
+                    g_s, g_d = split_points_by_mask(gt_pts, m_2d, ks, rts)
 
-                s_acc_list.append(compute_accuracy(s_p, g_s, tau=0.01) if len(s_p) > 0 else np.nan)
-                d_acc_list.append(compute_accuracy(d_p, g_d, tau=0.01) if len(d_p) > 0 else np.nan)
-                s_comp_list.append(compute_completeness(s_p, g_s, tau=0.01) if len(g_s) > 0 else np.nan)
-                d_comp_list.append(compute_completeness(d_p, g_d, tau=0.01) if len(g_d) > 0 else np.nan)
-        else:
-            cham_dist.append(np.nan)
-            comp_score.append(np.nan)
-            acc_score.append(np.nan)
-            if dataset_type == "dex-ycb":
-                s_acc_list.append(np.nan)
-                d_acc_list.append(np.nan)
-                s_comp_list.append(np.nan)
-                d_comp_list.append(np.nan)
+                    s_acc_list.append(compute_accuracy(s_p, g_s, tau=0.01) if len(s_p) > 0 else np.nan)
+                    d_acc_list.append(compute_accuracy(d_p, g_d, tau=0.01) if len(d_p) > 0 else np.nan)
+                    s_comp_list.append(compute_completeness(s_p, g_s, tau=0.01) if len(g_s) > 0 else np.nan)
+                    d_comp_list.append(compute_completeness(d_p, g_d, tau=0.01) if len(g_d) > 0 else np.nan)
+            else:
+                cham_dist.append(np.nan)
+                comp_score.append(np.nan)
+                acc_score.append(np.nan)
+                if dataset_type == "dex-ycb":
+                    s_acc_list.append(np.nan)
+                    d_acc_list.append(np.nan)
+                    s_comp_list.append(np.nan)
+                    d_comp_list.append(np.nan)
 
-        # ── Camera metrics ───────────────────────────────────────────────
-        if "est_poses" in data and data["est_poses"] is not None and data["est_poses"].ndim >= 3:
-            e_p = data["est_poses"]
-            g_p = np.array([np.linalg.inv(rt) for rt in rts])
-            e_i = data["est_intrinsics"]
-            cam_mets = compute_camera_metrics(e_p, g_p, e_i, ks, s_val, R_val, tr_val)
-            if not np.isnan(cam_mets["ate"]):
-                ate_list.append(cam_mets["ate"])
-                rpe_list.append(cam_mets["rpe"])
-                rot_err_list.append(cam_mets["rot_error"])
-                focal_err_list.append(cam_mets["focal_error"])
-                pp_err_list.append(cam_mets["pp_error"])
+            # ── Camera metrics ───────────────────────────────────────────────
+            if "est_poses" in data and data["est_poses"] is not None and data["est_poses"].ndim >= 3:
+                e_p = data["est_poses"]
+                g_p = np.array([np.linalg.inv(rt) for rt in rts])
+                e_i = data["est_intrinsics"]
+                cam_mets = compute_camera_metrics(e_p, g_p, e_i, ks, s_val, R_val, tr_val)
+                if not np.isnan(cam_mets["ate"]):
+                    ate_list.append(cam_mets["ate"])
+                    rpe_list.append(cam_mets["rpe"])
+                    rot_err_list.append(cam_mets["rot_error"])
+                    focal_err_list.append(cam_mets["focal_error"])
+                    pp_err_list.append(cam_mets["pp_error"])
 
         # ── Jitter data collection ───────────────────────────────────────
         if "pointmaps" in data:
@@ -238,16 +241,32 @@ def _compute_metrics_for_alignment(
                 ).reshape(H, W, 3)
             all_pointmaps_mv.append(aligned_pm)
             all_masks_mv.append(m_norm.astype(bool))
+            # Confidence maps for per-view confidence filtering
+            if "pointmaps_confs" in data:
+                conf_j = normalize_array(data["pointmaps_confs"], V, H, W)
+                all_confs_mv.append(conf_j.astype(np.float32))
+            # GT validity masks collected separately for evaluable-pixel gating
+            if dataset_root is not None:
+                t_j = int(data["frame_idx"]) if "frame_idx" in data else len(all_validity_masks_mv)
+                vmasks_j = build_gt_validity_masks(
+                    t_j, view_names, dataset_root,
+                    depth_max_m=DEPTH_MAX_M, target_hw=(H, W),
+                    dataset_type=dataset_type,
+                )
+                all_validity_masks_mv.append(np.array([
+                    vm if vm is not None else np.ones((H, W), dtype=bool)
+                    for vm in vmasks_j
+                ], dtype=bool))
 
     # ── Aggregate metrics ────────────────────────────────────────────────
-    chamfer_mean = float(np.nanmean(cham_dist))
+    chamfer_mean = float(np.nanmean(cham_dist)) if cham_dist else float("nan")
 
     metrics = {
         "strategy": strategy_label,
         "n_frames": len(files),
         "chamfer": chamfer_mean,
-        "completeness": float(np.nanmean(comp_score)),
-        "accuracy": float(np.nanmean(acc_score)),
+        "completeness": float(np.nanmean(comp_score)) if comp_score else float("nan"),
+        "accuracy": float(np.nanmean(acc_score)) if acc_score else float("nan"),
     }
 
     if dataset_type == "dex-ycb" and s_acc_list:
@@ -273,9 +292,21 @@ def _compute_metrics_for_alignment(
 
     # ── Jitter ───────────────────────────────────────────────────────────
     if len(all_pointmaps_mv) >= 2:
-        jitter = compute_static_jitter(all_pointmaps_mv, all_masks_mv, n_anchors=5000)
+        jitter = compute_static_jitter(
+            all_pointmaps_mv,
+            all_masks_mv,
+            validity_masks_per_frame=all_validity_masks_mv if all_validity_masks_mv else None,
+            confidences_per_frame=all_confs_mv if all_confs_mv else None,
+            conf_percentile=CONF_PERCENTILE,
+            n_anchors=5000,
+        )
         if jitter:
             metrics.update(jitter)
+        metrics.pop('per_frame_jitter', None)
+        if 'per_view_anchor_counts' in metrics:
+            metrics['per_view_anchor_counts'] = ",".join(
+                str(int(v)) for v in np.asarray(metrics['per_view_anchor_counts']).ravel()
+            )
 
     # ── Timing ───────────────────────────────────────────────────────────
     timing_path = os.path.join(os.path.dirname(files[0]), "timing.json")
@@ -288,7 +319,7 @@ def _compute_metrics_for_alignment(
             pass
 
     # ── Per-frame Chamfer plot ───────────────────────────────────────────
-    if out_plot_dir:
+    if out_plot_dir and not jitter_only:
         os.makedirs(out_plot_dir, exist_ok=True)
         frames = np.arange(len(files))
         plt.figure()
@@ -309,7 +340,7 @@ def _compute_metrics_for_alignment(
 
 
 def evaluate_multi_strategy(baseline_dir, dataset_root, view_label, subject_full, no_rerun=False,
-                            dataset_type="dex-ycb"):
+                            dataset_type="dex-ycb", jitter_only=False):
     """
     Evaluate the model output for:
       1. baseline_per_frame — Computes an independent Umeyama registration per frame to GT.
@@ -340,6 +371,7 @@ def evaluate_multi_strategy(baseline_dir, dataset_root, view_label, subject_full
         global_transform=None,
         out_plot_dir=os.path.join(plot_root, "global_4d"),
         dataset_type=dataset_type,
+        jitter_only=jitter_only,
     )
     if global_row is not None:
         global_row["subject"] = subject_full
@@ -416,6 +448,7 @@ def evaluate_multi_strategy(baseline_dir, dataset_root, view_label, subject_full
         gt_registration=identity_gt,
         out_plot_dir=os.path.join(plot_root, "baseline_per_frame"),
         dataset_type=dataset_type,
+        jitter_only=jitter_only,
     )
     if baseline_row is not None:
         baseline_row["chamfer_4d"] = chamfer_4d
@@ -439,23 +472,24 @@ def evaluate_multi_strategy(baseline_dir, dataset_root, view_label, subject_full
     print(f"    └{'─' * 52}")
 
     # ── Multi-strategy Chamfer plot ───────────────────────────────────────
-    os.makedirs(plot_root, exist_ok=True)
-    frames_ax = np.arange(len(files))
-    import matplotlib.pyplot as plt
-    plt.figure(figsize=(12, 5))
-    colours = ["b", "g", "m", "c"]
-    for (lbl, chs), col in zip(all_chs, colours):
-        if chs:
-            mu = float(np.nanmean(chs))
-            plt.plot(frames_ax[:len(chs)], chs, f"{col}-o",
-                     label=f"{lbl}  μ={mu:.5f}", alpha=0.8)
-    plt.title(f"Chamfer Distance — {view_label}")
-    plt.xlabel("Frame")
-    plt.ylabel("Chamfer Distance")
-    plt.legend(fontsize=8)
-    plt.tight_layout()
-    plt.savefig(os.path.join(plot_root, f"chamfer_all_{view_label}.png"), dpi=150)
-    plt.close()
+    if not jitter_only:
+        os.makedirs(plot_root, exist_ok=True)
+        frames_ax = np.arange(len(files))
+        import matplotlib.pyplot as plt
+        plt.figure(figsize=(12, 5))
+        colours = ["b", "g", "m", "c"]
+        for (lbl, chs), col in zip(all_chs, colours):
+            if chs:
+                mu = float(np.nanmean(chs))
+                plt.plot(frames_ax[:len(chs)], chs, f"{col}-o",
+                         label=f"{lbl}  μ={mu:.5f}", alpha=0.8)
+        plt.title(f"Chamfer Distance — {view_label}")
+        plt.xlabel("Frame")
+        plt.ylabel("Chamfer Distance")
+        plt.legend(fontsize=8)
+        plt.tight_layout()
+        plt.savefig(os.path.join(plot_root, f"chamfer_all_{view_label}.png"), dpi=150)
+        plt.close()
 
     return all_rows
 
@@ -496,6 +530,11 @@ def main():
     parser.add_argument("--views", nargs="+", type=int,
                         help="View counts to evaluate (e.g. --views 2 3 4).")
     parser.add_argument("--no-rerun", action="store_true", help="Disable Rerun logging.")
+    parser.add_argument(
+        "--jitter",
+        action="store_true",
+        help="Compute and save only jitter/drift metrics (skip Chamfer, accuracy, camera metrics, and plots).",
+    )
 
     # Legacy flags for DexYCB
     for code in SUBJECT_BY_CODE.keys():
@@ -554,7 +593,7 @@ def main():
             baseline_dir = os.path.join(subject_dir, view_dir)
             rows = evaluate_multi_strategy(
                 baseline_dir, dataset_root, view_dir, subject_full,
-                no_rerun=args.no_rerun, dataset_type=dataset_type
+                no_rerun=args.no_rerun, dataset_type=dataset_type, jitter_only=args.jitter
             )
             subject_results.extend(rows)
 
@@ -562,7 +601,8 @@ def main():
             df = pd.DataFrame(subject_results)
             print_metrics_summary(df, subject_full)
             safe_code = scode.replace("/", "_")
-            out_csv = f"eval_summary_{dataset_type}_{safe_code}.csv"
+            suffix = "_jitter" if args.jitter else ""
+            out_csv = f"eval_summary_{dataset_type}_{safe_code}{suffix}.csv"
             df.to_csv(out_csv, index=False)
             print(f"[INFO] Saved report to {out_csv}")
 
