@@ -42,10 +42,16 @@ including low-texture regions that the raw difference signal alone would miss. T
 resulting per-frame mask designates each pixel as static or dynamic, and serves as the
 basis for all three alignment strategies.
 
-On Hi4D, the background is removed during preprocessing so that only the human subjects
-are visible to the models; the static mask derivation is therefore not applied, and the
-alignment strategies proceed without static-scene correspondences. Results on Hi4D should
-be interpreted with this limitation in mind, as discussed in Section~\ref{sec:datasets}.
+On Hi4D, the background is removed during preprocessing so that only the human
+subjects are visible to the models; the static mask derivation is therefore not
+applied. Because no static scene anchors are available, the alignment strategies
+fall back to using all visible points as correspondences. This is a reasonable
+approximation for Hi4D, where the two interacting subjects move relatively little
+between consecutive frames, so the aggregate point cloud displacement remains
+small enough for Umeyama alignment to produce a meaningful common reference frame.
+Results on Hi4D should be interpreted with this limitation in mind, as the
+alignment is no longer anchored to genuinely static geometry, as discussed in
+Section~\ref{sec:datasets}.
 
 \begin{figure}[t]
 \centering
@@ -62,7 +68,7 @@ be interpreted with this limitation in mind, as discussed in Section~\ref{sec:da
     \caption{SAM2-refined mask}
     \label{fig:mask_sam2}
 \end{subfigure}
-\caption{Comparison of two motion priors on a DexYCB frame. (a) Farnebäck optical
+\caption{Comparison of two static masks on a DexYCB frame. (a) Farnebäck optical
 flow~\cite{farneback2003two} produces a fragmented mask with scattered noise pixels and
 holes within the moving subject. (b) The frame-wise pixel-difference prior, refined by
 SAM2~\cite{sam2}, yields a coherent segmentation covering the full extent of the hand and
@@ -77,9 +83,7 @@ capture. Black denotes dynamic pixels excluded from static correspondences.}
 Figure~\ref{fig:strategies} illustrates the three strategies for a sequence of $T$ frames
 indexed $t_0, \dots, t_F$. Strategy 1 aligns every frame directly to a single reference
 frame. Strategy 2 aligns frames pairwise in a hierarchical merge. Strategy 3 estimates all
-pairwise alignments and combines them through global optimisation. Each strategy trades off
-computational cost against robustness to unreliable individual alignments, as detailed
-below.
+pairwise alignments and combines them through global optimisation. Each strategy trades off computational cost against alignment redundancy, though the practical impact on geometric accuracy depends on the backbone and dataset, as discussed in Section~\ref{sec:alignment_comparison}.
 
 \begin{figure}[t]
 \centering

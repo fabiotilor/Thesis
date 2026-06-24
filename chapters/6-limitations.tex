@@ -18,7 +18,7 @@ The central finding of Chapter~\ref{c:results} is that native 4D architectures f
 close the geometry--jitter trade-off that spatial models with Opt smoothing achieve.
 Understanding why requires examining the architectural assumptions each family makes.
 
-\paragraph{Why spatial models succeed.}
+\subsection{Why Spatial Models Succeed}
 Spatial foundation models reconstruct each frame independently, using learned priors to
 recover dense geometry from sparse observations. Independence is a strength: each frame
 is solved without any assumption about what neighbouring frames look like, so
@@ -27,7 +27,7 @@ reconstruction errors do not propagate across time. PI3 achieves 0.022\,m Chamfe
 fidelity among all evaluated models, precisely because no temporal constraint forces it
 to compromise geometric detail for sequence consistency.
 
-\paragraph{Why native 4D architectures fail.}
+\subsection{Why Native 4D Architectures Fail}
 VGGT4D processes the full multi-view video jointly, enforcing temporal consistency
 through a shared transformer representation. The cost is geometric: VGGT4D's per-frame
 Chamfer is 141\,\% higher than PI3 on DexYCB even under best-case per-frame alignment
@@ -52,7 +52,7 @@ artefacts rather than coherent reconstructions. MonoFusion achieves the lowest d
 is the weakest among all evaluated models: 0.050\,m Chamfer on DexYCB and 0.356\,m on
 Hi4D.
 
-\paragraph{Why GGPT is unsuitable for geometry-critical applications.}
+\subsection{Why GGPT is Unsuitable for Geometry-Critical Applications}
 GGPT combines dense pointmap predictions with incomplete SfM-derived geometric cues
 through a transformer-based refinement network. The approach degrades geometry
 catastrophically across every backbone and both datasets: Chamfer worsens by factors of
@@ -112,7 +112,7 @@ pipeline intended for practical deployment.
 
 Four limitations of the proposed approach warrant explicit discussion.
 
-\paragraph{Per-backbone parameter calibration.}
+\subsection{Per-Backbone Parameter Calibration}
 Opt requires per-backbone values of $\sigma$ and $\alpha$, selected by sweeping over a
 grid and measuring the geometry--jitter trade-off on DexYCB. The selected
 configurations ($\sigma = 6$, $\alpha = 1.0$ for MASt3R-SfM; $\sigma = 4$,
@@ -126,7 +126,7 @@ the distribution of the backbone's training data. A parameter set calibrated on 
 manipulation sequences may not transfer to surgical, outdoor, or industrial scenes
 without recalibration.
 
-\paragraph{Drift is not corrected.}
+\subsection{Drift is Not Corrected}
 Opt suppresses high-frequency jitter and reduces mean jitter substantially, but does
 not reliably reduce drift. Drift is a slow, monotonic accumulation of pose estimation
 errors that displaces static anchors over the sequence. Because the Gaussian filter
@@ -137,7 +137,7 @@ from 0.060\,m to 0.054\,m. Correcting drift requires a mechanism that operates
 globally across the sequence rather than locally in time, such as the
 anchor-constrained optimisation described in Section~\ref{sec:future_work}.
 
-\paragraph{Static mask quality.}
+\subsection{Static Mask Quality}
 The SAM2-derived static masks are a critical dependency of both the alignment
 strategies and Opt. Mask quality degrades in several scenarios: fast motion that
 exceeds the frame-difference signal, textureless dynamic surfaces that produce weak
@@ -149,7 +149,7 @@ effect of the filter. This boundary reclassification effect is most visible for 
 where dynamic accuracy falls substantially under Opt despite the filter operating only
 on classified static pixels.
 
-\paragraph{Evaluation scope.}
+\subsection{Evaluation Scope}
 Opt is evaluated exclusively on DexYCB, since Hi4D provides no static background
 against which jitter metrics can be computed. The temporal consistency results
 therefore rest on a single dataset covering human--object manipulation under controlled
@@ -174,7 +174,7 @@ the smoothing method itself, correcting drift, broadening evaluation to moving c
 and more diverse scenes, and exploring whether the decoupled paradigm can be pushed
 further through learned refinement.
 
-\paragraph{Inference-time adaptive parameter selection.}
+\subsection{Inference-Time Adaptive Parameter Selection}
 The per-backbone parameter calibration limitation motivates replacing the offline sweep
 with an adaptive procedure that selects $\sigma$ and $\alpha$ at inference time from
 the current sequence. The required signal is available without ground truth: the
@@ -185,7 +185,7 @@ stable. Fitting $\sigma$ to the observed jitter profile of each sequence would r
 the dataset-specific calibration requirement and produce a method that generalises
 without recalibration.
 
-\paragraph{Global anchor-constrained drift correction.}
+\subsection{Global Anchor-Constrained Drift Correction}
 The drift limitation motivates a second post-processing stage applied after Opt.
 After Opt suppresses jitter, static scene anchors are nearly stable across frames,
 making their world-space positions reliably identifiable. The current alignment
@@ -198,7 +198,7 @@ structurally analogous to classical bundle adjustment applied to already-reconst
 pointmaps rather than raw image correspondences, and requires no additional training
 data.
 
-\paragraph{Reprojection-error cross-view refinement.}
+\subsection{Reprojection-Error Cross-View Refinement}
 After drift correction, the stabilised static anchors and known camera intrinsics
 enable a further refinement stage: minimising cross-view reprojection error to improve
 geometric consistency across cameras. In the 2-view regime, the results of
@@ -210,7 +210,7 @@ refinement is training-free and model-agnostic, and directly addresses the cross
 surface alignment problem identified in the original project description as the central
 unsolved challenge of sparse-view reconstruction.
 
-\paragraph{Extension to moving cameras and broader evaluation.}
+\subsection{Extension to Moving Cameras and Broader Evaluation}
 This thesis evaluates exclusively on fixed, pre-calibrated camera rigs. Two datasets
 motivate extending the evaluation framework to moving cameras. MultiCamRobolab~\cite{multicamrobolab}
 introduces a real-world multi-camera dataset with ground-truth poses from a motion

@@ -463,7 +463,7 @@ where Chamfer increases from 0.027\,m to 0.040\,m.}
 
 \FloatBarrier
 
-\paragraph{High-frequency jitter elimination.}
+\subsection{High-frequency Jitter Elimination}
 HF jitter is defined in Section~\ref{sec:metrics} as second-order
 temporal acceleration, sensitive to rapid oscillations rather than
 slow drift.
@@ -475,7 +475,7 @@ compared to baseline Strategy 2 values ranging from 0.008\,m to
 0.019\,m depending on model and view count.
 The native 4D architecture VGGT4D achieves only 0.005\,m at two views.
 
-\paragraph{Mean jitter reduction.}
+\subsection{Mean Jitter Reduction}
 Mean jitter captures lower-frequency instability that the Gaussian
 attenuates less completely than high-frequency oscillations.
 Figure~\ref{fig:pipeline_progression} shows a consistent reduction
@@ -493,7 +493,7 @@ reference line of 0.003\,m visible in
 Figure~\ref{fig:pipeline_progression}.
 
 
-\paragraph{Drift and the limits of temporal smoothing.}
+\subsection{Drift and the Limits of Temporal Smoothing}
 Drift measures a qualitatively different failure mode from jitter.
 Where jitter is high-frequency noise, drift is a low-frequency bias:
 a slow accumulation of pose estimation errors that displaces static
@@ -512,7 +512,7 @@ GGPT\,(S2) reduces drift relative to Strategy 2 in several cases,
 but not without substantially degrading Chamfer distance, and the
 improvement is not consistent across view counts or backbones.
 
-\paragraph{Geometric cost.}
+\subsection{Geometric Cost}
 The right panel of Figure~\ref{fig:pipeline_progression} shows that the Chamfer
 distance of three of the four models remains near or below the Strategy 2 level after
 Opt smoothing. For MASt3R-SfM, Chamfer improves slightly from 0.023\,m to 0.022\,m
@@ -529,7 +529,7 @@ points back into 2D shifts their apparent class assignment, producing a reductio
 reported dynamic accuracy beyond the direct effect of the filter itself. This boundary
 effect is a known limitation discussed in Chapter~\ref{c:discussion}.
 
-\paragraph{Comparison with native 4D architectures.}
+\subsection{Comparison with Native 4D Architectures}
 Figure~\ref{fig:pareto} shows that Opt-smoothed spatial models occupy the lower-left
 quadrant that native 4D architectures do not reach. At two views, PI3+Opt achieves
 0.026\,m Chamfer and 0.002\,m mean jitter, against VGGT4D's 0.051\,m Chamfer and
@@ -545,7 +545,7 @@ per-frame spatial estimation followed by targeted temporal smoothing Pareto-domi
 the native 4D architecture on the geometry--jitter trade-off at every view count for
 every spatial backbone evaluated.
 
-\paragraph{Comparison with GGPT.}
+\subsection{Comparison with GGPT}
 Figure~\ref{fig:pareto} shows GGPT points to the right of every other method group.
 At two views, GGPT increases MASt3R-SfM's Chamfer from 0.043\,m to 0.230\,m while
 reducing mean jitter from 0.011\,m to only 0.008\,m. For VGGT, GGPT increases Chamfer

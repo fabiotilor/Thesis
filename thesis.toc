@@ -23,68 +23,68 @@
 \contentsline {section}{\numberline {3.1}Temporal Alignment Strategies}{14}{section.3.1}%
 \contentsline {subsection}{\numberline {3.1.1}Static Mask Derivation}{15}{subsection.3.1.1}%
 \contentsline {subsection}{\numberline {3.1.2}Strategy Overview}{15}{subsection.3.1.2}%
-\contentsline {subsubsection}{Strategy 1: Reference Frame}{15}{figure.caption.6}%
+\contentsline {subsubsection}{Strategy 1: Reference Frame}{16}{figure.caption.6}%
 \contentsline {subsubsection}{Strategy 2: Hierarchical Alignment}{16}{figure.caption.6}%
-\contentsline {subsubsection}{Strategy 3: Alignment Graph Optimisation}{16}{figure.caption.6}%
+\contentsline {subsubsection}{Strategy 3: Alignment Graph Optimisation}{17}{figure.caption.6}%
 \contentsline {subsection}{\numberline {3.1.3}Sequence-level Alignment}{18}{subsection.3.1.3}%
 \contentsline {section}{\numberline {3.2}Confidence-Weighted Temporal Smoothing (Opt)}{18}{section.3.2}%
 \contentsline {subsection}{\numberline {3.2.1}Method}{18}{subsection.3.2.1}%
 \contentsline {subsection}{\numberline {3.2.2}Parameter Selection}{19}{subsection.3.2.2}%
-\contentsline {chapter}{\numberline {4}Experimental Setup}{20}{chapter.4}%
-\contentsline {section}{\numberline {4.1}Datasets and Camera Configurations}{20}{section.4.1}%
-\contentsline {paragraph}{DexYCB.}{20}{section.4.1}%
-\contentsline {paragraph}{Hi4D.}{21}{section.4.1}%
-\contentsline {paragraph}{Camera configurations.}{21}{section.4.1}%
-\contentsline {section}{\numberline {4.2}Evaluation Pipeline}{24}{section.4.2}%
-\contentsline {subsection}{\numberline {4.2.1}Point Cloud Filtering}{24}{subsection.4.2.1}%
-\contentsline {paragraph}{Ground-truth validity masking.}{25}{subsection.4.2.1}%
-\contentsline {paragraph}{Confidence-based filtering.}{25}{subsection.4.2.1}%
-\contentsline {paragraph}{Statistical outlier removal.}{25}{subsection.4.2.1}%
-\contentsline {subsection}{\numberline {4.2.2}Correspondence Construction}{25}{subsection.4.2.2}%
-\contentsline {subsection}{\numberline {4.2.3}Per-Frame Similarity Alignment}{26}{subsection.4.2.3}%
-\contentsline {section}{\numberline {4.3}Metric Suite}{26}{section.4.3}%
-\contentsline {subsection}{\numberline {4.3.1}Geometric Metrics}{26}{subsection.4.3.1}%
-\contentsline {paragraph}{Static/dynamic decomposition and motion gap.}{27}{equation.4.3}%
-\contentsline {paragraph}{3D-to-4D consistency.}{27}{equation.4.4}%
-\contentsline {subsection}{\numberline {4.3.2}Temporal Consistency Metrics}{27}{subsection.4.3.2}%
-\contentsline {subsection}{\numberline {4.3.3}Camera Pose Metrics}{28}{subsection.4.3.3}%
-\contentsline {paragraph}{Absolute Trajectory Error (ATE).}{28}{subsection.4.3.3}%
-\contentsline {paragraph}{Relative Pose Error (RPE).}{29}{equation.4.6}%
-\contentsline {paragraph}{Rotation error.}{29}{equation.4.7}%
-\contentsline {paragraph}{Intrinsic error.}{29}{equation.4.7}%
-\contentsline {section}{\numberline {4.4}Implementation Details}{29}{section.4.4}%
-\contentsline {chapter}{\numberline {5}Results}{31}{chapter.5}%
-\contentsline {section}{\numberline {5.1}3D Baseline Results}{31}{section.5.1}%
-\contentsline {section}{\numberline {5.2}Alignment Strategy comparison}{32}{section.5.2}%
-\contentsline {section}{\numberline {5.3}Sparse-View Sensitivity}{33}{section.5.3}%
-\contentsline {section}{\numberline {5.4}Native 4D Architectures and Geometry Refinement}{34}{section.5.4}%
-\contentsline {paragraph}{VGGT4D.}{34}{section.5.4}%
-\contentsline {paragraph}{MonoFusion.}{35}{section.5.4}%
-\contentsline {paragraph}{GGPT.}{35}{section.5.4}%
-\contentsline {section}{\numberline {5.5}Temporal smoothing refinement}{36}{section.5.5}%
-\contentsline {paragraph}{High-frequency jitter elimination.}{42}{figure.caption.14}%
-\contentsline {paragraph}{Mean jitter reduction.}{42}{figure.caption.14}%
-\contentsline {paragraph}{Drift and the limits of temporal smoothing.}{42}{figure.caption.14}%
-\contentsline {paragraph}{Geometric cost.}{42}{figure.caption.14}%
-\contentsline {paragraph}{Comparison with native 4D architectures.}{43}{figure.caption.14}%
-\contentsline {paragraph}{Comparison with GGPT.}{43}{figure.caption.14}%
-\contentsline {section}{\numberline {5.6}Qualitative Failure Analysis}{44}{section.5.6}%
-\contentsline {chapter}{\numberline {6}Discussion and Conclusion}{47}{chapter.6}%
-\contentsline {section}{\numberline {6.1}Architecture family analysis}{47}{section.6.1}%
-\contentsline {paragraph}{Why spatial models succeed.}{47}{section.6.1}%
-\contentsline {paragraph}{Why native 4D architectures fail.}{48}{section.6.1}%
-\contentsline {paragraph}{Why GGPT is unsuitable for geometry-critical applications.}{48}{section.6.1}%
-\contentsline {section}{\numberline {6.2}The decoupled framework paradigm}{49}{section.6.2}%
-\contentsline {section}{\numberline {6.3}Limitations}{50}{section.6.3}%
-\contentsline {paragraph}{Per-backbone parameter calibration.}{50}{section.6.3}%
-\contentsline {paragraph}{Drift is not corrected.}{50}{section.6.3}%
-\contentsline {paragraph}{Static mask quality.}{50}{section.6.3}%
-\contentsline {paragraph}{Evaluation scope.}{51}{section.6.3}%
-\contentsline {section}{\numberline {6.4}Future work}{51}{section.6.4}%
-\contentsline {paragraph}{Inference-time adaptive parameter selection.}{51}{section.6.4}%
-\contentsline {paragraph}{Global anchor-constrained drift correction.}{51}{section.6.4}%
-\contentsline {paragraph}{Reprojection-error cross-view refinement.}{52}{section.6.4}%
-\contentsline {paragraph}{Extension to moving cameras and broader evaluation.}{52}{section.6.4}%
-\contentsline {section}{\numberline {6.5}Conclusion}{53}{section.6.5}%
-\contentsline {chapter}{Bibliography}{53}{section*.17}%
-\contentsline {chapter}{\numberline {A}Artifacts Availability}{57}{appendix.A}%
+\contentsline {chapter}{\numberline {4}Experimental Setup}{21}{chapter.4}%
+\contentsline {section}{\numberline {4.1}Datasets and Camera Configurations}{21}{section.4.1}%
+\contentsline {paragraph}{DexYCB.}{21}{section.4.1}%
+\contentsline {paragraph}{Hi4D.}{22}{section.4.1}%
+\contentsline {paragraph}{Camera configurations.}{22}{section.4.1}%
+\contentsline {section}{\numberline {4.2}Evaluation Pipeline}{25}{section.4.2}%
+\contentsline {subsection}{\numberline {4.2.1}Point Cloud Filtering}{25}{subsection.4.2.1}%
+\contentsline {paragraph}{Ground-truth validity masking.}{26}{subsection.4.2.1}%
+\contentsline {paragraph}{Confidence-based filtering.}{26}{subsection.4.2.1}%
+\contentsline {paragraph}{Statistical outlier removal.}{26}{subsection.4.2.1}%
+\contentsline {subsection}{\numberline {4.2.2}Correspondence Construction}{26}{subsection.4.2.2}%
+\contentsline {subsection}{\numberline {4.2.3}Per-Frame Similarity Alignment}{27}{subsection.4.2.3}%
+\contentsline {section}{\numberline {4.3}Metric Suite}{27}{section.4.3}%
+\contentsline {subsection}{\numberline {4.3.1}Geometric Metrics}{27}{subsection.4.3.1}%
+\contentsline {paragraph}{Static/dynamic decomposition and motion gap.}{28}{equation.4.3}%
+\contentsline {paragraph}{3D-to-4D consistency.}{28}{equation.4.4}%
+\contentsline {subsection}{\numberline {4.3.2}Temporal Consistency Metrics}{28}{subsection.4.3.2}%
+\contentsline {subsection}{\numberline {4.3.3}Camera Pose Metrics}{29}{subsection.4.3.3}%
+\contentsline {paragraph}{Absolute Trajectory Error (ATE).}{29}{subsection.4.3.3}%
+\contentsline {paragraph}{Relative Pose Error (RPE).}{30}{equation.4.6}%
+\contentsline {paragraph}{Rotation error.}{30}{equation.4.7}%
+\contentsline {paragraph}{Intrinsic error.}{30}{equation.4.7}%
+\contentsline {section}{\numberline {4.4}Implementation Details}{30}{section.4.4}%
+\contentsline {chapter}{\numberline {5}Results}{32}{chapter.5}%
+\contentsline {section}{\numberline {5.1}3D Baseline Results}{32}{section.5.1}%
+\contentsline {section}{\numberline {5.2}Alignment Strategy comparison}{33}{section.5.2}%
+\contentsline {section}{\numberline {5.3}Sparse-View Sensitivity}{34}{section.5.3}%
+\contentsline {section}{\numberline {5.4}Native 4D Architectures and Geometry Refinement}{35}{section.5.4}%
+\contentsline {paragraph}{VGGT4D.}{35}{section.5.4}%
+\contentsline {paragraph}{MonoFusion.}{36}{section.5.4}%
+\contentsline {paragraph}{GGPT.}{36}{section.5.4}%
+\contentsline {section}{\numberline {5.5}Temporal smoothing refinement}{37}{section.5.5}%
+\contentsline {subsection}{\numberline {5.5.1}High-frequency Jitter Elimination}{43}{subsection.5.5.1}%
+\contentsline {subsection}{\numberline {5.5.2}Mean Jitter Reduction}{43}{subsection.5.5.2}%
+\contentsline {subsection}{\numberline {5.5.3}Drift and the Limits of Temporal Smoothing}{43}{subsection.5.5.3}%
+\contentsline {subsection}{\numberline {5.5.4}Geometric Cost}{44}{subsection.5.5.4}%
+\contentsline {subsection}{\numberline {5.5.5}Comparison with Native 4D Architectures}{44}{subsection.5.5.5}%
+\contentsline {subsection}{\numberline {5.5.6}Comparison with GGPT}{44}{subsection.5.5.6}%
+\contentsline {section}{\numberline {5.6}Qualitative Failure Analysis}{45}{section.5.6}%
+\contentsline {chapter}{\numberline {6}Discussion and Conclusion}{48}{chapter.6}%
+\contentsline {section}{\numberline {6.1}Architecture family analysis}{48}{section.6.1}%
+\contentsline {subsection}{\numberline {6.1.1}Why Spatial Models Succeed}{48}{subsection.6.1.1}%
+\contentsline {subsection}{\numberline {6.1.2}Why Native 4D Architectures Fail}{49}{subsection.6.1.2}%
+\contentsline {subsection}{\numberline {6.1.3}Why GGPT is Unsuitable for Geometry-Critical Applications}{49}{subsection.6.1.3}%
+\contentsline {section}{\numberline {6.2}The decoupled framework paradigm}{50}{section.6.2}%
+\contentsline {section}{\numberline {6.3}Limitations}{51}{section.6.3}%
+\contentsline {subsection}{\numberline {6.3.1}Per-Backbone Parameter Calibration}{51}{subsection.6.3.1}%
+\contentsline {subsection}{\numberline {6.3.2}Drift is Not Corrected}{51}{subsection.6.3.2}%
+\contentsline {subsection}{\numberline {6.3.3}Static Mask Quality}{52}{subsection.6.3.3}%
+\contentsline {subsection}{\numberline {6.3.4}Evaluation Scope}{52}{subsection.6.3.4}%
+\contentsline {section}{\numberline {6.4}Future work}{52}{section.6.4}%
+\contentsline {subsection}{\numberline {6.4.1}Inference-Time Adaptive Parameter Selection}{53}{subsection.6.4.1}%
+\contentsline {subsection}{\numberline {6.4.2}Global Anchor-Constrained Drift Correction}{53}{subsection.6.4.2}%
+\contentsline {subsection}{\numberline {6.4.3}Reprojection-Error Cross-View Refinement}{53}{subsection.6.4.3}%
+\contentsline {subsection}{\numberline {6.4.4}Extension to Moving Cameras and Broader Evaluation}{54}{subsection.6.4.4}%
+\contentsline {section}{\numberline {6.5}Conclusion}{54}{section.6.5}%
+\contentsline {chapter}{Bibliography}{55}{section*.17}%
+\contentsline {chapter}{\numberline {A}Artifacts Availability}{59}{appendix.A}%
