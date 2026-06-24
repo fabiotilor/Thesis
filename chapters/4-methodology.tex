@@ -7,28 +7,28 @@ This chapter describes the evaluation framework used to compare reconstruction m
 \section{Datasets and Camera Configurations}
 \label{sec:datasets}
 
-The evaluation uses two complementary benchmark datasets: DEX-YCB~\cite{dexycb} and Hi4D~\cite{hi4d}. Together they provide dynamic reconstruction scenarios covering human--object and human--human interaction, with high-quality geometric ground truth alongside multiple synchronised camera views.
+The evaluation uses two complementary benchmark datasets: DexYCB~\cite{dexycb} and Hi4D~\cite{hi4d}. Together they provide dynamic reconstruction scenarios covering human--object and human--human interaction, with high-quality geometric ground truth alongside multiple synchronised camera views.
 
-\paragraph{DEX-YCB.}
-DEX-YCB~\cite{dexycb} captures dexterous human--object manipulation across ten subjects, providing RGB-D observations with calibrated sensor depth as ground truth. The dataset covers a wide range of grasping and manipulation motions over diverse object categories, making it representative of practical human--robot interaction scenarios. For each subject, the evaluation uses a sequence of 24 to 25 frames. Sensor depth carries the inherent noise of structured-light capture, but is sufficiently accurate for evaluation at the 1\,cm precision threshold used throughout this thesis.
+\paragraph{DexYCB.}
+DexYCB~\cite{dexycb} captures dexterous human--object manipulation across ten subjects, providing RGB-D observations with calibrated sensor depth as ground truth. The dataset covers a wide range of grasping and manipulation motions over diverse object categories, making it representative of practical human--robot interaction scenarios. For each subject, the evaluation uses a sequence of 24 to 25 frames. Sensor depth carries the inherent noise of structured-light capture, but is sufficiently accurate for evaluation at the 1\,cm precision threshold used throughout this thesis.
 
 \paragraph{Hi4D.}
-Hi4D~\cite{hi4d} focuses on close human--human interaction and provides temporally consistent mesh-based ground truth. Compared to DEX-YCB, it contains substantially larger non-rigid motion, stronger self-occlusions, and more complex interaction patterns. The evaluation covers fifteen interaction sequences across three subject pairs (pair00, pair01, pair09), spanning activities including dance, fight, high-five, taichi, hug, yoga, basketball, talk, and bend. To avoid the approach phase before meaningful contact begins, sequences start at frame index 22, from which 24 consecutive frames are extracted. This sequence length matches DEX-YCB and remains within GPU memory constraints for the native 4D models, which process the full multi-view sequence jointly.
+Hi4D~\cite{hi4d} focuses on close human--human interaction and provides temporally consistent mesh-based ground truth. Compared to DexYCB, it contains substantially larger non-rigid motion, stronger self-occlusions, and more complex interaction patterns. The evaluation covers fifteen interaction sequences across three subject pairs (pair00, pair01, pair09), spanning activities including dance, fight, high-five, taichi, hug, yoga, basketball, talk, and bend. To avoid the approach phase before meaningful contact begins, sequences start at frame index 22, from which 24 consecutive frames are extracted. This sequence length matches DexYCB and remains within GPU memory constraints for the native 4D models, which process the full multi-view sequence jointly.
 
 Ground-truth geometry for Hi4D comes from temporally consistent fitted meshes, projected into each camera view to obtain per-pixel reference depth. Because the mesh covers only the interacting subjects and not the background, dataset-provided segmentation masks restrict evaluation to subject pixels, and all background pixels are set to black before model inference. Section~\ref{sec:evaluation_pipeline} omits confidence-based filtering for Hi4D, since model confidence estimates proved poorly calibrated on this out-of-domain human-interaction data; mask-based filtering already removes most invalid predictions. The absence of a static background also means that the jitter metrics defined in Section~\ref{sec:metrics} cannot be computed for Hi4D, since no stable scene anchors are available.
 
 \paragraph{Camera configurations.}
 Table~\ref{tab:camera_configs} and Figures~\ref{fig:dex_configs}--\ref{fig:hi4d_configs} summarise the camera configurations used for sparse-view evaluation. Both datasets provide eight synchronised and calibrated camera views. The evaluation uses subsets of two, three, and four cameras to study reconstruction performance under progressively sparser conditions. The selection criteria prioritise visibility of the dynamic scene content while maintaining sufficient inter-view overlap for the static correspondences required by the temporal alignment strategies of Chapter~\ref{c:methodology}.
 
-For DEX-YCB, the selected cameras span both frontal and rear viewpoints, providing broad coverage around the manipulation region. For Hi4D, stronger self-occlusions make frontal viewpoints more reliable, so the configurations primarily use front-facing cameras.
+For DexYCB, the selected cameras span both frontal and rear viewpoints, providing broad coverage around the manipulation region. For Hi4D, stronger self-occlusions make frontal viewpoints more reliable, so the configurations primarily use front-facing cameras.
 
 \begin{table}[!htb]
 \centering
-\caption{Camera configurations used for sparse-view evaluation on DEX-YCB and Hi4D.}
+\caption{Camera configurations used for sparse-view evaluation on DexYCB and Hi4D.}
 \label{tab:camera_configs}
 \begin{tabular}{lll}
 \toprule
-Views & DEX-YCB Cameras & Hi4D Cameras \\
+Views & DexYCB Cameras & Hi4D Cameras \\
 \midrule
 2 & 01, 06               & 16, 04$^{\dagger}$ \\
 3 & 04, 06, 07           & 16, 04, 88 \\
@@ -64,7 +64,7 @@ coverage across sequences.
         \includegraphics[width=\linewidth]{figures/DEX4}
         \caption{4 views}
     \end{subfigure}
-    \caption{DEX-YCB camera configurations for the 2-, 3-, and 4-view settings.
+    \caption{DexYCB camera configurations for the 2-, 3-, and 4-view settings.
     Cameras span frontal and rear viewpoints to maximise coverage of the manipulation
     region while maintaining inter-view overlap.}
     \label{fig:dex_configs}
@@ -122,10 +122,10 @@ aligned globally to ground truth to produce 4D metrics.}
 Raw reconstructions may contain invalid, geometrically unreliable, or otherwise incomparable points. Three filtering stages precede correspondence construction.
 
 \paragraph{Ground-truth validity masking.}
-For DEX-YCB, the pipeline discards pixels where the sensor depth is invalid or exceeds 1.5\,m. The 1.5\,m cutoff removes distant scene regions that are typically unobserved by the models under sparse-view conditions, avoiding metric bias from large, poorly constrained areas. For Hi4D, dataset-provided segmentation masks replace depth-based validity masks, retaining only pixels that belong to the interacting subjects.
+For DexYCB, the pipeline discards pixels where the sensor depth is invalid or exceeds 1.5\,m. The 1.5\,m cutoff removes distant scene regions that are typically unobserved by the models under sparse-view conditions, avoiding metric bias from large, poorly constrained areas. For Hi4D, dataset-provided segmentation masks replace depth-based validity masks, retaining only pixels that belong to the interacting subjects.
 
 \paragraph{Confidence-based filtering.}
-All evaluated models output per-point confidence scores alongside geometry predictions. For DEX-YCB, the pipeline retains the top 50\% of points by predicted confidence, independently per frame and per model. This confidence threshold focuses evaluation on regions where each model is most certain while discarding uncertain boundary predictions. Section~\ref{sec:datasets} explains why confidence filtering is omitted for Hi4D.
+All evaluated models output per-point confidence scores alongside geometry predictions. For DexYCB, the pipeline retains the top 50\% of points by predicted confidence, independently per frame and per model. This confidence threshold focuses evaluation on regions where each model is most certain while discarding uncertain boundary predictions. Section~\ref{sec:datasets} explains why confidence filtering is omitted for Hi4D.
 
 \paragraph{Statistical outlier removal.}
 KDTree-based statistical outlier removal~\cite{rusu2008statistical} eliminates isolated floaters and sparse noise artefacts. For each point, the procedure computes the mean distance to its $k = 15$ nearest neighbours; points whose mean distance exceeds the global mean by more than 0.8 standard deviations are discarded. This criterion removes geometrically inconsistent points without affecting densely reconstructed surfaces.
@@ -239,7 +239,7 @@ The evaluation computes all jitter metrics exclusively on static scene points. D
 Standard trajectory and intrinsic metrics~\cite{sturm12iros} evaluate camera parameter accuracy.
 
 \paragraph{Absolute Trajectory Error (ATE).}
-ATE measures global trajectory consistency after similarity alignment to the ground-truth trajectory:
+ATE measures global trajectory consistency after similarity alignment to the ground-truth trajectory and is reported in metres:
 \begin{equation}
 \text{ATE} = \sqrt{\frac{1}{T}\sum_{t=1}^{T}
 \bigl\|\mathbf{t}_{\text{gt},t} - \mathbf{t}_{\text{est},t}'\bigr\|_2^2},
@@ -247,13 +247,20 @@ ATE measures global trajectory consistency after similarity alignment to the gro
 where $\mathbf{t}_{\text{est},t}'$ are estimated translations after the alignment that minimises overall trajectory error.
 
 \paragraph{Relative Pose Error (RPE).}
-RPE evaluates local drift by comparing relative motions between frame pairs:
+
+We adopt a translation-only variant of Relative Pose Error (RPE) that measures local drift in camera positions after Umeyama alignment. Specifically, RPE is computed as the root mean square (RMS) difference between pairwise relative translations of the aligned estimated and ground-truth camera centers:
+
 \begin{equation}
-\text{RPE}_{\Delta} = \sqrt{\frac{1}{N_{\Delta}}\sum_{i}
-\bigl\|\mathbf{t}_{\text{gt},i}^{-1}\mathbf{t}_{\text{gt},j}
-- \mathbf{t}_{\text{est},i}^{-1}\mathbf{t}_{\text{est},j}\bigr\|_2^2},
+\text{RPE} =
+\sqrt{\frac{1}{N}\sum_{i<j}
+\left\|
+(\mathbf{C}_{\mathrm{est},i}' - \mathbf{C}_{\mathrm{est},j}')
+-
+(\mathbf{C}_{\mathrm{gt},i} - \mathbf{C}_{\mathrm{gt},j})
+\right\|_2^2}.
 \end{equation}
-reported for consecutive ($\Delta = 1$) and two-step ($\Delta = 2$) frame pairs.
+
+where $\mathbf{C}_{\mathrm{est}}'$ denotes the estimated camera centers after similarity alignment using the Umeyama algorithm, $\mathbf{C}_{\mathrm{gt}}$ denotes the ground-truth camera centers, and $N$ is the number of evaluated frame pairs. Unlike the classical SE(3)-based RPE, this metric evaluates translational consistency only and is reported in metres.
 
 \paragraph{Rotation error.}
 The geodesic distance on $\mathrm{SO}(3)$ (Section~\ref{sec:math_background}) between estimated and ground-truth rotation matrices, after applying the global rotation alignment from the Umeyama step, gives the rotation error in degrees.

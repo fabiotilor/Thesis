@@ -14,7 +14,7 @@ refinement step that suppresses residual frame-to-frame jitter in static scene r
 without altering dynamic content.
 
 %% -----------------------------------------------------------------------
-\section{Temporal alignment strategies}
+\section{Temporal Alignment Strategies}
 \label{sec:alignment_strategies}
 
 Independently reconstructed frames each live in their own arbitrary coordinate system.
@@ -27,7 +27,7 @@ pairs of frames are aligned and in what order. All three operate exclusively on 
 scene correspondences, since moving content would otherwise corrupt the alignment solver
 with spurious matches.
 
-\subsection{Static mask derivation}
+\subsection{Static Mask Derivation}
 \label{sec:static_mask_derivation}
 
 Identifying static correspondences requires distinguishing static from dynamic scene
@@ -62,7 +62,7 @@ be interpreted with this limitation in mind, as discussed in Section~\ref{sec:da
     \caption{SAM2-refined mask}
     \label{fig:mask_sam2}
 \end{subfigure}
-\caption{Comparison of two motion priors on a DEX-YCB frame. (a) Farnebäck optical
+\caption{Comparison of two motion priors on a DexYCB frame. (a) Farnebäck optical
 flow~\cite{farneback2003two} produces a fragmented mask with scattered noise pixels and
 holes within the moving subject. (b) The frame-wise pixel-difference prior, refined by
 SAM2~\cite{sam2}, yields a coherent segmentation covering the full extent of the hand and
@@ -71,7 +71,7 @@ capture. Black denotes dynamic pixels excluded from static correspondences.}
 \label{fig:static_mask_derivation}
 \end{figure}
 
-\subsection{Strategy overview}
+\subsection{Strategy Overview}
 \label{sec:strategy_overview}
 
 Figure~\ref{fig:strategies} illustrates the three strategies for a sequence of $T$ frames
@@ -84,32 +84,32 @@ below.
 \begin{figure}[t]
 \centering
 \includegraphics[width=\textwidth]{figures/strategies_figure_cropped}
-\caption{The three temporal alignment strategies. (a) Strategy 1: Reference. Every frame
+\caption{The three temporal alignment strategies. (a) Strategy 1: Reference Frame. Every frame
 $t_i$ is aligned directly to the reference frame $t_0$ using static correspondences.
-(b) Strategy 2: Hierarchical. Frames are merged pairwise in a binary tree, with each
+(b) Strategy 2: Hierarchical Alignment. Frames are merged pairwise in a binary tree, with each
 level combining adjacent pairs until all frames share a single coordinate system.
-(c) Strategy 3: Pose-Graph. All $\mathcal{O}(T^2)$ pairwise alignments are estimated and
+(c) Strategy 3: Alignment Graph. All $\mathcal{O}(T^2)$ pairwise alignments are estimated and
 combined through iterative geodesic averaging; edge thickness indicates alignment
 reliability, with high-weight edges (thick blue) contributing more to the global solution
 than low-weight edges (thin blue).}
 \label{fig:strategies}
 \end{figure}
 
-\subsubsection{Strategy 1: Reference}
+\subsubsection{Strategy 1: Reference Frame}
 \label{sec:strategy1}
 
 The reference strategy designates the first frame $t_0$ as a fixed anchor. For every
 subsequent frame $t_i$, a similarity transformation is estimated directly between the
 static correspondences of $t_i$ and $t_0$, and applied to bring $t_i$ into the coordinate
-system of $t_0$. The reference strategy requires only $T - 1$ pairwise alignments, making
+system of $t_0$. The reference frame strategy requires only $T - 1$ pairwise alignments, making
 it the simplest and fastest of the three. Its main limitation is sensitivity to the
 reference frame: if $t_0$ is poorly observed or the subject moves far from its initial
 pose, alignment accuracy degrades for frames temporally distant from $t_0$.
 
-\subsubsection{Strategy 2: Hierarchical}
+\subsubsection{Strategy 2: Hierarchical Alignment}
 \label{sec:strategy2}
 
-The hierarchical strategy avoids dependence on a single reference frame by building a
+The hierarchical alignment strategy avoids dependence on a single reference frame by building a
 binary merge tree over the sequence. Frames are first paired and aligned to one another;
 each resulting pair is then aligned to a neighbouring pair, and the process repeats until
 all frames share a common coordinate system. Because each merge operates on a smaller
@@ -117,11 +117,11 @@ temporal offset than a direct alignment to $t_0$, individual alignment steps are
 more reliable. The strategy requires $\mathcal{O}(T)$ total alignments distributed across
 $\log_2 T$ tree levels.
 
-\subsubsection{Strategy 3: Pose-graph optimisation}
+\subsubsection{Strategy 3: Alignment Graph Optimisation}
 \label{sec:strategy3}
 
 Hierarchical alignment propagates errors along a single tree path: a poor alignment at one
-level corrupts all frames downstream. The pose-graph strategy addresses this by estimating
+level corrupts all frames downstream. The Alignment Graph strategy addresses this by estimating
 a similarity transformation for every pair of frames, producing $\mathcal{O}(T^2)$
 pairwise edges. Each edge is assigned a weight inversely proportional to its Umeyama
 alignment residual,
@@ -138,16 +138,16 @@ frame $i$, each neighbour $j$ proposes a pose by composing its current pose with
 corresponding edge transformation. Scales are averaged in log-space to respect their
 multiplicative structure, translations use weighted Euclidean averaging, and rotations are
 combined using the Weiszfeld algorithm for geodesic L1 averaging on $\mathrm{SO}(3)$
-(Section~\ref{sec:math_background}). Robust rotation averaging allows the pose-graph
+(Section~\ref{sec:math_background}). Robust rotation averaging allows the alignment graph
 strategy to down-weight outlying pairwise alignments rather than letting them corrupt the
 global solution. The procedure is run for a fixed number of iterations (default 50).
 
 By propagating information across many pairwise edges rather than a single path, the
-pose-graph strategy is the most robust of the three to individually unreliable alignments.
+alignment graph strategy is the most robust of the three to individually unreliable alignments.
 The robustness comes at the cost of $\mathcal{O}(T^2)$ pairwise alignment computations,
 making it the slowest of the three strategies.
 
-\subsection{Sequence-level alignment}
+\subsection{Sequence-level Alignment}
 \label{sec:sequence_alignment}
 
 After any of the three strategies brings all frames into a shared coordinate system, the
@@ -157,7 +157,7 @@ concatenated ground truth, producing the sequence-level metrics reported in
 Chapter~\ref{c:results}.
 
 %% -----------------------------------------------------------------------
-\section{Confidence-weighted temporal smoothing (Opt)}
+\section{Confidence-Weighted Temporal Smoothing (Opt)}
 \label{sec:opt}
 
 Temporal alignment produces a geometrically coherent sequence, but residual per-frame
@@ -205,7 +205,7 @@ Opt relies only on model confidence, temporal proximity, and the static mask, wi
 reference to ground-truth geometry, it is applicable at inference time without access to
 evaluation data.
 
-\subsection{Parameter selection}
+\subsection{Parameter Selection}
 \label{sec:opt_parameters}
 
 The optimal values of $\sigma$ and $\alpha$ depend on the baseline jitter of the

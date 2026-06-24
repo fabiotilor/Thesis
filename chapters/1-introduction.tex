@@ -36,7 +36,7 @@ Motivated by this observation, this thesis proposes a decoupled paradigm: take a
 per-frame spatial estimator, align its outputs into a common coordinate frame through a
 lightweight temporal alignment strategy, and apply a confidence-weighted Gaussian filter
 exclusively to static regions to suppress jitter without touching dynamic pixels. Evaluated
-on DEX-YCB~\cite{dexycb} and Hi4D~\cite{hi4d}, this approach achieves jitter comparable to
+on DexYCB~\cite{dexycb} and Hi4D~\cite{hi4d}, this approach achieves jitter comparable to
 native 4D architectures while retaining the geometric fidelity of the underlying per-frame
 estimator---a trade-off that neither geometry-refinement nor native 4D baselines match.
 
@@ -50,7 +50,7 @@ The main contributions of this thesis are:
 
   \item \textbf{Unified 4D Benchmarking Framework.}
         A structured evaluation pipeline subjects six reconstruction models to identical
-        data-loading, semantic masking, and metric-computation conditions across DEX-YCB~\cite{dexycb}
+        data-loading, semantic masking, and metric-computation conditions across DexYCB~\cite{dexycb}
         and Hi4D~\cite{hi4d}, measuring per-frame and sequence-level performance via Chamfer
         distance, accuracy, completeness, temporal jitter, drift, and camera pose error
         (see \Cref{c:methodology}).

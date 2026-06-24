@@ -81,7 +81,7 @@ In this thesis, SAM2 is used to generate per-frame static and dynamic segmentati
 
 The reconstruction models evaluated in this thesis do not necessarily predict geometry in a common coordinate system. In particular, the spatial foundation models discussed in Section~\ref{sec:foundation_models} reconstruct each frame or image set independently, often producing point clouds that differ by an arbitrary scale, rotation, and translation. Constructing a temporally coherent 4D reconstruction therefore requires estimating geometric transformations between independently reconstructed frames and combining these estimates into a globally consistent coordinate system.
 
-This section introduces the mathematical concepts that underpin these operations. First, similarity transformations and Umeyama alignment are presented as the basis for point-cloud registration. Next, the geometry of the rotation manifold $\mathrm{SO}(3)$ and geodesic rotation averaging are introduced, which form the foundation of the pose-graph optimisation strategy described later in Chapter~\ref{c:methodology}. Finally, the Chamfer distance is presented as a primary metric for evaluating reconstruction quality.
+This section introduces the mathematical concepts that underpin these operations. First, similarity transformations and Umeyama alignment are presented as the basis for point-cloud registration. Next, the geometry of the rotation manifold $\mathrm{SO}(3)$ and geodesic rotation averaging are introduced, which form the foundation of the alignment graph optimisation strategy described later in Chapter~\ref{c:methodology}. Finally, the Chamfer distance is presented as a primary metric for evaluating reconstruction quality.
 
 \subsection{Similarity Transformations and Umeyama Alignment}
 
@@ -112,7 +112,7 @@ which corresponds to the minimum rotation angle required to transform one orient
 
 \subsection{Geodesic Rotation Averaging}
 
-The pose-graph optimisation strategy developed in this thesis estimates pairwise similarity transformations between many frames in a sequence. Since multiple alignment paths may exist between two frames, individual rotation estimates must be combined into a single globally consistent orientation.
+The alignment graph optimisation strategy developed in this thesis estimates pairwise similarity transformations between many frames in a sequence. Since multiple alignment paths may exist between two frames, individual rotation estimates must be combined into a single globally consistent orientation.
 
 Given a set of rotations $\{\mathbf{R}_i\}_{i=1}^{N}$, rotation averaging seeks a consensus rotation that best represents the collection. A common formulation minimises the sum of squared geodesic distances,
 \begin{equation}

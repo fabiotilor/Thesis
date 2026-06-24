@@ -20,19 +20,19 @@
 \contentsline {subsection}{\numberline {2.4.3}Geodesic Rotation Averaging}{11}{subsection.2.4.3}%
 \contentsline {subsection}{\numberline {2.4.4}Chamfer Distance}{12}{subsection.2.4.4}%
 \contentsline {chapter}{\numberline {3}Methodology: Temporal Alignment and Refinement}{14}{chapter.3}%
-\contentsline {section}{\numberline {3.1}Temporal alignment strategies}{14}{section.3.1}%
-\contentsline {subsection}{\numberline {3.1.1}Static mask derivation}{15}{subsection.3.1.1}%
-\contentsline {subsection}{\numberline {3.1.2}Strategy overview}{15}{subsection.3.1.2}%
+\contentsline {section}{\numberline {3.1}Temporal Alignment Strategies}{14}{section.3.1}%
+\contentsline {subsection}{\numberline {3.1.1}Static Mask Derivation}{15}{subsection.3.1.1}%
+\contentsline {subsection}{\numberline {3.1.2}Strategy Overview}{15}{subsection.3.1.2}%
 \contentsline {subsubsection}{Strategy 1: Reference}{15}{figure.caption.6}%
 \contentsline {subsubsection}{Strategy 2: Hierarchical}{16}{figure.caption.6}%
-\contentsline {subsubsection}{Strategy 3: Pose-graph optimisation}{16}{figure.caption.6}%
-\contentsline {subsection}{\numberline {3.1.3}Sequence-level alignment}{18}{subsection.3.1.3}%
-\contentsline {section}{\numberline {3.2}Confidence-weighted temporal smoothing (Opt)}{18}{section.3.2}%
+\contentsline {subsubsection}{Strategy 3: Pose-Graph Optimisation}{16}{figure.caption.6}%
+\contentsline {subsection}{\numberline {3.1.3}Sequence-level Alignment}{18}{subsection.3.1.3}%
+\contentsline {section}{\numberline {3.2}Confidence-Weighted Temporal Smoothing (Opt)}{18}{section.3.2}%
 \contentsline {subsection}{\numberline {3.2.1}Method}{18}{subsection.3.2.1}%
-\contentsline {subsection}{\numberline {3.2.2}Parameter selection}{19}{subsection.3.2.2}%
+\contentsline {subsection}{\numberline {3.2.2}Parameter Selection}{19}{subsection.3.2.2}%
 \contentsline {chapter}{\numberline {4}Experimental Setup}{20}{chapter.4}%
 \contentsline {section}{\numberline {4.1}Datasets and Camera Configurations}{20}{section.4.1}%
-\contentsline {paragraph}{DEX-YCB.}{20}{section.4.1}%
+\contentsline {paragraph}{DexYCB.}{20}{section.4.1}%
 \contentsline {paragraph}{Hi4D.}{21}{section.4.1}%
 \contentsline {paragraph}{Camera configurations.}{21}{section.4.1}%
 \contentsline {section}{\numberline {4.2}Evaluation Pipeline}{24}{section.4.2}%
@@ -53,20 +53,22 @@
 \contentsline {paragraph}{Rotation error.}{29}{equation.4.7}%
 \contentsline {paragraph}{Intrinsic error.}{29}{equation.4.7}%
 \contentsline {section}{\numberline {4.4}Implementation Details}{29}{section.4.4}%
-\contentsline {chapter}{\numberline {5}Results}{30}{chapter.5}%
-\contentsline {section}{\numberline {5.1}3D Baseline Results}{30}{section.5.1}%
-\contentsline {section}{\numberline {5.2}Alignment strategy comparison}{31}{section.5.2}%
-\contentsline {section}{\numberline {5.3}Sparse-View Sensitivity}{32}{section.5.3}%
-\contentsline {section}{\numberline {5.4}Native 4D Architectures and Geometry Refinement}{33}{section.5.4}%
-\contentsline {paragraph}{VGGT4D.}{33}{section.5.4}%
-\contentsline {paragraph}{MonoFusion.}{34}{section.5.4}%
-\contentsline {paragraph}{GGPT.}{34}{section.5.4}%
-\contentsline {section}{\numberline {5.5}Temporal Smoothing Refinement}{34}{section.5.5}%
-\contentsline {paragraph}{Jitter reduction.}{34}{figure.caption.15}%
-\contentsline {paragraph}{Geometric cost.}{35}{figure.caption.15}%
-\contentsline {paragraph}{Comparison with native 4D architectures.}{36}{figure.caption.15}%
-\contentsline {paragraph}{Comparison with GGPT.}{36}{figure.caption.16}%
-\contentsline {section}{\numberline {5.6}Qualitative Analysis}{38}{section.5.6}%
-\contentsline {chapter}{\numberline {6}Discussion and Conclusion}{43}{chapter.6}%
-\contentsline {chapter}{Bibliography}{43}{section*.18}%
-\contentsline {chapter}{\numberline {A}Artifacts Availability}{47}{appendix.A}%
+\contentsline {chapter}{\numberline {5}Results}{31}{chapter.5}%
+\contentsline {section}{\numberline {5.1}3D Baseline Results}{31}{section.5.1}%
+\contentsline {section}{\numberline {5.2}Alignment Strategy comparison}{32}{section.5.2}%
+\contentsline {section}{\numberline {5.3}Sparse-View Sensitivity}{33}{section.5.3}%
+\contentsline {section}{\numberline {5.4}Native 4D Architectures and Geometry Refinement}{34}{section.5.4}%
+\contentsline {paragraph}{VGGT4D.}{34}{section.5.4}%
+\contentsline {paragraph}{MonoFusion.}{35}{section.5.4}%
+\contentsline {paragraph}{GGPT.}{35}{section.5.4}%
+\contentsline {section}{\numberline {5.5}Temporal smoothing refinement}{36}{section.5.5}%
+\contentsline {paragraph}{High-frequency jitter elimination.}{42}{figure.caption.14}%
+\contentsline {paragraph}{Mean jitter reduction.}{42}{figure.caption.14}%
+\contentsline {paragraph}{Drift and the limits of temporal smoothing.}{42}{figure.caption.14}%
+\contentsline {paragraph}{Geometric cost.}{42}{figure.caption.14}%
+\contentsline {paragraph}{Comparison with native 4D architectures.}{43}{figure.caption.14}%
+\contentsline {paragraph}{Comparison with GGPT.}{43}{figure.caption.14}%
+\contentsline {section}{\numberline {5.6}Qualitative Failure Analysis}{44}{section.5.6}%
+\contentsline {chapter}{\numberline {6}Discussion and Conclusion}{47}{chapter.6}%
+\contentsline {chapter}{Bibliography}{47}{section*.17}%
+\contentsline {chapter}{\numberline {A}Artifacts Availability}{51}{appendix.A}%
