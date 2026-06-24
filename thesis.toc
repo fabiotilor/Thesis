@@ -83,8 +83,8 @@
 \contentsline {section}{\numberline {6.4}Future work}{51}{section.6.4}%
 \contentsline {paragraph}{Inference-time adaptive parameter selection.}{51}{section.6.4}%
 \contentsline {paragraph}{Global anchor-constrained drift correction.}{51}{section.6.4}%
-\contentsline {paragraph}{Reprojection-error cross-view refinement.}{52}{equation.6.1}%
-\contentsline {paragraph}{Extension to moving cameras and broader evaluation.}{52}{equation.6.1}%
+\contentsline {paragraph}{Reprojection-error cross-view refinement.}{52}{section.6.4}%
+\contentsline {paragraph}{Extension to moving cameras and broader evaluation.}{52}{section.6.4}%
 \contentsline {section}{\numberline {6.5}Conclusion}{53}{section.6.5}%
-\contentsline {chapter}{Bibliography}{54}{section*.17}%
-\contentsline {chapter}{\numberline {A}Artifacts Availability}{58}{appendix.A}%
+\contentsline {chapter}{Bibliography}{53}{section*.17}%
+\contentsline {chapter}{\numberline {A}Artifacts Availability}{57}{appendix.A}%

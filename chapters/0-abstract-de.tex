@@ -1,0 +1,27 @@
+Die Rekonstruktion zeitlich konsistenter 3D-Geometrie aus zwei bis vier Kameras
+ist eine zentrale Herausforderung der Computer Vision mit direkter Relevanz für
+Robotik und autonome Manipulation. Räumliche Foundation-Modelle erzielen hohe
+geometrische Genauigkeit durch unabhängige Einzelbildrekonstruktion, erzeugen
+jedoch hochfrequente zeitliche Schwankungen (Jitter) beim Zusammenführen zu einer
+Sequenz. Bestehende Alternativen wie Geometrieverfeinerung und dedizierte
+4D-Architekturen reduzieren Jitter auf Kosten geometrischer Genauigkeit, sodass
+bislang kein Verfahren beides gleichzeitig erreicht.
+
+Diese Arbeit verfolgt einen entkoppelten Ansatz: Ein leistungsfähiges räumliches
+Modell rekonstruiert jedes Bild einzeln, eine leichtgewichtige zeitliche
+Ausrichtungsstrategie überführt die Ergebnisse in ein gemeinsames
+Koordinatensystem, und Confidence-Weighted Temporal Smoothing (Opt) unterdrückt
+verbleibenden Jitter durch einen trainingsfreien Gaussfilter auf statischen
+Szenenbereichen. Zeitliche Konsistenz und geometrische Genauigkeit stehen nur
+dann im Widerspruch, wenn Konsistenzbedingungen auf dynamische Bereiche
+ausgedehnt werden. Die Entkopplung beider Schritte vermeidet diesen Zielkonflikt
+strukturell.
+
+Sechs Rekonstruktionsmodelle werden auf DexYCB und
+Hi4D in Zwei-, Drei- und Vier-Kamera-Konfigurationen evaluiert. Opt beseitigt
+hochfrequenten Jitter vollständig und reduziert den mittleren Jitter um
+60--91\,\% über vier Backbone-Modelle, während die Chamfer-Distanz bei drei der
+vier Modelle unverändert bleibt oder sich verbessert. Die resultierende Pipeline
+dominiert native 4D-Architekturen im Pareto-Sinne bei allen Kamerakonfigurationen.
+Drift bleibt ein offenes Problem; eine global gekoppelte ankerbasierte Optimierung
+ist der naheliegende nächste Schritt.

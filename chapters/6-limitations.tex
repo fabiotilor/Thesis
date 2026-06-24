@@ -186,28 +186,17 @@ the dataset-specific calibration requirement and produce a method that generalis
 without recalibration.
 
 \paragraph{Global anchor-constrained drift correction.}
-The drift limitation motivates a second post-processing stage applied after Opt. After
-Opt suppresses jitter, static scene anchors are nearly stable across frames, making
-their world-space positions reliably identifiable. The current alignment strategies
-minimise pairwise alignment error sequentially, allowing drift to accumulate along the
-propagation path. A globally coupled optimisation that treats static anchor positions
-as fixed landmarks and solves simultaneously for all per-frame similarity transforms
-would eliminate the sequential propagation structure that allows drift to accumulate.
-Concretely, the objective
-\begin{equation}
-    \min_{\{s_t,\,\mathbf{R}_t,\,\mathbf{t}_t\}}
-    \sum_{a \in \mathcal{A}} \sum_{t=1}^{T}
-    \left\| s_t \mathbf{R}_t \mathbf{x}_a(t) + \mathbf{t}_t
-    - \mathbf{x}_a(1) \right\|_2^2,
-\end{equation}
-where $\mathcal{A}$ is the set of static anchors and $\mathbf{x}_a(1)$ is the
-first-frame anchor position used as a fixed reference, couples every frame to every
-anchor simultaneously. Unlike the Umeyama alignment used in Strategies 1--3, which
-minimises mean squared error across all points, this formulation hard-constrains the
-static anchor positions and leaves no sequential path along which drift can accumulate.
-The approach is structurally equivalent to classical bundle adjustment applied to
-already-reconstructed pointmaps rather than raw image correspondences, and requires no
-additional training data.
+The drift limitation motivates a second post-processing stage applied after Opt.
+After Opt suppresses jitter, static scene anchors are nearly stable across frames,
+making their world-space positions reliably identifiable. The current alignment
+strategies minimise pairwise alignment error sequentially, which allows drift to
+accumulate along the propagation path. Treating static anchor positions as fixed
+landmarks and solving simultaneously for all per-frame similarity transforms would
+break this sequential structure: every frame is coupled to every anchor at once,
+leaving no path along which errors can propagate monotonically. This direction is
+structurally analogous to classical bundle adjustment applied to already-reconstructed
+pointmaps rather than raw image correspondences, and requires no additional training
+data.
 
 \paragraph{Reprojection-error cross-view refinement.}
 After drift correction, the stabilised static anchors and known camera intrinsics

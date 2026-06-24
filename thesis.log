@@ -1,4 +1,4 @@
-This is pdfTeX, Version 3.141592653-2.6-1.40.28 (TeX Live 2025) (preloaded format=pdflatex 2026.4.17)  24 JUN 2026 12:55
+This is pdfTeX, Version 3.141592653-2.6-1.40.28 (TeX Live 2025) (preloaded format=pdflatex 2026.4.17)  24 JUN 2026 13:56
 entering extended mode
  restricted \write18 enabled.
  %&-line parsing enabled.
@@ -1192,7 +1192,27 @@ pdfTeX warning (ext4): destination with the same identifier (name{page.i}) has b
 l.33 \begin{abstractde}
                         [1
 
-{/Users/fabio/Library/TinyTeX/texmf-dist/fonts/enc/dvips/lm/lm-ec.enc}] (./chapters/0-abstract-de.tex) [2
+{/Users/fabio/Library/TinyTeX/texmf-dist/fonts/enc/dvips/lm/lm-ec.enc}] (./chapters/0-abstract-de.tex
+Overfull \hbox (0.2672pt too wide) in paragraph at lines 1--9
+\T1/lmr/m/n/12 Die Rekon-struk-tion zeitlich kon-sis-ten-ter 3D-Geometrie aus zwei bis vier Kam-
+ []
+
+
+Overfull \hbox (14.02928pt too wide) in paragraph at lines 10--19
+\T1/lmr/m/n/12 räum-liches Mod-ell rekon-stru-iert jedes Bild einzeln, eine le-icht-gewichtige zeitliche
+ []
+
+)
+Overfull \hbox (10.0574pt too wide) in paragraph at lines 20--37
+\T1/lmr/m/n/12 DexYCB und Hi4D in Zwei-, Drei- und Vier-Kamera-Konfigurationen evaluiert.
+ []
+
+
+Overfull \hbox (2.14706pt too wide) in paragraph at lines 20--37
+\T1/lmr/m/n/12 Jit-ter um 60--91% über vier Backbone-Modelle, während die Chamfer-Distanz
+ []
+
+[2
 
 ] (./chapters/0-acknowledgements.tex)
 
@@ -1500,12 +1520,12 @@ Overfull \hbox (2.94072pt too wide) in paragraph at lines 56--69
 [] []\T1/lmr/bx/n/12 Why GGPT is un-suit-able for ge-om-e-try--crit-i-cal ap-pli-ca-tions.[] \T1/lmr/m/n/12 GGPT
  []
 
-[48] [49] [50] [51] [52]) [53] [54]
+[48] [49] [50] [51] [52]) [53]
 Overfull \hbox (3.01653pt too wide) in paragraph at lines 58--58
 []\T1/lmr/m/n/12 Yu-Wei Chao \T1/lmr/m/it/12 et al\T1/lmr/m/n/12 . ^^P  DexYCB: A Bench-mark for Cap-tur-ing Hand Grasp-
  []
 
-[55
+[54
 
 ]
 Overfull \hbox (4.8738pt too wide) in paragraph at lines 58--58
@@ -1527,15 +1547,15 @@ Overfull \hbox (2.71123pt too wide) in paragraph at lines 58--58
 \T1/lmr/m/it/12 Structure-from-Motion\T1/lmr/m/n/12 . 2025. arXiv: [][]$\T1/lmtt/m/n/12 2504 . 20040$ [cs.CV][][]\T1/lmr/m/n/12 . \T1/lmr/m/sc/12 url\T1/lmr/m/n/12 : [][]$\T1/lmtt/m/n/12 https :
  []
 
-[56]
+[55]
 Overfull \hbox (5.40579pt too wide) in paragraph at lines 58--58
 []\T1/lmr/m/n/12 Yifan Wang \T1/lmr/m/it/12 et al\T1/lmr/m/n/12 . ^^P  $\OML/lmm/m/it/12 ^^Y[]$\T1/lmr/m/n/12 : Permutation-Equivariant Vi-sual Ge-om-e-try Learn-
  []
 
-[57] (./chapters/A-appendix.tex
+[56] (./chapters/A-appendix.tex
 Appendix A.
 Package hyperref Info: bookmark level for unknown todo defaults to 0 on input line 4.
-) (./resources/declaration_en.tex [58
+) (./resources/declaration_en.tex [57
 
 
 ]
@@ -1574,18 +1594,18 @@ Package logreq Info: Writing requests to 'thesis.run.xml'.
 
  ) 
 Here is how much of TeX's memory you used:
- 44048 strings out of 469443
- 878875 string characters out of 5466399
+ 44046 strings out of 469443
+ 878856 string characters out of 5466399
  1887585 words of memory out of 5000000
  71832 multiletter control sequences out of 15000+600000
  754578 words of font info for 138 fonts, out of 8000000 for 9000
  38 hyphenation exceptions out of 8191
  132i,12n,135p,2593b,2463s stack positions out of 10000i,1000n,20000p,200000b,200000s
-</Users/fabio/Library/TinyTeX/texmf-dist/fonts/type1/public/amsfonts/euler/eufm10.pfb></Users/fabio/Library/TinyTeX/texmf-dist/fonts/type1/public/lm/lmbx12.pfb></Users/fabio/Library/TinyTeX/texmf-dist/fonts/type1/public/lm/lmbx8.pfb></Users/fabio/Library/TinyTeX/texmf-dist/fonts/type1/public/lm/lmcsc10.pfb></Users/fabio/Library/TinyTeX/texmf-dist/fonts/type1/public/lm/lmex10.pfb></Users/fabio/Library/TinyTeX/texmf-dist/fonts/type1/public/lm/lmmi12.pfb></Users/fabio/Library/TinyTeX/texmf-dist/fonts/type1/public/lm/lmmi6.pfb></Users/fabio/Library/TinyTeX/texmf-dist/fonts/type1/public/lm/lmmi8.pfb></Users/fabio/Library/TinyTeX/texmf-dist/fonts/type1/public/lm/lmr10.pfb></Users/fabio/Library/TinyTeX/texmf-dist/fonts/type1/public/lm/lmr12.pfb></Users/fabio/Library/TinyTeX/texmf-dist/fonts/type1/public/lm/lmr7.pfb></Users/fabio/Library/TinyTeX/texmf-dist/fonts/type1/public/lm/lmr8.pfb></Users/fabio/Library/TinyTeX/texmf-dist/fonts/type1/public/lm/lmri12.pfb></Users/fabio/Library/TinyTeX/texmf-dist/fonts/type1/public/lm/lmsy10.pfb></Users/fabio/Library/TinyTeX/texmf-dist/fonts/type1/public/lm/lmsy6.pfb></Users/fabio/Library/TinyTeX/texmf-dist/fonts/type1/public/lm/lmsy7.pfb></Users/fabio/Library/TinyTeX/texmf-dist/fonts/type1/public/lm/lmsy8.pfb></Users/fabio/Library/TinyTeX/texmf-dist/fonts/type1/public/lm/lmtt10.pfb></Users/fabio/Library/TinyTeX/texmf-dist/fonts/type1/public/lm/lmtt12.pfb></Users/fabio/Library/TinyTeX/texmf-dist/fonts/type1/public/amsfonts/symbols/msbm10.pfb></Users/fabio/Library/TinyTeX/texmf-dist/fonts/type1/urw/helvetic/uhvb8a.pfb></Users/fabio/Library/TinyTeX/texmf-dist/fonts/type1/urw/helvetic/uhvr8a.pfb>
-Output written on thesis.pdf (65 pages, 24562026 bytes).
+</Users/fabio/Library/TinyTeX/texmf-dist/fonts/type1/public/amsfonts/euler/eufm10.pfb></Users/fabio/Library/TinyTeX/texmf-dist/fonts/type1/public/lm/lmbx12.pfb></Users/fabio/Library/TinyTeX/texmf-dist/fonts/type1/public/lm/lmbx8.pfb></Users/fabio/Library/TinyTeX/texmf-dist/fonts/type1/public/lm/lmcsc10.pfb></Users/fabio/Library/TinyTeX/texmf-dist/fonts/type1/public/lm/lmex10.pfb></Users/fabio/Library/TinyTeX/texmf-dist/fonts/type1/public/lm/lmmi12.pfb></Users/fabio/Library/TinyTeX/texmf-dist/fonts/type1/public/lm/lmmi8.pfb></Users/fabio/Library/TinyTeX/texmf-dist/fonts/type1/public/lm/lmr10.pfb></Users/fabio/Library/TinyTeX/texmf-dist/fonts/type1/public/lm/lmr12.pfb></Users/fabio/Library/TinyTeX/texmf-dist/fonts/type1/public/lm/lmr7.pfb></Users/fabio/Library/TinyTeX/texmf-dist/fonts/type1/public/lm/lmr8.pfb></Users/fabio/Library/TinyTeX/texmf-dist/fonts/type1/public/lm/lmri12.pfb></Users/fabio/Library/TinyTeX/texmf-dist/fonts/type1/public/lm/lmsy10.pfb></Users/fabio/Library/TinyTeX/texmf-dist/fonts/type1/public/lm/lmsy6.pfb></Users/fabio/Library/TinyTeX/texmf-dist/fonts/type1/public/lm/lmsy7.pfb></Users/fabio/Library/TinyTeX/texmf-dist/fonts/type1/public/lm/lmsy8.pfb></Users/fabio/Library/TinyTeX/texmf-dist/fonts/type1/public/lm/lmtt10.pfb></Users/fabio/Library/TinyTeX/texmf-dist/fonts/type1/public/lm/lmtt12.pfb></Users/fabio/Library/TinyTeX/texmf-dist/fonts/type1/public/amsfonts/symbols/msbm10.pfb></Users/fabio/Library/TinyTeX/texmf-dist/fonts/type1/urw/helvetic/uhvb8a.pfb></Users/fabio/Library/TinyTeX/texmf-dist/fonts/type1/urw/helvetic/uhvr8a.pfb>
+Output written on thesis.pdf (64 pages, 24559608 bytes).
 PDF statistics:
- 1175 PDF objects out of 1200 (max. 8388607)
- 938 compressed objects within 10 object streams
- 182 named destinations out of 1000 (max. 500000)
+ 1163 PDF objects out of 1200 (max. 8388607)
+ 929 compressed objects within 10 object streams
+ 180 named destinations out of 1000 (max. 500000)
  497 words of extra memory for PDF output out of 10000 (max. 10000000)
 
