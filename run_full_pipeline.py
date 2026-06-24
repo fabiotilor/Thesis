@@ -70,6 +70,11 @@ def _parse_args():
         help="Skip Rerun viewer initialization and logging setup.",
     )
     parser.add_argument(
+        "--jitter",
+        action="store_true",
+        help="Compute and save only jitter/drift metrics.",
+    )
+    parser.add_argument(
         "--use-gt-intrinsics",
         action="store_true",
         help="Experiment: Use Ground Truth intrinsics to rescale VGGT pointmaps and poses.",
@@ -89,7 +94,7 @@ def _parse_args():
     parser.add_argument(
         "--opt-sigma",
         type=float,
-        default=2.0,
+        default=4.0,
         help="Gaussian temporal window size for smoothing.",
     )
     parser.add_argument(
@@ -172,7 +177,7 @@ def _target_views_for_nviews(nviews: int, dataset_config, subject_name=None):
     return target_views
 
 
-def _run_eval(code: str, view_counts: list[int], dataset_type: str, opt=False):
+def _run_eval(code: str, view_counts: list[int], dataset_type: str, opt=False, jitter=False):
     cmd = [sys.executable, "evaluate_4D.py", "--data", dataset_type, "--views"] + [str(v) for v in view_counts]
     if dataset_type == "hi4d":
         cmd += ["--pair", code]
@@ -180,6 +185,8 @@ def _run_eval(code: str, view_counts: list[int], dataset_type: str, opt=False):
         cmd += ["--subjects", code]
     if opt:
         cmd.append("--opt")
+    if jitter:
+        cmd.append("--jitter")
     print(f"\nRUNNING: {' '.join(cmd)}")
     subprocess.run(cmd, check=True)
 
@@ -254,7 +261,7 @@ def main():
                         os.path.isfile(os.path.join(pref, f)) for f in os.listdir(pref) if f.endswith('.npz')):
                     return pref
                 # Legacy layout fallback
-                return os.path.join("aligned_outputs", subject_full, f"{nviews}views")
+                return os.path.join("aligned_outputs", f"{base_name}{suffix}", subject_full, f"{nviews}views")
 
             baseline_dir = _resolve_dir("baseline")
             s1_dir = _resolve_dir("strategy1")
@@ -265,7 +272,7 @@ def main():
                 os.makedirs(d, exist_ok=True)
 
             # Run baseline alignment if needed
-            if not args.pgo and not args.opt:
+            if not args.pgo:
                 view_root = f"vggt_{dataset_type}_{code}_{nviews}views"
                 target_views = _target_views_for_nviews(nviews, dataset_config, subject_full)
                 run_tag = view_root
@@ -297,7 +304,7 @@ def main():
                 except Exception as e:
                     print(f"[RERUN][WARN] log_gt_sequence failed for {code} {nviews}views: {e}")
 
-            if not args.pgo and not args.opt:
+            if not args.pgo:
                 print(f"\n[STAGE] Strategy 1: subject={code} views={nviews}")
                 s1_start = time.perf_counter()
                 tf_s1 = strategy1_reference(frame_paths, dataset_root, dataset_type=dataset_type)
@@ -426,16 +433,15 @@ def main():
                     )
 
         print(f"\n[INFO] Evaluating subject {code} across methods/views ...")
-        _run_eval(code, view_counts, dataset_type, opt=args.opt)
+        if not args.pgo:
+            _run_eval(code, view_counts, dataset_type, opt=args.opt, jitter=args.jitter)
 
     # Aggregate results across selected subjects only.
     csv_files = []
     for code in codes:
         safe_code = code.replace("/", "_")
-        if dataset_type == "hi4d":
-            csv_path = f"hi4d_eval_summary_{safe_code}.csv"
-        else:
-            csv_path = f"eval_summary_{safe_code}.csv"
+        csv_suffix = "_jitter" if args.jitter else ""
+        csv_path = f"eval_summary_{dataset_type}_{safe_code}{csv_suffix}.csv"
         if os.path.exists(csv_path):
             csv_files.append(csv_path)
 
@@ -481,10 +487,8 @@ def main():
     cols_to_show += remaining
     print(aggregated[cols_to_show].to_string(index=False))
 
-    if dataset_type == "hi4d":
-        out_file = "hi4d_results.csv"
-    else:
-        out_file = "eval_summary_ALL_SUBJECTS.csv"
+    csv_suffix = "_jitter" if args.jitter else ""
+    out_file = f"eval_summary_{dataset_type}_ALL_SUBJECTS{csv_suffix}.csv"
     aggregated.to_csv(out_file, index=False)
     print(f"\n[INFO] Aggregated results saved to {out_file}")
 

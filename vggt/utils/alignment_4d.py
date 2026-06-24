@@ -2,25 +2,16 @@ import os
 import numpy as np
 import cv2
 from .umeyama_alignment import estimate_similarity_transform, apply_similarity_transform
-from .gt import build_gt_validity_masks, DEPTH_MAX_M, load_gt_params
+from .gt import DEPTH_MAX_M, load_gt_params, build_gt_validity_masks
 from .camera_utils import discover_view_name
 from .temporal_metrics import compute_static_jitter
 from eval_config import CONF_PERCENTILE
 
-
-def precompute_vmasks(frame_npz_paths, dataset_root, dataset_type="dex-ycb"):
-    """Precompute GT validity masks to avoid redundant disk I/O."""
-    vmask_cache = {}
-    print("    [I/O] Precomputing validity masks...")
-    for path in frame_npz_paths:
-        data = np.load(path)
-        V, H, W = normalize_spatial_dims(data)
-        if H == 0: continue
-        t = int(data['frame_idx'])
-        view_names = [discover_view_name(dataset_root, k, dataset_type=dataset_type) for k in data['Ks']]
-        vmasks = build_gt_validity_masks(t, view_names, dataset_root, target_hw=(H, W), dataset_type=dataset_type)
-        vmask_cache[path] = vmasks
-    return vmask_cache
+# Ensure Pi3/DUSt3R paths are initialized
+try:
+    from . import path_to_dust3r  # noqa
+except ImportError:
+    pass
 
 
 def normalize_spatial_dims(data):
@@ -55,14 +46,13 @@ def normalize_array(arr, V, H, W, is_mask=False):
     return arr
 
 
-def extract_clean_gt_correspondences(data, dataset_root, n_samples=2000, precomputed_vmasks=None,
-                                     use_static_mask=True, dataset_type="dex-ycb"):
+def extract_clean_gt_correspondences(data, dataset_root, n_samples=2000, use_static_mask=True, dataset_type="dex-ycb"):
     """
     Refactored to use the centralized logic in gt.py for dataset-specific handling.
-    For HI4D, delegates to the projection-based correspondence method.
     """
     from .gt import get_static_correspondences
 
+    # Standardize data inputs
     V, H, W = normalize_spatial_dims(data)
     if H == 0: return None
 
@@ -73,80 +63,30 @@ def extract_clean_gt_correspondences(data, dataset_root, n_samples=2000, precomp
     t, ks = int(data['frame_idx']), data['Ks']
     view_names = [discover_view_name(dataset_root, k, dataset_type=dataset_type) for k in ks]
 
-    if dataset_type == "hi4d":
-        # For Hi4D, delegate directly to the projection-based correspondences
-        src, dst = get_static_correspondences(
-            t, view_names, pm_est, conf_est, dataset_root,
-            conf_percentile=CONF_PERCENTILE,
-            dataset_type=dataset_type
-        )
-        if src is None: return None
-        # Subsample if requested
-        if len(src) > n_samples:
-            rng = np.random.default_rng(42)
-            idx = rng.choice(len(src), size=n_samples, replace=False)
-            src, dst = src[idx], dst[idx]
-        return src, dst
+    # We pass the precomputed masks if available
+    precomputed_masks = {vname: m_static[i] for i, vname in enumerate(view_names)}
 
-    # Dex-YCB: use depth-based validity masks
-    if precomputed_vmasks is not None:
-        vmasks = precomputed_vmasks
-    else:
-        vmasks = build_gt_validity_masks(t, view_names, dataset_root, target_hw=(H, W), dataset_type=dataset_type)
+    src, dst = get_static_correspondences(
+        t, view_names, pm_est, conf_est, dataset_root,
+        conf_percentile=CONF_PERCENTILE,
+        precomputed_masks=precomputed_masks,
+        use_static_mask=use_static_mask,
+        dataset_type=dataset_type
+    )
 
-    all_src, all_dst = [], []
-    rng = np.random.default_rng(42)
+    if src is None: return None
 
-    for v in range(V):
-        if view_names[v] is None or vmasks[v] is None: continue
-        view_dir = os.path.join(dataset_root, view_names[v])
+    # Subsample if requested
+    if len(src) > n_samples:
+        rng = np.random.default_rng(42)
+        idx = rng.choice(len(src), size=n_samples, replace=False)
+        src, dst = src[idx], dst[idx]
 
-        # Load GT depth at sensor resolution
-        depth_path = os.path.join(view_dir, "depth", f"{t:05d}.png")
-        if not os.path.exists(depth_path): continue
-        d_img_gt = cv2.imread(depth_path, cv2.IMREAD_UNCHANGED).astype(np.float32) / 1000.0
-        H_gt, W_gt = d_img_gt.shape
-
-        # Exact scaling logic from gt.py
-        K, c2w = load_gt_params(view_dir, dataset_type=dataset_type)
-        scale_x, scale_y = W / W_gt, H / H_gt
-        fx_s, fy_s, cx_s, cy_s = K[0, 0] * scale_x, K[1, 1] * scale_y, K[0, 2] * scale_x, K[1, 2] * scale_y
-
-        # Downsample GT depth to model resolution
-        d_mod_gt = cv2.resize(d_img_gt, (W, H), interpolation=cv2.INTER_NEAREST)
-
-        # Build total mask for this view
-        valid = (d_mod_gt > 0) & vmasks[v]
-        if use_static_mask:
-            valid &= m_static[v]
-        if conf_est is not None:
-            thr = np.percentile(conf_est[v], 100 * (1 - CONF_PERCENTILE))
-            valid &= (conf_est[v] > thr)
-
-        ys, xs = np.where(valid)
-        if len(ys) < 6: continue
-
-        # Sample
-        idx = rng.choice(len(ys), size=min(len(ys), n_samples), replace=False)
-        ys, xs = ys[idx], xs[idx]
-
-        # GT Point World
-        z_gt = d_mod_gt[ys, xs]
-        pts_cam_gt = np.stack([(xs - cx_s) * z_gt / fx_s, (ys - cy_s) * z_gt / fy_s, z_gt], axis=-1)
-        pts_world_gt = (c2w[:3, :3] @ pts_cam_gt.T).T + c2w[:3, 3]
-
-        # Est Point (already in its own system)
-        pts_est = pm_est[v][ys, xs]
-
-        all_src.append(pts_est)
-        all_dst.append(pts_world_gt)
-
-    if not all_src: return None
-    return np.concatenate(all_src), np.concatenate(all_dst)
+    return src, dst
 
 
-def get_pointmap_correspondences(path_a, path_b, dataset_root, vmask_cache=None, dataset_type="dex-ycb"):
-    """Inter-frame alignment using only static/valid pixels."""
+def get_pointmap_correspondences(path_a, path_b, dataset_root, dataset_type="dex-ycb"):
+    """Inter-frame alignment using only static pixels existing in both frames."""
     data_a, data_b = np.load(path_a), np.load(path_b)
     V, H, W = normalize_spatial_dims(data_a)
     if H == 0: return None
@@ -154,39 +94,25 @@ def get_pointmap_correspondences(path_a, path_b, dataset_root, vmask_cache=None,
     pm_a = normalize_array(data_a['pointmaps'], V, H, W).astype(np.float32)
     pm_b = normalize_array(data_b['pointmaps'], V, H, W).astype(np.float32)
 
+    conf_a = normalize_array(data_a['pointmaps_confs'], V, H, W) if 'pointmaps_confs' in data_a else None
+    conf_b = normalize_array(data_b['pointmaps_confs'], V, H, W) if 'pointmaps_confs' in data_b else None
+
     # Simple strategy: align based on static pixels existing in both frames
     m_a = normalize_array(data_a['masks_2d'], V, H, W, is_mask=True)
     m_b = normalize_array(data_b['masks_2d'], V, H, W, is_mask=True)
 
-    conf_a = normalize_array(data_a['pointmaps_confs'], V, H, W) if 'pointmaps_confs' in data_a else None
-    conf_b = normalize_array(data_b['pointmaps_confs'], V, H, W) if 'pointmaps_confs' in data_b else None
-
-    # We use vmasks to ensure we only align on high-quality regions
-    if vmask_cache is not None and path_a in vmask_cache:
-        vmasks_a = vmask_cache[path_a]
-    else:
-        vmasks_a = build_gt_validity_masks(int(data_a['frame_idx']),
-                                           [discover_view_name(dataset_root, k, dataset_type=dataset_type) for k in data_a['Ks']], dataset_root,
-                                           target_hw=(H, W), dataset_type=dataset_type)
-
-    if vmask_cache is not None and path_b in vmask_cache:
-        vmasks_b = vmask_cache[path_b]
-    else:
-        vmasks_b = build_gt_validity_masks(int(data_b['frame_idx']),
-                                           [discover_view_name(dataset_root, k, dataset_type=dataset_type) for k in data_b['Ks']], dataset_root,
-                                           target_hw=(H, W), dataset_type=dataset_type)
-
     src_list, dst_list = [], []
-    for v in range(V):
-        if vmasks_a[v] is None or vmasks_b[v] is None: continue
-        # Intersection of static and valid
-        mask = m_a[v] & m_b[v] & vmasks_a[v] & vmasks_b[v]
 
+    # ── Global thresholds ──
+    thr_a = np.quantile(conf_a, 1.0 - CONF_PERCENTILE) if conf_a is not None else 0.0
+    thr_b = np.quantile(conf_b, 1.0 - CONF_PERCENTILE) if conf_b is not None else 0.0
+
+    for v in range(V):
+        # Intersection of static masks from both frames
+        mask = m_a[v] & m_b[v]
         if conf_a is not None:
-            thr_a = np.percentile(conf_a[v], 100 * (1 - CONF_PERCENTILE))
             mask &= (conf_a[v] > thr_a)
         if conf_b is not None:
-            thr_b = np.percentile(conf_b[v], 100 * (1 - CONF_PERCENTILE))
             mask &= (conf_b[v] > thr_b)
 
         ys, xs = np.where(mask)
@@ -198,9 +124,8 @@ def get_pointmap_correspondences(path_a, path_b, dataset_root, vmask_cache=None,
     return np.concatenate(src_list), np.concatenate(dst_list)
 
 
-def estimate_interframe_transform_pointmap(path_a, path_b, dataset_root, return_error=False, vmask_cache=None,
-                                           dataset_type="dex-ycb"):
-    res = get_pointmap_correspondences(path_a, path_b, dataset_root, vmask_cache=vmask_cache, dataset_type=dataset_type)
+def estimate_interframe_transform_pointmap(path_a, path_b, dataset_root, return_error=False, dataset_type="dex-ycb"):
+    res = get_pointmap_correspondences(path_a, path_b, dataset_root, dataset_type=dataset_type)
     if res is None:
         return (None, None) if return_error else None
 
@@ -232,9 +157,10 @@ def strategy2_hierarchical(frame_npz_paths, dataset_root, dataset_type="dex-ycb"
         new_groups = []
         for i in range(0, len(groups) - 1, 2):
             g_a, g_b = groups[i], groups[i + 1]
+            path_a, path_b = frame_npz_paths[g_a[0][0]], frame_npz_paths[g_b[0][0]]
             res = estimate_interframe_transform_pointmap(
-                frame_npz_paths[g_a[0][0]], frame_npz_paths[g_b[0][0]],
-                dataset_root, dataset_type=dataset_type
+                path_a, path_b, dataset_root,
+                dataset_type=dataset_type
             )
             s_ba, R_ba, tr_ba = res if res else (1.0, np.eye(3), np.zeros(3))
             merged = list(g_a)
@@ -322,10 +248,6 @@ def compose_similarity_transform(a, b):
 
 def strategy3_pgo(frame_npz_paths, dataset_root, num_iters=50, dataset_type="dex-ycb"):
     n_frames = len(frame_npz_paths)
-
-    # Precompute masks
-    vmask_cache = precompute_vmasks(frame_npz_paths, dataset_root, dataset_type=dataset_type)
-
     print("    [PGO] Computing T(T-1)/2 pairwise edges...")
     edges = {}
 
@@ -333,7 +255,7 @@ def strategy3_pgo(frame_npz_paths, dataset_root, num_iters=50, dataset_type="dex
         for j in range(i + 1, n_frames):
             res = estimate_interframe_transform_pointmap(
                 frame_npz_paths[i], frame_npz_paths[j], dataset_root,
-                return_error=True, vmask_cache=vmask_cache,
+                return_error=True,
                 dataset_type=dataset_type
             )
             if res[0] is not None:
@@ -406,18 +328,14 @@ def strategy3_pgo(frame_npz_paths, dataset_root, num_iters=50, dataset_type="dex
     return [(val[0], val[1], val[2]) for val in T_global]
 
 
-def solve_final_gt_registration(frame_npz_paths, frame_transforms, dataset_root,
-                                use_static_mask=True, dataset_type="dex-ycb"):
-    vmask_cache = precompute_vmasks(frame_npz_paths, dataset_root, dataset_type=dataset_type)
+def solve_final_gt_registration(frame_npz_paths, frame_transforms, dataset_root, use_static_mask=True,
+                                dataset_type="dex-ycb"):
     print("    [4D-GT] Registration: Building correspondences...")
     all_src, all_dst = [], []
     for i, path in enumerate(frame_npz_paths):
-        res = extract_clean_gt_correspondences(
-            np.load(path), dataset_root,
-            precomputed_vmasks=vmask_cache.get(path),
-            use_static_mask=use_static_mask,
-            dataset_type=dataset_type
-        )
+        data = np.load(path)
+        res = extract_clean_gt_correspondences(data, dataset_root, use_static_mask=use_static_mask,
+                                               dataset_type=dataset_type)
         if res is None: continue
         src, dst = res
         # Apply inter-frame transform to bring to unified space
@@ -438,28 +356,53 @@ def solve_final_gt_registration(frame_npz_paths, frame_transforms, dataset_root,
 
 def compute_4d_jitter_complete(frame_npz_paths, frame_transforms, s_glob, R_glob, tr_glob, dataset_root,
                                dataset_type="dex-ycb"):
-    all_pm_mv, all_masks_mv = [], []
+    all_pm_mv, all_masks_mv, all_validity_masks_mv, all_confs_mv = [], [], [], []
     for i, path in enumerate(frame_npz_paths):
         data = np.load(path)
         V, H, W = normalize_spatial_dims(data)
         if H == 0: continue
         pm = normalize_array(data['pointmaps'], V, H, W).astype(np.float32)
+        conf = (
+            normalize_array(data['pointmaps_confs'], V, H, W)
+            if 'pointmaps_confs' in data
+            else None
+        )
         s_i, R_i, tr_i = frame_transforms[i]
         s_tot, R_tot, tr_tot = s_glob * s_i, R_glob @ R_i, s_glob * (R_glob @ tr_i) + tr_glob
 
         aligned_pm = np.stack(
             [apply_similarity_transform(pm[v].reshape(-1, 3), s_tot, R_tot, tr_tot).reshape(H, W, 3) for v in range(V)])
         all_pm_mv.append(aligned_pm)
+        if conf is not None:
+            all_confs_mv.append(conf)
 
-        # Stricter static+valid mask for jitter
+        # Use static masks for jitter computation
         m = normalize_array(data['masks_2d'], V, H, W, is_mask=True)
-        vms = build_gt_validity_masks(
-            int(data['frame_idx']),
-            [discover_view_name(dataset_root, k, dataset_type=dataset_type) for k in data['Ks']],
-            dataset_root, target_hw=(H, W), dataset_type=dataset_type
-        )
-        for v in range(V):
-            if vms[v] is not None: m[v] &= vms[v]
         all_masks_mv.append(m)
 
-    return compute_static_jitter(all_pm_mv, all_masks_mv)
+        t = int(data['frame_idx']) if 'frame_idx' in data else i
+        if 'view_names' in data:
+            view_names = (data['view_names'].tolist()
+                          if hasattr(data['view_names'], 'tolist')
+                          else list(data['view_names']))
+        else:
+            view_names = [
+                discover_view_name(dataset_root, k, dataset_type=dataset_type)
+                for k in data['Ks']
+            ]
+        vmasks = build_gt_validity_masks(
+            t, view_names, dataset_root,
+            target_hw=(H, W), dataset_type=dataset_type,
+        )
+        all_validity_masks_mv.append(np.array([
+            vmask if vmask is not None else np.ones((H, W), dtype=bool)
+            for vmask in vmasks
+        ], dtype=bool))
+
+    return compute_static_jitter(
+        all_pm_mv,
+        all_masks_mv,
+        validity_masks_per_frame=all_validity_masks_mv if all_validity_masks_mv else None,
+        confidences_per_frame=all_confs_mv if all_confs_mv else None,
+        conf_percentile=CONF_PERCENTILE,
+    )

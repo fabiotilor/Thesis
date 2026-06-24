@@ -47,23 +47,36 @@ def ensure_base_strategy_exists(
     from eval_config import DATASETS
 
     # 1. Locate the base-strategy output dir
+    # New layout: aligned_outputs/vggt/<dataset_type>/<base_strategy>/<subject_name>/<n_views>views
     base_dir = os.path.join(
         "aligned_outputs", "vggt", dataset_type, base_strategy,
         subject_name, f"{n_views}views",
     )
+    if not (os.path.isdir(base_dir) and len(_sorted_frame_paths(base_dir)) >= 2):
+        # Legacy layout: aligned_outputs/<base_strategy>/<subject_name>/<n_views>views
+        base_dir = os.path.join(
+            "aligned_outputs", base_strategy,
+            subject_name, f"{n_views}views",
+        )
     if os.path.isdir(base_dir) and len(_sorted_frame_paths(base_dir)) >= 2:
         return base_dir  # already exists
 
     # 2. Locate baseline frames
+    # New layout: aligned_outputs/vggt/<dataset_type>/baseline/<subject_name>/<n_views>views
     baseline_dir = os.path.join(
-        "aligned_outputs",
+        "aligned_outputs", "vggt", dataset_type, "baseline",
         subject_name, f"{n_views}views",
     )
     if not os.path.isdir(baseline_dir):
-        # Legacy fallback (old layout without dataset_type prefix)
+        # Legacy layout: aligned_outputs/baseline/<subject_name>/<n_views>views
         baseline_dir = os.path.join(
-            "aligned_outputs", "vggt", dataset_type, "baseline",
+            "aligned_outputs", "baseline",
             subject_name, f"{n_views}views",
+        )
+    if not os.path.isdir(baseline_dir):
+        # Older legacy layout fallback
+        baseline_dir = os.path.join(
+            "aligned_outputs", subject_name, f"{n_views}views",
         )
     if not os.path.isdir(baseline_dir):
         print(f"[ERROR] Baseline outputs not found for {subject_name} {n_views}views")
