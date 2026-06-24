@@ -19,8 +19,8 @@ render them unsuitable for applications requiring smooth, temporally consistent 
 
 Two directions have been explored to close this gap. Geometry-refinement approaches such as
 GGPT~\cite{ggpt} ground spatial predictions with incomplete SfM-derived guidance, but do not
-generalise to sparse-view dynamic scenes, worsening Chamfer distance by $1.1$--$8\times$
-across all evaluated backbones. Dedicated 4D architectures such as VGGT4D~\cite{vggt4d} and
+generalise to sparse-view dynamic scenes, worsening Chamfer distance by $3.8$--$15.9\times$
+across all evaluated backbones and datasets. Dedicated 4D architectures such as VGGT4D~\cite{vggt4d} and
 MonoFusion~\cite{monofusion} enforce sequence-level consistency directly, but sacrifice
 geometric fidelity to do so: even under a best-case per-frame alignment to ground truth,
 VGGT4D's Chamfer distance remains 62--192\,\% higher than the VGGT baseline across
@@ -53,12 +53,12 @@ The main contributions of this thesis are:
         data-loading, semantic masking, and metric-computation conditions across DexYCB~\cite{dexycb}
         and Hi4D~\cite{hi4d}, measuring per-frame and sequence-level performance via Chamfer
         distance, accuracy, completeness, temporal jitter, drift, and camera pose error
-        (see \Cref{c:methodology}).
+        (see \Cref{c:experimental_setup}).
 
   \item \textbf{Comparative Temporal Alignment Study.}
         Three strategies for lifting per-frame reconstructions into a globally consistent 4D
         representation are analysed and compared, characterising their trade-offs between
-        geometric fidelity and temporal consistency (see \Cref{c:methodology}).
+        geometric fidelity and temporal consistency (see \Cref{sec:alignment_strategies}).
 
   \item \textbf{Confidence-Weighted Temporal Smoothing.}
         A training-free post-processing method reduces frame-to-frame instability for any
@@ -66,6 +66,6 @@ The main contributions of this thesis are:
         to static regions, leaving dynamic pixels untouched. The method achieves jitter
         comparable to native 4D architectures while retaining the geometric fidelity of the
         underlying per-frame estimator---a trade-off that native 4D architectures
-        consistently fail to match (see \Cref{c:refinement}).
+        consistently fail to match (see \Cref{sec:opt}).
 
 \end{itemize}

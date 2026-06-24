@@ -471,6 +471,98 @@
       \verb 10.1007/3-540-45103-X_50
       \endverb
     \endentry
+    \entry{dycheck}{inproceedings}{}{}
+      \name{author}{5}{}{%
+        {{hash=e153acc84596ed50fcfeb92e9bf544c3}{%
+           family={Gao},
+           familyi={G\bibinitperiod},
+           given={Hang},
+           giveni={H\bibinitperiod}}}%
+        {{hash=b417efc17c6c4f027b621a1f48d8342e}{%
+           family={Li},
+           familyi={L\bibinitperiod},
+           given={Ruilong},
+           giveni={R\bibinitperiod}}}%
+        {{hash=37db473ebe5ac667e698a954ea084723}{%
+           family={Tulsiani},
+           familyi={T\bibinitperiod},
+           given={Shubham},
+           giveni={S\bibinitperiod}}}%
+        {{hash=d6fb4d6285d5d0933ba40c61e4e832b0}{%
+           family={Russell},
+           familyi={R\bibinitperiod},
+           given={Bryan},
+           giveni={B\bibinitperiod}}}%
+        {{hash=6739ae1219e43710a65f37e9a5b5e902}{%
+           family={Kanazawa},
+           familyi={K\bibinitperiod},
+           given={Angjoo},
+           giveni={A\bibinitperiod}}}%
+      }
+      \name{editor}{6}{}{%
+        {{hash=bf08b65cce4ebf8ed71a0b3f7c1dfa1d}{%
+           family={Koyejo},
+           familyi={K\bibinitperiod},
+           given={S.},
+           giveni={S\bibinitperiod}}}%
+        {{hash=f9e146884d45b458408eba9ec6ba0cc9}{%
+           family={Mohamed},
+           familyi={M\bibinitperiod},
+           given={S.},
+           giveni={S\bibinitperiod}}}%
+        {{hash=1cc9a6fef261c6c620d53b6fe154022a}{%
+           family={Agarwal},
+           familyi={A\bibinitperiod},
+           given={A.},
+           giveni={A\bibinitperiod}}}%
+        {{hash=cbb0ac3a625af607c7b2347f3a1f6eec}{%
+           family={Belgrave},
+           familyi={B\bibinitperiod},
+           given={D.},
+           giveni={D\bibinitperiod}}}%
+        {{hash=0f841893a4e03c6a159374cc7136b961}{%
+           family={Cho},
+           familyi={C\bibinitperiod},
+           given={K.},
+           giveni={K\bibinitperiod}}}%
+        {{hash=6d9c5f3daf57997af27b3617ec7d1fe9}{%
+           family={Oh},
+           familyi={O\bibinitperiod},
+           given={A.},
+           giveni={A\bibinitperiod}}}%
+      }
+      \list{publisher}{1}{%
+        {Curran Associates, Inc.}%
+      }
+      \strng{namehash}{80a1b6c24a0ef6da326f254abafe268b}
+      \strng{fullhash}{4a4f1d4708c7b25707fea64142d659c4}
+      \strng{fullhashraw}{4a4f1d4708c7b25707fea64142d659c4}
+      \strng{bibnamehash}{80a1b6c24a0ef6da326f254abafe268b}
+      \strng{authorbibnamehash}{80a1b6c24a0ef6da326f254abafe268b}
+      \strng{authornamehash}{80a1b6c24a0ef6da326f254abafe268b}
+      \strng{authorfullhash}{4a4f1d4708c7b25707fea64142d659c4}
+      \strng{authorfullhashraw}{4a4f1d4708c7b25707fea64142d659c4}
+      \strng{editorbibnamehash}{ef48c9a3cb05b7d5bc7df5bc7eec0b92}
+      \strng{editornamehash}{ef48c9a3cb05b7d5bc7df5bc7eec0b92}
+      \strng{editorfullhash}{149e334d093f657bc216da323592d003}
+      \strng{editorfullhashraw}{149e334d093f657bc216da323592d003}
+      \field{sortinit}{G}
+      \field{sortinithash}{32d67eca0634bf53703493fb1090a2e8}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{booktitle}{Advances in Neural Information Processing Systems}
+      \field{title}{Monocular Dynamic View Synthesis: A Reality Check}
+      \field{volume}{35}
+      \field{year}{2022}
+      \field{pages}{33768\bibrangedash 33780}
+      \range{pages}{13}
+      \verb{urlraw}
+      \verb https://proceedings.neurips.cc/paper_files/paper/2022/file/dab5a29f6614ec47ea0ca85c140226fd-Paper-Conference.pdf
+      \endverb
+      \verb{url}
+      \verb https://proceedings.neurips.cc/paper_files/paper/2022/file/dab5a29f6614ec47ea0ca85c140226fd-Paper-Conference.pdf
+      \endverb
+    \endentry
     \entry{hartley2004multiple}{book}{}{}
       \name{author}{2}{}{%
         {{hash=d0465e31872bd5a1d01ac67d592146e9}{%
@@ -1164,6 +1256,60 @@
       \field{title}{A Benchmark for the Evaluation of RGB-D SLAM Systems}
       \field{year}{2012}
       \keyw{rgb-d,rgb-d benchmark,sturmselection,dataset,vslam}
+    \endentry
+    \entry{multicamrobolab}{misc}{}{}
+      \name{author}{5}{}{%
+        {{hash=0e6235a754036d1e59873917d31eaba7}{%
+           family={Sun},
+           familyi={S\bibinitperiod},
+           given={Shuo},
+           giveni={S\bibinitperiod}}}%
+        {{hash=ea9f2a096647c0cdc76b2df054176bb8}{%
+           family={Artan},
+           familyi={A\bibinitperiod},
+           given={Unal},
+           giveni={U\bibinitperiod}}}%
+        {{hash=841c35008c97bea8499175a6a2293228}{%
+           family={Mielle},
+           familyi={M\bibinitperiod},
+           given={Malcolm},
+           giveni={M\bibinitperiod}}}%
+        {{hash=dbd4c8fa5d13b33725b06fc358aae018}{%
+           family={Lilienthaland},
+           familyi={L\bibinitperiod},
+           given={Achim\bibnamedelima J.},
+           giveni={A\bibinitperiod\bibinitdelim J\bibinitperiod}}}%
+        {{hash=30bd0c838e8f92d126ec452001b0c7d0}{%
+           family={Magnusson},
+           familyi={M\bibinitperiod},
+           given={Martin},
+           giveni={M\bibinitperiod}}}%
+      }
+      \strng{namehash}{06b65f5e4eb55e8c6c3c9aa63afe19f4}
+      \strng{fullhash}{d4626c22f72bf5c92f154d964e553dc6}
+      \strng{fullhashraw}{d4626c22f72bf5c92f154d964e553dc6}
+      \strng{bibnamehash}{06b65f5e4eb55e8c6c3c9aa63afe19f4}
+      \strng{authorbibnamehash}{06b65f5e4eb55e8c6c3c9aa63afe19f4}
+      \strng{authornamehash}{06b65f5e4eb55e8c6c3c9aa63afe19f4}
+      \strng{authorfullhash}{d4626c22f72bf5c92f154d964e553dc6}
+      \strng{authorfullhashraw}{d4626c22f72bf5c92f154d964e553dc6}
+      \field{sortinit}{S}
+      \field{sortinithash}{b164b07b29984b41daf1e85279fbc5ab}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{eprintclass}{cs.CV}
+      \field{eprinttype}{arXiv}
+      \field{title}{Dense Dynamic Scene Reconstruction and Camera Pose Estimation from Multi-View Videos}
+      \field{year}{2026}
+      \verb{eprint}
+      \verb 2603.12064
+      \endverb
+      \verb{urlraw}
+      \verb https://arxiv.org/abs/2603.12064
+      \endverb
+      \verb{url}
+      \verb https://arxiv.org/abs/2603.12064
+      \endverb
     \endentry
     \entry{umeyama1991least}{article}{}{}
       \name{author}{1}{}{%

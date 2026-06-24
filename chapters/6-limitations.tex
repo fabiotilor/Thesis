@@ -1,3 +1,276 @@
 \chapter{Discussion and Conclusion}
-\label{c:discussion_and_conclusion}
+\label{c:discussion}
 
+This thesis set out to answer a single question: can sparse-view dynamic reconstruction
+achieve both geometric fidelity and temporal consistency simultaneously, without
+sacrificing one for the other? The results of Chapter~\ref{c:results} provide a clear
+answer. The decoupled paradigm of a strong per-frame spatial estimator, lightweight
+temporal alignment, and targeted static-region smoothing consistently achieves both
+properties across every backbone and every view count evaluated. No existing alternative
+matches this trade-off. This chapter interprets why, identifies what remains unsolved,
+and proposes directions for future work.
+
+%% -----------------------------------------------------------------------
+\section{Architecture family analysis}
+\label{sec:architecture_analysis}
+
+The central finding of Chapter~\ref{c:results} is that native 4D architectures fail to
+close the geometry--jitter trade-off that spatial models with Opt smoothing achieve.
+Understanding why requires examining the architectural assumptions each family makes.
+
+\paragraph{Why spatial models succeed.}
+Spatial foundation models reconstruct each frame independently, using learned priors to
+recover dense geometry from sparse observations. Independence is a strength: each frame
+is solved without any assumption about what neighbouring frames look like, so
+reconstruction errors do not propagate across time. PI3 achieves 0.022\,m Chamfer and
+94.4\,\% static accuracy on DexYCB at the per-frame level, the highest geometric
+fidelity among all evaluated models, precisely because no temporal constraint forces it
+to compromise geometric detail for sequence consistency.
+
+\paragraph{Why native 4D architectures fail.}
+VGGT4D processes the full multi-view video jointly, enforcing temporal consistency
+through a shared transformer representation. The cost is geometric: VGGT4D's per-frame
+Chamfer is 141\,\% higher than PI3 on DexYCB even under best-case per-frame alignment
+to ground truth. Although VGGT4D explicitly attempts to decouple static and dynamic
+regions through attention-based dynamic cue mining~\cite{vggt4d}, the qualitative
+analysis of Section~\ref{sec:qualitative} shows that the decoupling is incomplete under
+sparse-view conditions. At 3 views, the arm region appears duplicated at a second depth
+layer. At 4 views, the arm collapses into a sweeping smear. Both artefacts are
+consistent with temporal averaging of conflicting depth hypotheses: when the joint
+architecture receives a new viewpoint whose depth estimates conflict with existing ones,
+it averages rather than resolves, displacing the reconstructed surface and reducing
+completeness. The non-monotonic completeness pattern of 52.9\,\% at 3 views falling to
+30.5\,\% at 4 views is a direct consequence. Native 4D architectures are therefore not
+a principled solution to the geometry--jitter trade-off under sparse-view conditions;
+they trade one problem for another.
+
+MonoFusion exhibits a different failure mode. Its iterative monocular-to-multi-view
+depth alignment is susceptible to local optima under the wide camera spacing and large
+subject-to-camera distance of both evaluated datasets, producing duplicated-subject
+artefacts rather than coherent reconstructions. MonoFusion achieves the lowest drift
+(0.001\,m at every view count) and competitive mean jitter, but its geometric fidelity
+is the weakest among all evaluated models: 0.050\,m Chamfer on DexYCB and 0.356\,m on
+Hi4D.
+
+\paragraph{Why GGPT is unsuitable for geometry-critical applications.}
+GGPT combines dense pointmap predictions with incomplete SfM-derived geometric cues
+through a transformer-based refinement network. The approach degrades geometry
+catastrophically across every backbone and both datasets: Chamfer worsens by factors of
+3.8 to 15.9. The negative $\Delta_{\text{consistency}}$ values observed for GGPT on
+Hi4D are not evidence of genuine improvement; they arise because GGPT's per-frame
+geometry is already so degraded that temporal aggregation appears to reduce Chamfer
+relative to that degraded baseline. GGPT provides marginal jitter reduction: at two
+views, MASt3R-SfM jitter falls from 0.011\,m to 0.008\,m under GGPT, but at a
+geometric cost that no robotics application requiring 1\,cm precision could accept.
+The incomplete SfM cues that GGPT relies on are derived from the same sparse-view input
+that already challenges spatial models; grounding a refinement network on unreliable
+geometric evidence does not improve accuracy and evidently introduces systematic
+distortion.
+
+%% -----------------------------------------------------------------------
+\section{The decoupled framework paradigm}
+\label{sec:decoupled_paradigm}
+
+The results of Chapter~\ref{c:results} provide consistent evidence for a design
+principle: separating the problem of geometric reconstruction from the problem of
+temporal consistency, and solving each with the right tool, outperforms joint
+end-to-end approaches.
+
+The argument has three parts. First, spatial foundation models achieve higher geometric
+fidelity than native 4D architectures at the per-frame level, before any temporal
+processing is applied. The gap is large: PI3 outperforms VGGT4D by 141\,\% on DexYCB
+Chamfer at the per-frame level. Second, temporal consistency can be added after the
+fact without destroying geometry, provided the smoothing is applied only where it is
+valid, namely static regions. Opt reduces mean jitter by 60--91\,\% across four
+backbones while leaving Chamfer flat or improved for three of the four. Third, the
+resulting pipeline Pareto-dominates native 4D architectures on the geometry--jitter
+trade-off at every view count for every backbone evaluated. PI3+Opt achieves 0.025\,m
+Chamfer and 0.001\,m mean jitter at four views; VGGT4D achieves 0.069\,m Chamfer and
+0.003\,m jitter at the same view count.
+
+The key insight is that geometric accuracy and temporal consistency conflict only when
+temporal constraints are applied globally, penalising dynamic regions where motion is
+real and should be preserved. The decoupled paradigm avoids this conflict by design:
+the spatial estimator is free to maximise geometric fidelity without any temporal
+pressure, and Opt is free to maximise temporal consistency without any geometric
+pressure, because it operates exclusively on static regions where consistency is
+physically guaranteed.
+
+Strategy 2 is selected as the alignment basis for Opt over Strategy 3 despite Strategy
+3 achieving marginally better $\Delta_{\text{consistency}}$ in most cases. The
+differences between strategies are modest throughout, at most 0.002\,m Chamfer on
+DexYCB, and Strategy 2 provides a better practical balance between computational cost
+and geometric stability. Strategy 3 requires $\mathcal{O}(T^2)$ pairwise alignments
+and iterative geodesic averaging, making it substantially slower without proportionate
+benefit. Strategy 2's $\mathcal{O}(T \log T)$ complexity and consistent performance
+across all four backbones make it the more suitable foundation for a post-processing
+pipeline intended for practical deployment.
+
+%% -----------------------------------------------------------------------
+\section{Limitations}
+\label{sec:limitations}
+
+Four limitations of the proposed approach warrant explicit discussion.
+
+\paragraph{Per-backbone parameter calibration.}
+Opt requires per-backbone values of $\sigma$ and $\alpha$, selected by sweeping over a
+grid and measuring the geometry--jitter trade-off on DexYCB. The selected
+configurations ($\sigma = 6$, $\alpha = 1.0$ for MASt3R-SfM; $\sigma = 4$,
+$\alpha = 1.0$ for PI3, PI3X, and VGGT) represent single operating points on the
+Pareto frontier of each backbone. Individual subjects within DexYCB already exhibit at
+least two distinct jitter profiles that would benefit from different parameters; a
+globally fixed configuration is a compromise. More fundamentally, the jitter level
+produced by a spatial backbone depends on the reconstruction confidence of that
+backbone in the current scene, which varies with scene type, texture, lighting, and
+the distribution of the backbone's training data. A parameter set calibrated on DexYCB
+manipulation sequences may not transfer to surgical, outdoor, or industrial scenes
+without recalibration.
+
+\paragraph{Drift is not corrected.}
+Opt suppresses high-frequency jitter and reduces mean jitter substantially, but does
+not reliably reduce drift. Drift is a slow, monotonic accumulation of pose estimation
+errors that displaces static anchors over the sequence. Because the Gaussian filter
+operates symmetrically in time, it attenuates rapid oscillations effectively but cannot
+correct a bias that accumulates monotonically. At two views, PI3 drift increases from
+0.007\,m under Strategy 2 to 0.034\,m under Opt, and VGGT drift falls only marginally
+from 0.060\,m to 0.054\,m. Correcting drift requires a mechanism that operates
+globally across the sequence rather than locally in time, such as the
+anchor-constrained optimisation described in Section~\ref{sec:future_work}.
+
+\paragraph{Static mask quality.}
+The SAM2-derived static masks are a critical dependency of both the alignment
+strategies and Opt. Mask quality degrades in several scenarios: fast motion that
+exceeds the frame-difference signal, textureless dynamic surfaces that produce weak
+optical flow, and scene boundaries where static and dynamic regions are spatially
+adjacent. Boundary pixels at the static-dynamic boundary are incidentally affected by
+Opt smoothing: projecting smoothed boundary points back into 2D shifts their apparent
+class assignment, producing a reduction in reported dynamic accuracy beyond the direct
+effect of the filter. This boundary reclassification effect is most visible for PI3X,
+where dynamic accuracy falls substantially under Opt despite the filter operating only
+on classified static pixels.
+
+\paragraph{Evaluation scope.}
+Opt is evaluated exclusively on DexYCB, since Hi4D provides no static background
+against which jitter metrics can be computed. The temporal consistency results
+therefore rest on a single dataset covering human--object manipulation under controlled
+laboratory conditions. Whether the 60--91\,\% jitter reductions reported here
+generalise to outdoor scenes, surgical environments, or datasets with different camera
+geometries and motion profiles remains an open question. The alignment strategy
+comparison covers both datasets, but Hi4D results reflect the performance of the
+underlying models rather than the properties of the strategies, since static
+correspondences are absent after preprocessing.
+
+%% -----------------------------------------------------------------------
+\section{Future work}
+\label{sec:future_work}
+
+This thesis established a foundation: spatial foundation models can be lifted to
+temporally consistent 4D reconstruction through lightweight alignment and a
+training-free temporal low-pass filter, without sacrificing geometric fidelity. The
+remaining open problems are clear. Drift is not corrected. The 2-view to 4-view
+performance gap is not closed. Evaluation is limited to fixed, calibrated camera rigs
+on two datasets. Future work can extend this foundation in four directions: improving
+the smoothing method itself, correcting drift, broadening evaluation to moving cameras
+and more diverse scenes, and exploring whether the decoupled paradigm can be pushed
+further through learned refinement.
+
+\paragraph{Inference-time adaptive parameter selection.}
+The per-backbone parameter calibration limitation motivates replacing the offline sweep
+with an adaptive procedure that selects $\sigma$ and $\alpha$ at inference time from
+the current sequence. The required signal is available without ground truth: the
+per-frame jitter of static anchors, computable from the aligned pointmaps before Opt
+is applied, directly reflects the instability that $\sigma$ must suppress. A wider
+$\sigma$ is appropriate when anchor jitter is high; a narrower $\sigma$ when it is
+stable. Fitting $\sigma$ to the observed jitter profile of each sequence would remove
+the dataset-specific calibration requirement and produce a method that generalises
+without recalibration.
+
+\paragraph{Global anchor-constrained drift correction.}
+The drift limitation motivates a second post-processing stage applied after Opt. After
+Opt suppresses jitter, static scene anchors are nearly stable across frames, making
+their world-space positions reliably identifiable. The current alignment strategies
+minimise pairwise alignment error sequentially, allowing drift to accumulate along the
+propagation path. A globally coupled optimisation that treats static anchor positions
+as fixed landmarks and solves simultaneously for all per-frame similarity transforms
+would eliminate the sequential propagation structure that allows drift to accumulate.
+Concretely, the objective
+\begin{equation}
+    \min_{\{s_t,\,\mathbf{R}_t,\,\mathbf{t}_t\}}
+    \sum_{a \in \mathcal{A}} \sum_{t=1}^{T}
+    \left\| s_t \mathbf{R}_t \mathbf{x}_a(t) + \mathbf{t}_t
+    - \mathbf{x}_a(1) \right\|_2^2,
+\end{equation}
+where $\mathcal{A}$ is the set of static anchors and $\mathbf{x}_a(1)$ is the
+first-frame anchor position used as a fixed reference, couples every frame to every
+anchor simultaneously. Unlike the Umeyama alignment used in Strategies 1--3, which
+minimises mean squared error across all points, this formulation hard-constrains the
+static anchor positions and leaves no sequential path along which drift can accumulate.
+The approach is structurally equivalent to classical bundle adjustment applied to
+already-reconstructed pointmaps rather than raw image correspondences, and requires no
+additional training data.
+
+\paragraph{Reprojection-error cross-view refinement.}
+After drift correction, the stabilised static anchors and known camera intrinsics
+enable a further refinement stage: minimising cross-view reprojection error to improve
+geometric consistency across cameras. In the 2-view regime, the results of
+Section~\ref{sec:sparse_view} show a substantial performance gap relative to 4 views.
+The spatial foundation models are not trained to produce outputs that agree across
+views; a post-processing stage that penalises reprojection inconsistency could close
+this gap without requiring additional cameras or retraining. Reprojection-based
+refinement is training-free and model-agnostic, and directly addresses the cross-view
+surface alignment problem identified in the original project description as the central
+unsolved challenge of sparse-view reconstruction.
+
+\paragraph{Extension to moving cameras and broader evaluation.}
+This thesis evaluates exclusively on fixed, pre-calibrated camera rigs. Two datasets
+motivate extending the evaluation framework to moving cameras. MultiCamRobolab~\cite{multicamrobolab}
+introduces a real-world multi-camera dataset with ground-truth poses from a motion
+capture system, targeting the setting of multiple freely moving cameras capturing a
+shared dynamic scene. Extending the pipeline to this setting would require integrating
+odometry data into the alignment stage, since the static mask derivation currently uses
+pixel differences between frames and cannot distinguish camera-induced optical flow from
+genuine scene motion. DyCheck~\cite{dycheck} provides a complementary evaluation
+protocol for dynamic view synthesis from monocular video, introducing co-visibility
+masked metrics and correspondence accuracy that overcome the multi-view signal leakage
+present in existing benchmarks. Evaluating on both datasets would establish whether the
+decoupled paradigm generalises beyond the controlled laboratory conditions of DexYCB
+and Hi4D, and identify which components require adaptation for moving-camera or
+single-camera settings.
+
+%% -----------------------------------------------------------------------
+\section{Conclusion}
+\label{sec:conclusion}
+
+This thesis addressed the problem of temporally consistent 4D reconstruction from
+sparse multi-view video. The core challenge, that existing methods achieve either
+geometric fidelity or temporal consistency but not both, is resolved by a decoupled
+paradigm that keeps the two objectives separate and solves each with the appropriate
+tool.
+
+Three contributions support this conclusion. A unified benchmarking framework subjects
+six reconstruction models to identical evaluation conditions across DexYCB and Hi4D,
+producing the first systematic comparison of spatial, geometry-refinement, and native
+4D architectures under controlled sparse-view conditions. A comparative alignment study
+characterises three strategies for lifting per-frame reconstructions into a coherent 4D
+representation, establishing that pairwise hierarchical alignment provides the best
+balance of geometric stability and computational cost. Confidence-Weighted Temporal
+Smoothing eliminates high-frequency jitter entirely and reduces mean jitter by
+60--91\,\% across four spatial backbones, while preserving geometric fidelity, a
+trade-off that native 4D architectures consistently fail to achieve.
+
+The broader finding is that the decoupled paradigm is not a workaround but a
+principled design choice. Geometric accuracy and temporal consistency conflict only
+when temporal constraints are applied globally, penalising motion that is real.
+Separating reconstruction from smoothing, and applying smoothing only where the physics
+of the scene guarantee that consistency is valid, resolves the conflict entirely. The
+results show that a strong per-frame spatial estimator with targeted post-processing
+Pareto-dominates end-to-end joint architectures on the geometry--jitter trade-off at
+every view count evaluated.
+
+The remaining open problem is drift: the slow accumulation of pose estimation errors
+that the low-pass filter cannot correct by design. Addressing drift through globally
+coupled anchor-constrained optimisation, and extending the pipeline to close the
+2-view to 4-view performance gap through reprojection-error refinement, are the natural
+next steps. Both directions build directly on the framework established here and require
+no additional training data, a property that made the current contribution practical
+and that should guide the continuation of this work.
