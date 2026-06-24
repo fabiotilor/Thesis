@@ -106,6 +106,11 @@ def _parse_args():
         default=1.0,
         help="Blending factor for smoothing (0.0=original, 1.0=fully smoothed).",
     )
+    parser.add_argument(
+        "--jitter",
+        action="store_true",
+        help="After reconstruction/alignment, compute and save only jitter/drift metrics.",
+    )
 
     return parser.parse_known_args()[0]
 
@@ -198,7 +203,7 @@ def _target_views_for_nviews(nviews: int, dataset_type="dex-ycb", subject=None):
         return target_views
 
 
-def _run_eval(subject_full: str, view_counts: list[int], dataset_type="dex-ycb", code=None, opt=False):
+def _run_eval(subject_full: str, view_counts: list[int], dataset_type="dex-ycb", code=None, opt=False, jitter=False):
     if dataset_type == "hi4d":
         # Use Hi4D-specific evaluation script; subject_full has the slash format (pair09/hug09)
         cmd = [sys.executable, "evaluate_4D.py", "--data", "hi4d", "--subjects", subject_full, "--views"] + [str(v) for
@@ -209,6 +214,8 @@ def _run_eval(subject_full: str, view_counts: list[int], dataset_type="dex-ycb",
         cmd = [sys.executable, "evaluate_4D.py", "--subjects", code, "--views"] + [str(v) for v in view_counts]
     if opt:
         cmd.append("--opt")
+    if jitter:
+        cmd.append("--jitter")
     print(f"\nRUNNING: {' '.join(cmd)}")
     subprocess.run(cmd, check=True)
 
@@ -233,11 +240,12 @@ def main():
     os.makedirs(cache_root, exist_ok=True)
 
     for subject_full, code in zip(selected_subjects, codes):
-        csv_path = f"eval_summary_{args.data}_{code.replace('/', '_')}.csv"
+        csv_suffix = "_jitter" if args.jitter else ""
+        csv_path = f"eval_summary_{args.data}_{code.replace('/', '_')}{csv_suffix}.csv"
 
         # Only skip if we are doing a full baseline run and the CSV already exists.
         # If we are doing --opt, or evaluating specific views, don't skip so we can append/update the CSV.
-        if os.path.exists(csv_path) and not args.opt and not args.views:
+        if os.path.exists(csv_path) and not args.opt and not args.views and not args.jitter:
             print(f"[INFO] Skipping subject {code} as evaluation results already exist: {csv_path}")
             continue
 
@@ -461,15 +469,16 @@ def main():
 
         print(f"\n[INFO] Evaluating subject {code} across methods/views ...")
         if not args.pgo:
-            _run_eval(subject_full, view_counts, args.data, code=code, opt=args.opt)
+            _run_eval(subject_full, view_counts, args.data, code=code, opt=args.opt, jitter=args.jitter)
 
     # Aggregate results across selected subjects only.
     csv_files = []
     for code in codes:
+        csv_suffix = "_jitter" if args.jitter else ""
         if args.data == "hi4d":
-            csv_path = f"eval_summary_hi4d_{code}.csv"
+            csv_path = f"eval_summary_hi4d_{code}{csv_suffix}.csv"
         else:
-            csv_path = f"eval_summary_{code}.csv"
+            csv_path = f"eval_summary_{code}{csv_suffix}.csv"
         if os.path.exists(csv_path):
             csv_files.append(csv_path)
 
@@ -508,10 +517,11 @@ def main():
     print(aggregated[cols_to_show].to_string(index=False))
 
     # Use dataset-specific aggregated filename
+    csv_suffix = "_jitter" if args.jitter else ""
     if args.data == "hi4d":
-        out_file = "eval_summary_ALL_SUBJECTS_hi4d.csv"
+        out_file = f"eval_summary_ALL_SUBJECTS_hi4d{csv_suffix}.csv"
     else:
-        out_file = "eval_summary_ALL_SUBJECTS.csv"
+        out_file = f"eval_summary_ALL_SUBJECTS{csv_suffix}.csv"
     aggregated.to_csv(out_file, index=False)
     print(f"\n[INFO] Aggregated results saved to {out_file}")
 

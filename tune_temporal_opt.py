@@ -64,6 +64,29 @@ def run_sweep(subject_name, dataset_type, views, base_strategy="strategy2"):
         print("Failed to load frames.")
         return
 
+    all_validity_masks = []
+    for i, data in enumerate(all_data):
+        V, H, W = normalize_spatial_dims(data)
+        t = int(data["frame_idx"])
+        ks = data["Ks"]
+        if 'view_names' in data:
+            view_names = (data['view_names'].tolist()
+                          if hasattr(data['view_names'], 'tolist')
+                          else list(data['view_names']))
+        else:
+            view_names = [
+                discover_view_name(dataset_root, k)
+                for k in ks
+            ]
+        vmasks = build_gt_validity_masks(
+            t, view_names, dataset_root,
+            target_hw=(H, W), dataset_type=dataset_type,
+        )
+        all_validity_masks.append(np.array([
+            vmask if vmask is not None else np.ones((H, W), dtype=bool)
+            for vmask in vmasks
+        ], dtype=bool))
+
     # ── 2. Parameter grid ────────────────────────────────────────────────
     sigmas = [0.5, 1.0, 2.0, 4.0, 6.0, 8.0, 12.0, 20.0, 30.0]
     alphas = [0.2, 0.5, 0.8, 1.0]
@@ -85,7 +108,10 @@ def run_sweep(subject_name, dataset_type, views, base_strategy="strategy2"):
         jitter_results = compute_static_jitter(
             pointmaps_per_frame=list(smoothed_pmaps),
             masks_per_frame=list(all_masks),
-            n_anchors=2000,
+            validity_masks_per_frame=all_validity_masks,
+            confidences_per_frame=list(all_confs) if all_confs is not None else None,
+            conf_percentile=CONF_PERCENTILE,
+            n_anchors=5000,
         )
         jitter_mean = jitter_results.get('jitter_mean', np.nan)
 
@@ -149,26 +175,26 @@ def run_sweep(subject_name, dataset_type, views, base_strategy="strategy2"):
 
     # ── 3. Plot Pareto Frontier ──────────────────────────────────────────
     jitters = [r['jitter'] for r in results]
-    accs    = [r['accuracy'] for r in results]
+    chamfers = [r['chamfer'] for r in results]
     labels  = [f"s={r['sigma']},a={r['alpha']}" if r['sigma'] > 0
                else "Baseline" for r in results]
 
     plt.figure(figsize=(10, 6))
-    plt.scatter(jitters, accs, color='blue')
+    plt.scatter(jitters, chamfers, color='blue')
 
     for i, label in enumerate(labels):
         if "Baseline" in label:
-            plt.scatter([jitters[i]], [accs[i]], color='red', s=100, label='Baseline')
-            plt.annotate("Baseline", (jitters[i], accs[i]),
+            plt.scatter([jitters[i]], [chamfers[i]], color='red', s=100, label='Baseline')
+            plt.annotate("Baseline", (jitters[i], chamfers[i]),
                          xytext=(5, 5), textcoords='offset points',
                          color='red', fontweight='bold')
         else:
-            plt.annotate(label, (jitters[i], accs[i]),
+            plt.annotate(label, (jitters[i], chamfers[i]),
                          xytext=(5, 5), textcoords='offset points', fontsize=8)
 
     plt.title(f'Temporal Optimization Pareto Frontier – {subject_name} {views}views')
     plt.xlabel('Static Jitter (m) ↓')
-    plt.ylabel('Reconstruction Accuracy (%) ↑')
+    plt.ylabel('Chamfer Distance (m) ↓')
     plt.grid(True, linestyle='--', alpha=0.7)
 
     out_plot_dir = os.path.join("plots", "tune_opt")

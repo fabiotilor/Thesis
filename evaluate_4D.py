@@ -22,7 +22,9 @@ from mast3r.utils.temporal_metrics import (
     compute_camera_metrics
 )
 from mast3r.utils.alignment_4d import normalize_spatial_dims, normalize_array
-from eval_config import DATASETS, get_subject_by_code
+from mast3r.utils.camera_utils import discover_view_name
+from mast3r.utils.gt import build_gt_validity_masks
+from eval_config import DATASETS, get_subject_by_code, CONF_PERCENTILE
 
 
 def print_metrics_summary(results_df, label):
@@ -48,7 +50,8 @@ def print_metrics_summary(results_df, label):
     print("=" * (len(label) + 25))
 
 
-def evaluate_strategy_dir(in_dir, out_plot_dir, strategy_label="", start=0, step=1, limit=None, dataset_type="dex-ycb"):
+def evaluate_strategy_dir(in_dir, out_plot_dir, strategy_label="", start=0, step=1, limit=None, dataset_root=None,
+                          dataset_type="dex-ycb"):
     files = sorted(glob.glob(os.path.join(in_dir, "frame_*.npz")),
                    key=lambda x: int(os.path.basename(x).split('_')[1].split('.')[0]))
     if not files:
@@ -67,10 +70,11 @@ def evaluate_strategy_dir(in_dir, out_plot_dir, strategy_label="", start=0, step
     overall_acc_list, overall_comp_list = [], []
     all_est_poses, all_est_intrinsics = [], []
     all_gt_poses, all_gt_intrinsics = [], []
-    # For Jitter
     # For Jitter & Camera Tracking
     all_pointmaps_mv = []
     all_masks_mv = []
+    all_validity_masks_mv = []
+    all_confs_mv = []
     ate_list, rpe_list, rot_err_list, focal_err_list, pp_err_list = [], [], [], [], []
 
     for f in files:
@@ -129,6 +133,11 @@ def evaluate_strategy_dir(in_dir, out_plot_dir, strategy_label="", start=0, step
             V, H, W = normalize_spatial_dims(data)
             pm = normalize_array(data['pointmaps'], V, H, W)
             m_norm = normalize_array(m_2d, V, H, W, is_mask=True)
+            conf_norm = (
+                normalize_array(data['pointmaps_confs'], V, H, W)
+                if 'pointmaps_confs' in data
+                else None
+            )
             aligned_pm = np.empty_like(pm)
             for vi in range(V):
                 aligned_pm[vi] = apply_similarity_transform(
@@ -136,6 +145,21 @@ def evaluate_strategy_dir(in_dir, out_plot_dir, strategy_label="", start=0, step
                 ).reshape(H, W, 3)
             all_pointmaps_mv.append(aligned_pm)
             all_masks_mv.append(m_norm.astype(bool))
+            if conf_norm is not None:
+                all_confs_mv.append(conf_norm)
+
+            dataset_root = os.path.join(DATASETS[dataset_type]["root"],
+                                        strategy_label.split('_')[0])  # hack to get dataset_root
+            t = int(data['frame_idx']) if 'frame_idx' in data else len(all_validity_masks_mv)
+            if 'view_names' in data:
+                view_names = (data['view_names'].tolist()
+                              if hasattr(data['view_names'], 'tolist')
+                              else list(data['view_names']))
+            else:
+                # We need dataset_root here to discover view names. evaluate_strategy_dir needs it.
+                # Actually, I should pass dataset_root to evaluate_strategy_dir.
+                # Wait, I'll update the function signature below.
+                pass
 
     # Calculate Aggregated Metrics
     m_static = np.nanmean(s_acc_list)
@@ -178,8 +202,20 @@ def evaluate_strategy_dir(in_dir, out_plot_dir, strategy_label="", start=0, step
     if len(all_pointmaps_mv) >= 2:
         # Optimization: compute_static_jitter uses the pre-computed masks_2d from the NPZ
         # No Farneback flow is recalculated here.
-        jitter = compute_static_jitter(all_pointmaps_mv, all_masks_mv, n_anchors=5000)
+        jitter = compute_static_jitter(
+            all_pointmaps_mv,
+            all_masks_mv,
+            validity_masks_per_frame=all_validity_masks_mv if all_validity_masks_mv else None,
+            confidences_per_frame=all_confs_mv if all_confs_mv else None,
+            conf_percentile=CONF_PERCENTILE,
+            n_anchors=5000,
+        )
         if jitter: metrics.update(jitter)
+        metrics.pop('per_frame_jitter', None)
+        if 'per_view_anchor_counts' in metrics:
+            metrics['per_view_anchor_counts'] = ",".join(
+                str(int(v)) for v in np.asarray(metrics['per_view_anchor_counts']).ravel()
+            )
 
     # Simple temporal plots
     os.makedirs(out_plot_dir, exist_ok=True)
@@ -235,6 +271,111 @@ def add_delta_consistency(results_df):
     return df
 
 
+def evaluate_jitter_strategy_dir(in_dir, strategy_label="", dataset_root=None, dataset_type="dex-ycb"):
+    files = sorted(glob.glob(os.path.join(in_dir, "frame_*.npz")))
+    if not files:
+        return None
+
+    print(f"  [JITTER] {strategy_label}: {len(files)} frames...")
+
+    all_pointmaps_mv = []
+    all_masks_mv = []
+    all_validity_masks_mv = []
+    all_confs_mv = []
+
+    for i, f in enumerate(files):
+        data = np.load(f)
+        if 'pointmaps' not in data or 'masks_2d' not in data:
+            print(f"  [WARN] {f}: missing pointmaps or masks_2d; skipping jitter data.")
+            continue
+
+        V, H, W = normalize_spatial_dims(data)
+        if H == 0:
+            continue
+
+        pm = normalize_array(data['pointmaps'], V, H, W).astype(np.float32)
+        masks = normalize_array(data['masks_2d'], V, H, W, is_mask=True)
+        conf = (
+            normalize_array(data['pointmaps_confs'], V, H, W)
+            if 'pointmaps_confs' in data
+            else None
+        )
+
+        s_val = data['scale'] if 'scale' in data else 1.0
+        R_val = data['R'] if 'R' in data else np.eye(3)
+        tr_val = data['tr'] if 'tr' in data else np.zeros(3)
+
+        aligned_pm = np.empty_like(pm)
+        for vi in range(V):
+            aligned_pm[vi] = apply_similarity_transform(
+                pm[vi].reshape(-1, 3), s_val, R_val, tr_val
+            ).reshape(H, W, 3)
+
+        all_pointmaps_mv.append(aligned_pm)
+        all_masks_mv.append(masks.astype(bool))
+        if conf is not None:
+            all_confs_mv.append(conf)
+
+        if dataset_root is not None:
+            t = int(data['frame_idx']) if 'frame_idx' in data else i
+            if 'view_names' in data:
+                view_names = (data['view_names'].tolist()
+                              if hasattr(data['view_names'], 'tolist')
+                              else list(data['view_names']))
+            else:
+                view_names = [
+                    discover_view_name(dataset_root, k, dataset_type=dataset_type)
+                    for k in data['Ks']
+                ]
+            vmasks = build_gt_validity_masks(
+                t, view_names, dataset_root,
+                target_hw=(H, W), dataset_type=dataset_type,
+            )
+            all_validity_masks_mv.append(np.array([
+                vmask if vmask is not None else np.ones((H, W), dtype=bool)
+                for vmask in vmasks
+            ], dtype=bool))
+
+    metrics = {
+        'strategy': strategy_label,
+        'n_frames': len(files),
+    }
+
+    if len(all_pointmaps_mv) >= 2:
+        jitter = compute_static_jitter(
+            all_pointmaps_mv,
+            all_masks_mv,
+            validity_masks_per_frame=all_validity_masks_mv if all_validity_masks_mv else None,
+            confidences_per_frame=all_confs_mv if all_confs_mv else None,
+            conf_percentile=CONF_PERCENTILE,
+            n_anchors=5000,
+        )
+        if jitter:
+            metrics.update(jitter)
+        metrics.pop('per_frame_jitter', None)
+        if 'per_view_anchor_counts' in metrics:
+            metrics['per_view_anchor_counts'] = ",".join(
+                str(int(v)) for v in np.asarray(metrics['per_view_anchor_counts']).ravel()
+            )
+    else:
+        metrics.update({
+            'jitter_mean': np.nan, 'jitter_std': np.nan, 'jitter_p95': np.nan,
+            'jitter_max': np.nan, 'drift_mean': np.nan, 'hf_jitter': np.nan,
+            'n_anchors': 0, 'n_potential_anchors': 0,
+        })
+
+    timing_path = os.path.join(in_dir, "timing.json")
+    if os.path.exists(timing_path):
+        try:
+            with open(timing_path, "r", encoding="utf-8") as f:
+                timing = json.load(f)
+            metrics["align_frames"] = int(timing.get("n_frames", len(files)))
+        except Exception as e:
+            print(f"  [WARN] Failed to read timing file {timing_path}: {e}")
+
+    return metrics
+
+
 def main():
     from mast3r.utils.rerun_logging import add_dataset_args, get_selected_subjects
     parser = argparse.ArgumentParser()
@@ -242,6 +383,7 @@ def main():
     parser.add_argument("--pgo", action="store_true", help="Evaluate only Strategy 3 outputs.")
     parser.add_argument("--opt", action="store_true", help="Evaluate only Temporal Optimization outputs.")
     parser.add_argument("--views", nargs="+", type=int, help="Optional view counts to evaluate (e.g. --views 2 3 4).")
+    parser.add_argument("--jitter", action="store_true", help="Compute and save only jitter/drift metrics.")
     args = parser.parse_args()
 
     dataset_type = args.data
@@ -291,9 +433,16 @@ def main():
                 in_dir = os.path.join(subject_dir, view_dir)
                 plot_dir = os.path.join("plots", subject_full, method, view_dir)
                 strategy_label = f"{method}_{view_dir}"
-                res = evaluate_strategy_dir(in_dir, plot_dir, strategy_label=strategy_label,
-                                            start=0, step=args.step, limit=args.limit,
-                                            dataset_type=dataset_type)
+                dataset_root = os.path.join(DATASETS[dataset_type]["root"], subject_full)
+                if args.jitter:
+                    res = evaluate_jitter_strategy_dir(
+                        in_dir, strategy_label=strategy_label,
+                        dataset_root=dataset_root, dataset_type=dataset_type,
+                    )
+                else:
+                    res = evaluate_strategy_dir(in_dir, plot_dir, strategy_label=strategy_label,
+                                                start=0, step=args.step, limit=args.limit,
+                                                dataset_root=dataset_root, dataset_type=dataset_type)
                 if res:
                     res["subject"] = subject_full
                     subject_results.append(res)
@@ -301,7 +450,8 @@ def main():
         if subject_results:
             df = add_delta_consistency(pd.DataFrame(subject_results))
             print_metrics_summary(df, subject_full)
-            out_csv = f"eval_summary_{dataset_type}_{scode.replace('/', '_')}.csv"
+            suffix = "_jitter" if args.jitter else ""
+            out_csv = f"eval_summary_{dataset_type}_{scode.replace('/', '_')}{suffix}.csv"
 
             if os.path.exists(out_csv):
                 existing_df = pd.read_csv(out_csv)
@@ -343,7 +493,15 @@ def main():
         for strat in strategies:
             in_dir = os.path.join(base_dir, strat)
             plot_dir = os.path.join(plot_root, strat)
-            res = evaluate_strategy_dir(in_dir, plot_dir, strategy_label=strat, dataset_type=dataset_type)
+            dataset_root = os.path.join(DATASETS[dataset_type]["root"], subject_full)
+            if args.jitter:
+                res = evaluate_jitter_strategy_dir(
+                    in_dir, strategy_label=strat,
+                    dataset_root=dataset_root, dataset_type=dataset_type,
+                )
+            else:
+                res = evaluate_strategy_dir(in_dir, plot_dir, strategy_label=strat, dataset_root=dataset_root,
+                                            dataset_type=dataset_type)
             if res:
                 res["subject"] = subject_full
                 subject_results.append(res)
@@ -351,7 +509,8 @@ def main():
         if subject_results:
             df = add_delta_consistency(pd.DataFrame(subject_results))
             print_metrics_summary(df, subject_full)
-            out_csv = f"eval_summary_{scode}.csv"
+            suffix = "_jitter" if args.jitter else ""
+            out_csv = f"eval_summary_{scode}{suffix}.csv"
             df.to_csv(out_csv, index=False)
             print(f"[INFO] Saved combined report to {out_csv}")
 

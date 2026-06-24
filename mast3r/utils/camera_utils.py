@@ -5,7 +5,7 @@ import numpy as np
 _CAMERA_CACHE = {}
 
 
-def build_camera_intrinsics_cache(dataset_root):
+def build_camera_intrinsics_cache(dataset_root, dataset_type="dex-ycb"):
     """
     Builds a mapping from (rounded) K.flatten() to the folder name (e.g. 'view_01').
     """
@@ -18,9 +18,29 @@ def build_camera_intrinsics_cache(dataset_root):
     hi4d_cameras = os.path.join(dataset_root, "cameras", "rgb_cameras.npz")
     if os.path.exists(hi4d_cameras):
         data = np.load(hi4d_cameras)
-        # Hi4D: intrinsics are (3, 3) in 'intrinsic' key, one per camera
-        intrinsics = data['intrinsic']  # (C, 3, 3)
-        cam_ids = [str(cid) for cid in data['ids']]
+        print(f"  [DEBUG] Hi4D camera file keys: {list(data.keys())}")
+
+        # Hi4D: try different possible key names for intrinsics
+        if 'intrinsic' in data:
+            intrinsics = data['intrinsic']  # (C, 3, 3)
+        elif 'intrinsics' in data:
+            intrinsics = data['intrinsics']  # (C, 3, 3)
+        elif 'K' in data:
+            intrinsics = data['K']  # (C, 3, 3)
+        else:
+            print(f"  [ERROR] No intrinsics found in Hi4D camera file: {hi4d_cameras}")
+            return {}
+
+        # Try different possible key names for camera IDs
+        if 'ids' in data:
+            cam_ids = [str(cid) for cid in data['ids']]
+        elif 'cam_ids' in data:
+            cam_ids = [str(cid) for cid in data['cam_ids']]
+        else:
+            print(f"  [ERROR] No camera IDs found in Hi4D camera file: {hi4d_cameras}")
+            return {}
+
+        print(f"  [DEBUG] Found {len(cam_ids)} Hi4D cameras: {cam_ids}")
         for i, cid in enumerate(cam_ids):
             key = tuple(np.round(intrinsics[i].flatten(), decimals=3))
             cache[key] = cid
@@ -43,7 +63,7 @@ def build_camera_intrinsics_cache(dataset_root):
         # but optimized for the general case.
         from mast3r.utils.gt import load_gt_params
         try:
-            K, _ = load_gt_params(subdir)
+            K, _ = load_gt_params(subdir, dataset_type=dataset_type)
             key = tuple(np.round(K.flatten(), decimals=3))
             cache[key] = vname
         except:
@@ -53,11 +73,11 @@ def build_camera_intrinsics_cache(dataset_root):
     return cache
 
 
-def discover_view_name(dataset_root, K):
+def discover_view_name(dataset_root, K, dataset_type="dex-ycb"):
     """
     Given an intrinsic matrix K, return the folder name (e.g. 'view_01').
     """
-    cache = build_camera_intrinsics_cache(dataset_root)
+    cache = build_camera_intrinsics_cache(dataset_root, dataset_type=dataset_type)
     key = tuple(np.round(K.flatten(), decimals=3))
     return cache.get(key)
 
@@ -73,13 +93,15 @@ def get_rgb_path(view_dir: str, frame_t: int) -> str | None:
             p = os.path.join(rgb_dir, f"{frame_t:0{pad}d}{ext}")
             if os.path.exists(p):
                 return p
+
+
 def remove_outliers(pts, nb_neighbors=20, std_ratio=1.0, return_mask=False):
     """
     Removes sparse noise/floaters using statistical outlier removal.
     """
     if pts is None or len(pts) < nb_neighbors:
         if return_mask:
-             return pts, np.ones(len(pts), dtype=bool) if pts is not None else None
+            return pts, np.ones(len(pts), dtype=bool) if pts is not None else None
         return pts
     try:
         from scipy.spatial import cKDTree

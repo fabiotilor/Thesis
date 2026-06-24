@@ -4,11 +4,11 @@ Aggregate eval_summary_dex-ycb_XX.csv files (subjects 01–10) into a
 single mean / mean±std table.
 
 Derived quantities (motion_gap, delta_consistency) are recomputed from
-the aggregated means rather than averaged directly.
+the aggregated means only if the required columns are present.
 
 Usage:
     python aggregate_evals.py
-    python aggregate_evals.py --pattern "eval_summary_dex-ycb_*.csv"
+    python aggregate_evals.py --pattern "eval_summary_dex-ycb_*_jitter.csv"
     python aggregate_evals.py --pattern "eval_summary_hi4d_*.csv"
 """
 
@@ -35,11 +35,7 @@ def is_baseline_label(label: str) -> bool:
 def add_delta_consistency(df: pd.DataFrame) -> pd.DataFrame:
     """
     Δconsistency = chamfer(strategy) − chamfer(baseline), matched per view-count.
-    Supports both:
-      - new labels : baseline_2views, strategy1_2views, …
-      - legacy labels: 2views, Strategy_1_2views, …
-    Should be called on the *aggregated* mean DataFrame so the difference
-    is computed from averaged chamfer values, not averaged deltas.
+    Only computed if column 'chamfer' exists.
     """
     if df.empty or "strategy" not in df.columns or "chamfer" not in df.columns:
         return df
@@ -68,11 +64,12 @@ def add_delta_consistency(df: pd.DataFrame) -> pd.DataFrame:
     return df
 
 
-# ── Columns that must never be averaged directly ──────────────────────────────
+# ── Columns that must never be averaged directly ─────────────────────────────
 # They are either metadata or derived from other averaged columns.
 NON_AGG = {"strategy", "n_frames", "subject",
            "per_frame_jitter", "delta_consistency", "motion_gap"}
 
+# Possible metrics (printed in this order if present)
 PRINT_ORDER = [
     "chamfer", "delta_consistency",
     "completeness", "static_comp", "dyn_comp",
@@ -81,11 +78,12 @@ PRINT_ORDER = [
     "ate", "rpe", "rot_error", "focal_error", "pp_error",
     "jitter_mean", "jitter_std", "jitter_p95", "jitter_max",
     "drift_mean", "hf_jitter",
-    "n_anchors", "align_frames",
+    "n_anchors", "n_potential_anchors",
+    "align_frames",
 ]
 
 
-# ── Main ──────────────────────────────────────────────────────────────────────
+# ── Main ─────────────────────────────────────────────────────────────────────
 
 def aggregate(pattern: str) -> None:
     files = sorted(glob.glob(pattern))
@@ -102,6 +100,9 @@ def aggregate(pattern: str) -> None:
 
     # Drop columns that cannot or should not be aggregated
     drop = [c for c in combined.columns if c in NON_AGG - {"strategy", "n_frames"}]
+    # Also drop non‑numeric string columns like per_view_anchor_counts
+    extra_drop = ["per_view_anchor_counts"]
+    drop += [c for c in extra_drop if c in combined.columns]
     combined.drop(columns=drop, errors="ignore", inplace=True)
 
     # Coerce everything except strategy/n_frames to numeric
@@ -129,7 +130,13 @@ def aggregate(pattern: str) -> None:
     mean_df = n_frames.merge(mean_df, on="strategy")
 
     # ── Recompute derived quantities from aggregated means ────────────────
-    mean_df["motion_gap"] = mean_df["static_acc"] - mean_df["dyn_acc"]
+    # motion_gap = static_acc - dyn_acc  (only if both columns exist)
+    if "static_acc" in mean_df.columns and "dyn_acc" in mean_df.columns:
+        mean_df["motion_gap"] = mean_df["static_acc"] - mean_df["dyn_acc"]
+    else:
+        mean_df["motion_gap"] = np.nan
+
+    # delta_consistency is computed inside add_delta_consistency (only if chamfer exists)
     mean_df = add_delta_consistency(mean_df)
 
     # std of derived quantities requires error propagation — leave as NaN
@@ -146,6 +153,7 @@ def aggregate(pattern: str) -> None:
     print(header)
     print("─" * len(header))
 
+    # Only print columns that are actually in the aggregated DataFrame
     print_cols = [c for c in PRINT_ORDER if c in mean_df.columns]
     for col in print_cols:
         if mean_df[col].isna().all():
@@ -160,7 +168,8 @@ def aggregate(pattern: str) -> None:
             if pd.isna(mu):
                 cell = "—"
             elif pd.isna(sd) or col in ("motion_gap", "delta_consistency",
-                                         "n_frames", "n_anchors", "align_frames"):
+                                         "n_frames", "n_anchors", "n_potential_anchors",
+                                         "align_frames"):
                 cell = f"{mu:.5f}"
             else:
                 cell = f"{mu:.5f} ± {sd:.5f}"
@@ -178,8 +187,10 @@ def aggregate(pattern: str) -> None:
         if col in std_df.columns:
             std_vals = std_df.set_index("strategy")[col]
             merged[f"{col}_std"] = merged["strategy"].map(std_vals)
-    merged["motion_gap_std"]        = np.nan
-    merged["delta_consistency_std"] = np.nan
+    # Add std columns for derived quantities (always NaN because not error‑propagated)
+    for col in ["motion_gap", "delta_consistency"]:
+        if col in merged.columns:
+            merged[f"{col}_std"] = np.nan
     merged_out = "eval_aggregate_mean_std.csv"
     merged.to_csv(merged_out, index=False, float_format="%.6f")
 

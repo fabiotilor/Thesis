@@ -2,7 +2,6 @@ import numpy as np
 import os
 import cv2
 from .camera_utils import get_rgb_path, remove_outliers
-from dust3r.utils.device import to_numpy
 from eval_config import CONF_PERCENTILE, CLEAN_DEPTH
 
 DEPTH_MAX_M = 1.5
@@ -126,6 +125,7 @@ def build_gt_pointcloud(t, view_names, dataset_root, dataset_type="dex-ycb"):
 
 
 def get_camera_correspondences(t, view_names, scene, dataset_root, dataset_type="dex-ycb"):
+    from dust3r.utils.device import to_numpy
     est_positions, gt_positions = [], []
     im_poses = scene.get_im_poses()
     for i, vname in enumerate(view_names):
@@ -244,6 +244,7 @@ from eval_config import CONF_PERCENTILE
 def get_static_correspondences(t, view_names, scene, dataset_root, conf_percentile=CONF_PERCENTILE,
                                precomputed_masks=None, use_static_mask=True, dataset_type="dex-ycb",
                                return_per_view=False):
+    from dust3r.utils.device import to_numpy
     if dataset_type == "hi4d":
         return _get_correspondences_hi4d(t, view_names, scene, dataset_root, conf_percentile=conf_percentile,
                                          return_per_view=return_per_view)
@@ -354,6 +355,7 @@ def _get_correspondences_hi4d(t, view_names, scene, dataset_root, conf_percentil
     """
     Hi4D specific: Projects GT mesh into each view and finds correspondences.
     """
+    from dust3r.utils.device import to_numpy
     from .camera_utils import get_rgb_path, remove_outliers
     # 1. Load GT points (meshes)
     gt_pts = _load_hi4d_mesh_gt(dataset_root, t)
