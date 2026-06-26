@@ -2,8 +2,10 @@
 
 Recovering the three-dimensional structure of a dynamic scene from visual observations is a
 foundational challenge in computer vision, with direct implications for robotics and
-autonomous navigation~\cite{hartley2004multiple}. Sparse-view settings---where only two to
-four cameras observe the scene---are particularly demanding: limited overlap, short baselines,
+autonomous navigation~\cite{hartley2004multiple}. When observations span a temporal
+sequence, the problem extends to 4D reconstruction. This requires recovering geometry that is not only
+spatially accurate per frame, but also consistent across time. Sparse-view settings, which in this thesis features only two to
+four cameras observing the scene, are particularly demanding. In these scenarios, limited overlap, short baselines,
 and textureless surfaces cause classical Structure-from-Motion pipelines to fail outright or
 produce drift-prone geometry unsuitable for downstream tasks such as grasping, object
 tracking, and robotic manipulation~\cite{schoenberger2016sfm, hartley2004multiple}.
@@ -28,9 +30,7 @@ two-to-four view configurations, and MonoFusion produces duplicated subject arte
 than coherent reconstructions under the same conditions.
 
 No existing approach simultaneously achieves geometric fidelity and temporal consistency
-under sparse-view dynamic conditions. The core challenge is not that these two properties
-conflict, but that existing methods apply temporal constraints globally, penalising dynamic
-regions where motion is real and should be preserved.
+under sparse-view dynamic conditions. The core challenge is that existing methods enforce temporal consistency globally within the core reconstruction loop. Whether through early attention-masking or global affine alignment, treating the sequence as a single optimization problem forces a trade-off: it penalizes real dynamic motion, ultimately sacrificing the frame-level geometric fidelity that spatial foundation models naturally provide.
 
 Motivated by this observation, this thesis proposes a decoupled paradigm: take a strong
 per-frame spatial estimator, align its outputs into a common coordinate frame through a
@@ -55,17 +55,19 @@ The main contributions of this thesis are:
         distance, accuracy, completeness, temporal jitter, drift, and camera pose error
         (see \Cref{c:experimental_setup}).
 
-  \item \textbf{Comparative Temporal Alignment Study.}
-        Three strategies for lifting per-frame reconstructions into a globally consistent 4D
-        representation are analysed and compared, characterising their trade-offs between
-        geometric fidelity and temporal consistency (see \Cref{sec:alignment_strategies}).
+\item \textbf{Comparative Temporal Alignment Study.}
+        Three graph-based strategies for lifting independent per-frame 3D reconstructions 
+        into a unified, sequence-level 4D coordinate system are evaluated. The study 
+        characterises how these alignment strategies impact the underlying model's 
+        geometric reconstruction quality by isolating the structural distortion 
+        introduced purely by temporal registration ($\Delta_{\text{consistency}}$) (see \Cref{sec:alignment_strategies}).
 
-  \item \textbf{Confidence-Weighted Temporal Smoothing.}
-        A training-free post-processing method reduces frame-to-frame instability for any
-        per-frame estimator by applying confidence-weighted Gaussian smoothing exclusively
-        to static regions, leaving dynamic pixels untouched. The method achieves jitter
-        comparable to native 4D architectures while retaining the geometric fidelity of the
-        underlying per-frame estimator---a trade-off that native 4D architectures
-        consistently fail to match (see \Cref{sec:opt}).
+\item \textbf{Confidence-Weighted Temporal Smoothing.}
+    A training-free post-processing method reduces frame-to-frame instability for any
+    model that produces dense per-frame pointmaps by applying confidence-weighted
+    Gaussian smoothing exclusively to static regions, leaving dynamic pixels untouched.
+    The method achieves jitter comparable to native 4D architectures while retaining
+    the geometric fidelity of the underlying per-frame estimator---a trade-off that
+    native 4D architectures consistently fail to match (see \Cref{sec:opt}).
 
 \end{itemize}

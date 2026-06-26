@@ -55,25 +55,59 @@ Section~\ref{sec:datasets}.
 
 \begin{figure}[t]
 \centering
-\begin{subfigure}[b]{0.48\textwidth}
+
+% Left group
+\begin{minipage}[b]{0.65\textwidth}
     \centering
-    \includegraphics[width=\textwidth]{figures/farneback_07}
-    \caption{Farnebäck optical flow prior}
-    \label{fig:mask_farneback}
-\end{subfigure}
+
+    \begin{minipage}[b]{0.48\linewidth}
+        \centering
+        \includegraphics[
+            width=\linewidth,
+            trim=160 100 0 0,
+            clip
+        ]{figures/difference_mask}
+
+        \vspace{1mm}
+        \small (a) i) Pixel-difference
+    \end{minipage}
+    \hfill
+    \begin{minipage}[b]{0.48\linewidth}
+        \centering
+        \includegraphics[
+            width=\linewidth,
+            trim=160 100 0 0,
+            clip
+        ]{figures/sam2_07}
+
+        \vspace{1mm}
+        \small (a) ii) SAM2-refined
+    \end{minipage}
+
+\end{minipage}
 \hfill
-\begin{subfigure}[b]{0.48\textwidth}
+% Right image
+\begin{minipage}[b]{0.32\textwidth}
     \centering
-    \includegraphics[width=\textwidth]{figures/sam2_07}
-    \caption{SAM2-refined mask}
-    \label{fig:mask_sam2}
-\end{subfigure}
-\caption{Comparison of two static masks on a DexYCB frame. (a) Farnebäck optical
-flow~\cite{farneback2003two} produces a fragmented mask with scattered noise pixels and
-holes within the moving subject. (b) The frame-wise pixel-difference prior, refined by
-SAM2~\cite{sam2}, yields a coherent segmentation covering the full extent of the hand and
-object, including textureless regions that the raw difference signal alone fails to
-capture. Black denotes dynamic pixels excluded from static correspondences.}
+    \includegraphics[
+        width=\linewidth,
+        trim=160 100 0 0,
+        clip
+    ]{figures/farneback_07}
+
+    \vspace{1mm}
+    \small (b) Farnebäck optical flow
+\end{minipage}
+\caption{Static mask derivation on a DexYCB frame. (a) i) The raw frame-wise
+pixel-difference prior flags regions of substantial change between consecutive
+frames, but produces a fragmented signal with noise and holes within the moving
+subject. (a) ii) SAM2~\cite{sam2} propagates this prior into a coherent
+segmentation covering the full extent of the hand and object, including
+textureless regions that the raw difference signal alone fails to capture.
+(b) Farnebäck optical flow~\cite{farneback2003two} produces a similarly
+fragmented mask, motivating the use of the simpler pixel-difference prior
+refined by SAM2 rather than a dedicated optical flow estimator. Black denotes
+dynamic pixels excluded from static correspondences.}
 \label{fig:static_mask_derivation}
 \end{figure}
 
@@ -89,7 +123,7 @@ pairwise alignments and combines them through global optimisation. Each strategy
 \centering
 \includegraphics[width=\textwidth]{figures/strategies_figure_cropped}
 \caption{The three temporal alignment strategies. (a) Strategy 1: Reference Frame. Every frame
-$t_i$ is aligned directly to the reference frame $t_0$ using static correspondences.
+$t_i$ is aligned directly to the reference frame $t_0$.
 (b) Strategy 2: Hierarchical Alignment. Frames are merged pairwise in a binary tree, with each
 level combining adjacent pairs until all frames share a single coordinate system.
 (c) Strategy 3: Alignment Graph. All $\mathcal{O}(T^2)$ pairwise alignments are estimated and
@@ -146,30 +180,34 @@ combined using the Weiszfeld algorithm for geodesic L1 averaging on $\mathrm{SO}
 strategy to down-weight outlying pairwise alignments rather than letting them corrupt the
 global solution. The procedure is run for a fixed number of iterations (default 50).
 
-By propagating information across many pairwise edges rather than a single path, the
-alignment graph strategy is the most robust of the three to individually unreliable alignments.
-The robustness comes at the cost of $\mathcal{O}(T^2)$ pairwise alignment computations,
-making it the slowest of the three strategies.
+By propagating information across many pairwise edges rather than a single path,
+the alignment graph strategy is theoretically the most robust of the three to
+individually unreliable alignments, at the cost of $\mathcal{O}(T^2)$ pairwise
+alignment computations. In practice, differences across strategies are
+statistically insignificant, as discussed in Section~\ref{sec:alignment_comparison}.
 
 \subsection{Sequence-level Alignment}
 \label{sec:sequence_alignment}
-
-After any of the three strategies brings all frames into a shared coordinate system, the
-resulting per-frame point clouds are concatenated, as are the corresponding ground-truth
-frames. A final Umeyama alignment registers the concatenated reconstruction to the
-concatenated ground truth, producing the sequence-level metrics reported in
-Chapter~\ref{c:results}.
+After any of the three strategies brings all frames into a shared coordinate
+system, the resulting per-frame point clouds are concatenated, as are the
+corresponding ground-truth frames. A final Umeyama alignment registers the
+concatenated reconstruction to the concatenated ground truth. All sequence-level
+metrics reported in Chapter~\ref{c:results} are computed from this final aligned
+representation.
 
 %% -----------------------------------------------------------------------
 \section{Confidence-Weighted Temporal Smoothing (Opt)}
 \label{sec:opt}
 
-Temporal alignment produces a geometrically coherent sequence, but residual per-frame
-reconstruction noise still causes static scene points to drift slightly from one frame to
-the next. Opt is a lightweight, training-free post-processing step that suppresses this
-residual jitter directly, without modifying dynamic content. Opt operates on the output of
-Strategy 2, chosen as the alignment basis because it produces the most stable
-sequence-level geometry among the three strategies evaluated in Chapter~\ref{c:results}.
+Temporal alignment produces a geometrically coherent sequence, but residual
+per-frame reconstruction noise still causes static scene points to drift slightly
+from one frame to the next. Opt is a lightweight, training-free post-processing
+step that suppresses this residual jitter directly, without modifying dynamic
+content. Opt operates on the output of Strategy 2, chosen as the alignment
+basis because its $\mathcal{O}(T \log T)$ complexity and consistent performance
+across all four backbones make it the more practical foundation than Strategy 3,
+whose $\mathcal{O}(T^2)$ pairwise alignment cost offers no proportionate geometric
+benefit, as discussed in Chapter~\ref{c:results}.
 
 \subsection{Method}
 \label{sec:opt_method}
@@ -213,23 +251,41 @@ evaluation data.
 \label{sec:opt_parameters}
 
 The optimal values of $\sigma$ and $\alpha$ depend on the baseline jitter of the
-underlying backbone: a backbone with higher per-frame instability benefits from a wider
-temporal window. Parameters are selected per backbone by sweeping
-$\sigma \in \{0.5, 1, 2, 4, 6, 8, 12, 20, 30\}$ and $\alpha \in \{0.2, 0.5, 0.8, 1.0\}$,
-and measuring the resulting trade-off between jitter reduction and geometric fidelity
-relative to the unsmoothed Strategy 2 output. The sweep traces a Pareto frontier between
-temporal stability and reconstruction accuracy, reported in full in Chapter~\ref{c:results},
-from which a single operating point is selected per backbone.
+underlying backbone: a backbone with higher per-frame instability benefits from a
+wider temporal window. Parameters are selected per backbone by sweeping
+$\sigma \in \{0.5, 1, 2, 4, 6, 8, 12, 20, 30\}$ and
+$\alpha \in \{0.2, 0.5, 0.8, 1.0\}$, and measuring the resulting trade-off
+between jitter reduction and geometric fidelity relative to the unsmoothed
+Strategy 2 output. Figure~\ref{fig:metric_profiles} shows the metric profiles
+for PI3, illustrating how increasing $\sigma$ reduces mean jitter monotonically
+while simultaneously increasing Chamfer distance and reducing accuracy, with
+higher $\alpha$ amplifying both effects. A single operating point per backbone
+is selected from this sweep.
 
-The selected configurations are $\sigma = 6$, $\alpha = 1.0$ for MASt3R-SfM, while
-all other evaluated models (PI3, PI3X, and VGGT) share a configuration of $\sigma = 4$, $\alpha = 1.0$.
-MASt3R-SfM requires the widest temporal window, consistent with it exhibiting the highest
-baseline jitter of the four backbones at every camera count evaluated.
+\begin{figure}[!htb]
+\centering
+\includegraphics[width=\textwidth]{figures/metric_profiles}
+\caption{Metric profiles for PI3 as a function of $\sigma$ for each value of
+$\alpha$, averaged over all subjects and view counts. Increasing $\sigma$ reduces
+mean jitter monotonically but raises Chamfer distance and lowers accuracy, with
+higher $\alpha$ amplifying both effects. The red circle marks the selected
+operating point $\sigma = 4$, $\alpha = 1.0$, chosen where jitter reduction is
+substantial but geometric degradation remains limited.}
+\label{fig:metric_profiles}
+\end{figure}
 
-These per-backbone configurations represent a single operating point on the Pareto frontier
-and do not account for variation within a backbone. Individual subjects within a dataset
-exhibit at least two distinct jitter profiles that would each benefit from different
-$\sigma$ and $\alpha$ values, so a globally fixed configuration is necessarily a
-compromise. Selecting $\sigma$ and $\alpha$ at run time, or calibrating them on a broader
-dataset, would likely improve on the configurations reported here; this direction is
-discussed further in Chapter~\ref{c:discussion}.
+\FloatBarrier
+
+The selected configurations are $\sigma = 6$, $\alpha = 1.0$ for MASt3R-SfM,
+while all other evaluated models (PI3, PI3X, and VGGT) share a configuration
+of $\sigma = 4$, $\alpha = 1.0$. MASt3R-SfM requires the widest temporal
+window, consistent with it exhibiting the highest baseline jitter of the four
+backbones at every camera count evaluated.
+
+These per-backbone configurations represent a single operating point and do not
+account for variation within a backbone. Individual subjects within a dataset
+exhibit distinct jitter profiles that would each benefit from different
+$\sigma$ and $\alpha$ values, so a globally fixed configuration is necessarily
+a compromise. Selecting $\sigma$ and $\alpha$ at run time, or calibrating them
+on a broader dataset, would likely improve on the configurations reported here;
+this direction is discussed further in Chapter~\ref{c:discussion}.

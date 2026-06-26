@@ -1,7 +1,7 @@
 \chapter{Literature Review and Background}
 \label{c:background}
 
-This chapter reviews the theoretical and technical foundations underlying the reconstruction pipelines evaluated throughout this thesis. Section~\ref{sec:sfm_mvs_foundations} introduces classical Structure-from-Motion (SfM) and Multi-View Stereo (MVS) methods, highlighting both their strengths and their limitations under sparse-view conditions. Section~\ref{sec:foundation_models} surveys recent foundation models for 3D vision, grouped according to their treatment of spatial and temporal information. Section~\ref{sec:sam2_background} describes the Segment Anything Model 2 (SAM2), which is used throughout this work to distinguish static and dynamic scene regions. Finally, Section~\ref{sec:math_background} presents the mathematical concepts required for the proposed alignment and temporal smoothing framework, including similarity transformations, rotation averaging on $\mathrm{SO}(3)$, robust geodesic averaging, and geometric evaluation metrics.
+This chapter reviews the theoretical and technical foundations underlying the reconstruction pipelines evaluated throughout this thesis. Section~\ref{sec:sfm_mvs_foundations} introduces classical Structure-from-Motion (SfM) and Multi-View Stereo (MVS) methods, highlighting both their strengths and their limitations under sparse-view conditions. Section~\ref{sec:foundation_models} surveys recent foundation models for 3D vision, grouped according to their treatment of spatial and temporal information. Section~\ref{sec:sam2_background} describes the Segment Anything Model 2 (SAM2), which is used throughout this work to distinguish static and dynamic scene regions. Finally, Section~\ref{sec:math_background} presents the mathematical concepts required for the proposed alignment, including similarity transformations, rotation averaging on $\mathrm{SO}(3)$, robust geodesic averaging, and geometric evaluation metrics.
 
 \section{Structure-from-Motion and Multi-View Stereo Foundations}
 \label{sec:sfm_mvs_foundations}
@@ -30,16 +30,39 @@ The models evaluated in this thesis are grouped into three architectural familie
 Spatial reconstruction models focus on recovering accurate scene geometry from a set of observations without explicitly modelling temporal evolution. Their primary objective is geometric reconstruction, with camera poses, depth, or pointmaps inferred directly from one or more images using learned geometric priors. While these models can be applied independently to each frame of a video sequence, they provide no mechanism for enforcing temporal consistency across successive reconstructions.
 
 \paragraph{MASt3R-SfM.}
-
-MASt3R-SfM~\cite{mast3rsfm} is a hybrid reconstruction pipeline that combines learned geometric reasoning with classical SfM optimisation. The approach builds upon DUSt3R~\cite{dust3r}, which introduced dense pointmap regression as an alternative to traditional depth estimation and triangulation, and MASt3R~\cite{mast3r}, which further improved robustness by grounding image matching directly in predicted three-dimensional geometry. MASt3R-SfM integrates these learned representations into a complete SfM pipeline, using geometry-aware correspondences to initialise camera poses and scene structure before applying global optimisation. By combining learned matching with bundle adjustment, the system achieved strong performance on challenging unconstrained reconstruction benchmarks while retaining the geometric consistency advantages of classical SfM.
+MASt3R-SfM~\cite{mast3rsfm} is a hybrid reconstruction pipeline that combines learned
+geometric reasoning with classical SfM optimisation. The approach builds upon
+DUSt3R~\cite{dust3r}, which introduced dense pointmap regression as an alternative to
+traditional depth estimation and triangulation, and MASt3R~\cite{mast3r}, which further
+improved robustness by grounding image matching directly in predicted three-dimensional
+geometry. Both DUSt3R and MASt3R operate on image pairs: given two views, the model
+regresses a dense pointmap for each, expressed in the coordinate frame of the first.
+MASt3R-SfM integrates these pairwise predictions into a complete SfM pipeline, using
+geometry-aware correspondences to initialise camera poses and scene structure before
+applying global bundle adjustment. By combining learned pairwise matching with classical
+global optimisation, the system achieved strong performance on challenging unconstrained
+reconstruction benchmarks while retaining the geometric consistency advantages of
+classical SfM.
 
 \paragraph{VGGT.}
-
-VGGT~\cite{vggt} (Visual Geometry Grounded Transformer) represents a further step toward fully end-to-end geometric reasoning. Rather than predicting isolated pairwise reconstructions, VGGT processes multiple views jointly using a transformer architecture trained to recover cameras, depth, and scene structure within a unified framework. By learning global geometric relationships directly from large-scale data, VGGT reduces dependence on handcrafted reconstruction stages and achieves strong performance across a wide variety of reconstruction tasks. Its architecture reflects a broader trend toward general-purpose geometric foundation models capable of solving multiple three-dimensional vision problems within a single learned representation.
-
+VGGT~\cite{vggt} (Visual Geometry Grounded Transformer) moves beyond pairwise reasoning
+by processing all input views jointly within a single forward pass. Rather than
+accumulating pairwise predictions through a subsequent optimisation stage, VGGT uses a
+transformer architecture trained to recover cameras, depth, and scene structure from
+multiple images simultaneously, learning global geometric relationships directly from
+large-scale data. This design reduces dependence on handcrafted reconstruction stages
+and achieves strong performance across a wide variety of reconstruction tasks. Its
+architecture reflects a broader trend toward general-purpose geometric foundation models
+capable of solving multiple three-dimensional vision problems within a single learned
+representation.
 \paragraph{PI3 and PI3X.}
 
-PI3~\cite{pi3} introduces a reference-free formulation of visual geometry reconstruction that removes the need for a designated anchor image. Using a fully permutation-equivariant architecture, the model jointly predicts camera poses and dense point maps from an unordered set of images, making reconstruction inherently robust to input ordering and reference-view selection. By learning geometric priors from large-scale data, PI3 can recover accurate scene structure even in sparse-view settings where traditional correspondence-based methods become unreliable. PI3X extends this framework with improved point-map decoding, more reliable confidence estimation, optional conditioning on camera and depth priors, and support for approximate metric-scale reconstruction. These modifications improve reconstruction quality while preserving the reference-free geometric reasoning of the original model.
+PI3~\cite{pi3} introduces a reference-free formulation of visual geometry reconstruction that removes the need for a designated anchor image. Using a fully permutation-equivariant architecture, the model jointly predicts camera poses and dense point maps from an unordered set of images, making reconstruction inherently robust to input ordering and reference-view selection. By learning geometric priors from large-scale data, PI3 can recover accurate scene structure even in sparse-view settings where traditional correspondence-based methods become unreliable. PI3X extends this framework with improved point-map decoding, more reliable
+confidence estimation, optional conditioning on camera and depth priors, and
+support for approximate metric-scale reconstruction. These modifications are
+designed to improve reconstruction quality while preserving the reference-free
+geometric reasoning of the original model, though their effect on Chamfer
+distance under sparse-view conditions is examined in Chapter~\ref{c:results}.
 
 \subsection{Geometry Refinement Models}
 \label{sec:refinement_models}
@@ -85,16 +108,24 @@ This section introduces the mathematical concepts that underpin these operations
 
 \subsection{Similarity Transformations and Umeyama Alignment}
 
-Reconstructions produced by the same model applied independently to successive frames generally differ by an arbitrary scale, rotation, and translation. A similarity transformation accounts for all three:
+A similarity transformation accounts for the arbitrary scale, rotation, and
+translation that may separate two independently reconstructed point clouds:
 \begin{equation}
 \mathbf{y} = s\,\mathbf{R}\mathbf{x} + \mathbf{t},
 \end{equation}
-where $s \in \mathbb{R}^{+}$ denotes a global scale factor, $\mathbf{R} \in \mathrm{SO}(3)$ is a rotation matrix, and $\mathbf{t} \in \mathbb{R}^{3}$ is a translation vector.
-
-Throughout this thesis, similarity alignment is performed using the least-squares method proposed by Umeyama~\cite{umeyama1991least}. Given two sets of corresponding three-dimensional points, the algorithm estimates the optimal scale, rotation, and translation that minimise the mean squared alignment error. Because the solution is available in closed form, Umeyama alignment provides an efficient and numerically stable method for registering reconstructed point clouds.
-
-The estimated similarity transformations are used both for aligning reconstructions to ground truth during evaluation and for computing frame-to-frame alignments in the temporal reconstruction strategies introduced in Chapter~\ref{c:methodology}.
-
+where $s \in \mathbb{R}^{+}$ denotes a global scale factor,
+$\mathbf{R} \in \mathrm{SO}(3)$ is a rotation matrix, and
+$\mathbf{t} \in \mathbb{R}^{3}$ is a translation vector.
+Throughout this thesis, similarity alignment is performed using the Umeyama
+algorithm~\cite{umeyama1991least}, a closed-form least-squares method that
+estimates the optimal scale, rotation, and translation minimising the mean
+squared alignment error over a set of corresponding three-dimensional points.
+Because the solution is available in closed form, it provides an efficient and
+numerically stable primitive for registering reconstructed point clouds.
+The estimated similarity transformations serve two purposes: aligning
+reconstructions to ground truth during evaluation, and computing frame-to-frame
+alignments within the temporal reconstruction strategies introduced in
+Chapter~\ref{c:methodology}.
 \subsection{Rotation Geometry on \texorpdfstring{$\mathrm{SO}(3)$}{SO(3)}}
 
 While translations and scales can be manipulated using standard Euclidean operations, rotations require special treatment because they lie on a curved manifold rather than in a vector space. The set of valid three-dimensional rotations forms the special orthogonal group
@@ -138,5 +169,3 @@ d_{\mathrm{Chamfer}}(P,Q) = \frac{1}{|P|}\sum_{\mathbf{p}\in P}\min_{\mathbf{q}\
 \end{equation}
 
 It is worth noting that the two terms in this definition are not symmetric in meaning. The first term measures \emph{accuracy}: how well each reconstructed point finds a close match in the ground truth. The second term measures \emph{completeness}: how much of the ground truth geometry is covered by the reconstruction. Smaller values therefore indicate closer geometric agreement between the two point sets.
-
-Chamfer distance provides a global measure of reconstruction quality and is widely used in three-dimensional vision benchmarks. However, for robotics applications that require precise geometric reasoning at a 1\,cm tolerance, averaged distances can obscure systematic failures in subsets of points. This thesis therefore complements Chamfer distance with threshold-based metrics---specifically Accuracy and Completeness at a 1\,cm threshold---which report the fraction of points whose nearest-neighbour distance falls below the required tolerance. These metrics are formally introduced in Chapter~\ref{c:methodology}.
