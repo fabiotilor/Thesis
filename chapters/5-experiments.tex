@@ -25,8 +25,7 @@ independently to its ground-truth counterpart.
 and Hi4D. Each frame is aligned independently to ground truth; no temporal alignment
 is applied. Accuracy and completeness are reported as percentages at a 1\,cm threshold.
 Static/dynamic decomposition is reported for DexYCB only; Hi4D provides no static
-background so all evaluated points are dynamic. GGPT post-processes Strategy 2 aligned
-output for spatial models and native output for VGGT4D and MonoFusion.
+background so all evaluated points are dynamic.
 \textbf{Bold} = best per column within dataset, \underline{underline} = second best.}
 \label{tab:baseline_control_ggpt}
 \scriptsize
@@ -75,8 +74,7 @@ Dataset & Model Family & Method & Chamfer $\downarrow$ & Accuracy (Stat/Dyn) $\u
 
 On DexYCB, PI3 achieves the lowest Chamfer distance (0.022\,m) and the highest static
 accuracy (94.4\,\%), establishing it as the strongest spatial estimator at the 1\,cm
-robotics threshold. PI3X leads on dynamic accuracy (81.4\,\%), though its baseline
-Chamfer of 0.028\,m is slightly higher than PI3. MASt3R-SfM and VGGT tie on Chamfer at
+robotics threshold. PI3X leads on dynamic accuracy (81.4\,\%), though its baseline Chamfer of 0.028\,m is slightly higher than PI3, likely owing to its more discriminative confidence distribution retaining a sparser point set under the top-50\,\% filter, which inflates the completeness term of the Chamfer sum. MASt3R-SfM and VGGT tie on Chamfer at
 0.025\,m; VGGT achieves higher static accuracy (80.7\,\% vs.\ 73.5\,\%). The four
 spatial models consistently outperform both native 4D architectures: VGGT4D reaches
 0.053\,m Chamfer with 57.9\,\% static accuracy, and MonoFusion 0.050\,m with 40.4\,\%
@@ -339,9 +337,7 @@ at three and four views does not translate to proportionally high precision at t
 views, compared to 89.7\,\% and 87.0\,\% for PI3 at the same view counts. At two views,
 static accuracy drops to 15.5\,\% with static completeness at 19.9\,\%,
 consistent with the duplicated-subject artefacts documented in
-Section~\ref{sec:qualitative}. The susceptibility to local optima during the
-iterative monocular-to-multi-view depth alignment is an inherent property of
-MonoFusion's inference procedure, described in Section~\ref{sec:temporal_models}.
+Section~\ref{sec:qualitative}.
 
 \section{Native 4D Architectures and Geometry Refinement}
 \label{sec:native4d_baselines}
@@ -388,7 +384,7 @@ and completeness of 46.0\,\%---the lowest among all evaluated models. On Hi4D,
 performance degrades further to 0.356\,m Chamfer. At two views,
 Table~\ref{tab:global_performance_dex_ycb} shows static accuracy dropping to 15.5\,\%
 with static completeness at 19.9\,\%, consistent with the duplicated-subject artefacts
-documented in Section~\ref{sec:qualitative}. These artefacts arise from the
+documented in Section~\ref{sec:qualitative} and illustrated in Figure~\ref{fig:monofusion_duplicate}. These artefacts arise from the
 local-optima susceptibility of MonoFusion's iterative depth alignment under insufficient
 multi-view overlap, described in Section~\ref{sec:temporal_models}. GGPT applied to
 MonoFusion on Hi4D is absent from Table~\ref{tab:baseline_control_ggpt} because the
@@ -415,21 +411,20 @@ evaluated here.
 
 \section{Temporal smoothing refinement}
 \label{sec:opt_results}
-
-Spatial foundation models predict each frame of a video sequence independently,
-assigning each pixel a 3D position without any constraint on how that position relates
-to adjacent frames. Applied across a sequence, this produces frame-to-frame variation
-in static scene regions that is purely an artefact of per-frame reconstruction noise
-rather than genuine scene motion. The temporal alignment strategies of
-Chapter~\ref{c:methodology} reduce this variation by bringing frames into a shared
-coordinate system, but do not eliminate residual drift entirely. This section evaluates
-Confidence-Weighted Temporal Smoothing (Opt), the proposed post-processing step that
-suppresses this residual jitter without modifying dynamic content. Figure~\ref{fig:pareto}
-situates all evaluated methods in the geometry--jitter trade-off space.
-Figure~\ref{fig:pipeline_progression} traces the effect of each pipeline stage on both
-jitter and Chamfer at two views, with native 4D architectures and GGPT shown as
-reference baselines. Numerical detail is drawn from
-Table~\ref{tab:global_performance_dex_ycb}.
+As established in Section~\ref{sec:temporal_models}, per-frame reconstruction
+produces frame-to-frame variation in static scene regions that is purely an
+artefact of reconstruction noise rather than genuine scene motion. The temporal
+alignment strategies of Chapter~\ref{c:methodology} lift these per-frame
+reconstructions into a common coordinate system, producing a 4D representation,
+but do not address the underlying per-pixel depth instability that causes jitter,
+since each frame remains independently reconstructed. This residual instability
+is the target of the confidence-weighted temporal smoothing method (Opt), whose
+effect on reconstruction quality and temporal consistency is evaluated in the
+following results. Figure~\ref{fig:pareto} situates all evaluated methods in the
+geometry--jitter trade-off space. Figure~\ref{fig:pipeline_progression} traces
+the effect of each pipeline stage on both jitter and Chamfer at two views, with
+native 4D architectures and GGPT shown as reference baselines. Numerical detail
+is drawn from Table~\ref{tab:global_performance_dex_ycb}.
 
 \begin{figure}[!htb]
 \centering
@@ -439,8 +434,7 @@ counts. Each point represents one model--method combination plotted on logarithm
 axes. Opt-smoothed spatial models (blue stars) cluster in the lower-left quadrant,
 achieving both low Chamfer distance and low mean jitter simultaneously. GGPT points
 lie to the right of all spatial model configurations, reflecting substantial Chamfer
-increases; note that GGPT is not trained on DexYCB, which likely contributes to its
-poor geometric performance on this dataset. Native 4D architectures reduce jitter
+increases. Native 4D architectures reduce jitter
 relative to unsmoothed spatial models but at substantially higher Chamfer. The
 lower-left corner represents the optimal operating region.}
 \label{fig:pareto}
@@ -454,10 +448,7 @@ Left panel: mean jitter at each pipeline stage (Baseline, Strategy 2, Opt). Righ
 panel: corresponding Chamfer distance. \textit{Baseline} denotes per-frame aligned
 output with no temporal alignment applied. Horizontal reference lines mark VGGT4D
 (dashed teal), MonoFusion (dot-dash brown), and GGPT\,(VGGT) (dotted purple) as fixed
-baselines. All four spatial models reach or cross below the VGGT4D jitter reference
-after Opt smoothing. Chamfer remains near or below the Strategy 2 level for three of
-the four backbones; PI3 improves from 0.031\,m to 0.026\,m. PI3X is the exception,
-where Chamfer increases from 0.027\,m to 0.040\,m.}
+baselines.}
 \label{fig:pipeline_progression}
 \end{figure}
 
@@ -471,9 +462,14 @@ The reduction in HF jitter is the strongest result in
 Table~\ref{tab:global_performance_dex_ycb}.
 Across every model and every view count, Opt reduces HF jitter to a
 value that rounds to 0.000\,m in Table~\ref{tab:global_performance_dex_ycb},
-compared to baseline Strategy 2 values ranging from 0.008\,m to
+compared to baseline Strategy-2 values ranging from 0.008\,m to
 0.019\,m depending on model and view count.
 The native 4D architecture VGGT4D achieves only 0.005\,m at two views.
+This result is theoretically expected: as the Gaussian temporal filter
+defined in Section~\ref{sec:opt_method} acts as a low-pass filter over
+the temporal frequency domain, it attenuates high-frequency oscillations
+by construction, and the second-order finite difference used to measure
+HF jitter is precisely the signal it suppresses.
 
 \subsection{Mean Jitter Reduction}
 Mean jitter captures lower-frequency instability that the Gaussian
@@ -497,37 +493,48 @@ Figure~\ref{fig:pipeline_progression}.
 Drift measures a qualitatively different failure mode from jitter.
 Where jitter is high-frequency noise, drift is a low-frequency bias:
 a slow accumulation of pose estimation errors that displaces static
-anchors monotonically over the sequence.
-Table~\ref{tab:global_performance_dex_ycb} shows that Opt does
-\emph{not} reliably reduce drift.
-At two views, PI3 drift increases from 0.007\,m (Strategy 2) to
-0.034\,m (Opt); VGGT drift falls only marginally from 0.060\,m to
-0.054\,m; MASt3R-SfM drift decreases from 0.033\,m to 0.023\,m,
-the most consistent improvement across the four backbones.
-The reasons for this pattern and its implications are discussed in
-Chapter~\ref{c:discussion}.
+anchors monotonically over the sequence. Because the Gaussian temporal
+filter defined in Section~\ref{sec:opt_method} is a low-pass filter,
+it is by design insensitive to this frequency range, and no reduction
+in drift should be expected from Opt. Table~\ref{tab:global_performance_dex_ycb}
+confirms this: Opt does not reliably reduce drift, and in some cases
+increases it. Where drift increases under Opt, the temporal averaging
+spreads the low-frequency alignment bias across the smoothing window
+rather than correcting it, since the underlying coordinate system errors
+that cause drift are not addressed by the filter.
 MonoFusion achieves consistently near-zero drift (0.001\,m at every
 view count).
-GGPT\,(S2) reduces drift relative to Strategy 2 in several cases,
+GGPT\,(S2) reduces drift relative to Strategy~2 in several cases,
 but not without substantially degrading Chamfer distance, and the
 improvement is not consistent across view counts or backbones.
 
 \subsection{Geometric Cost}
 The right panel of Figure~\ref{fig:pipeline_progression} shows that the Chamfer
-distance of three of the four models remains near or below the Strategy 2 level after
+distance of three of the four models remains near or below the Strategy~2 level after
 Opt smoothing. For MASt3R-SfM, Chamfer improves slightly from 0.023\,m to 0.022\,m
 at three views and is unchanged at 0.026\,m at four views. For VGGT, Chamfer is
 unchanged at 0.028\,m at three views and increases marginally from 0.027\,m to
 0.029\,m at four views. For PI3, Chamfer improves at two views from 0.031\,m to
 0.026\,m and remains competitive at three and four views. PI3X is the exception: Opt
 increases Chamfer from 0.027\,m to 0.040\,m at two views (+48\,\%) and from 0.032\,m
-to 0.035--0.036\,m at three and four views (+9--13\,\%). PI3X's high baseline dynamic
-accuracy (59.3--88.5\,\%) is also reduced under Opt. The static-only Gaussian filter
-operates on SAM2-classified static pixels, but boundary pixels at the static-dynamic
-boundary are incidentally affected by the smoothing. Projecting these smoothed boundary
-points back into 2D shifts their apparent class assignment, producing a reduction in
-reported dynamic accuracy beyond the direct effect of the filter itself. This boundary
-effect is a known limitation discussed in Chapter~\ref{c:discussion}.
+to 0.035--0.036\,m at three and four views (+9--13\,\%).
+
+The full per-view breakdown in Table~\ref{tab:global_performance_dex_ycb} additionally
+reveals the effect on static accuracy and completeness, showing whether the temporal
+averaging bias introduced by Opt acts as a corrective or a degrading influence on
+static reconstruction quality. For MASt3R-SfM and PI3, the bias is corrective: at
+three and four views, static accuracy and completeness both improve under Opt
+(MASt3R-SfM: 73.8\,\%\,$\to$\,75.5\,\% accuracy and 66.3\,\%\,$\to$\,68.3\,\%
+completeness at three views; PI3: 71.2\,\%\,$\to$\,76.7\,\% accuracy and
+62.2\,\%\,$\to$\,67.5\,\% completeness at two views), indicating that the temporal
+mean pulls noisy static point estimates closer to their true positions. For VGGT, the
+effect is approximately neutral, with static accuracy and completeness changing by less
+than one percentage point across view counts. For PI3X, both static accuracy and
+completeness degrade consistently (e.g., 90.9\,\%\,$\to$\,85.2\,\% accuracy and
+75.7\,\%\,$\to$\,72.1\,\% completeness at three views), indicating that the temporal
+averaging displaces already-precise static points away from their correct positions
+rather than correcting them. The associated reduction in dynamic accuracy under Opt
+is attributed to static mask boundary effects, further illuminated in~\ref{sec:limitations}.
 
 \subsection{Comparison with Native 4D Architectures}
 Figure~\ref{fig:pareto} shows that Opt-smoothed spatial models occupy the lower-left

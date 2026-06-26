@@ -223,8 +223,6 @@
 \@writefile{lof}{\contentsline {figure}{\numberline {3.3}{\ignorespaces Metric profiles for PI3 as a function of $\sigma $ for each value of $\alpha $, averaged over all subjects and view counts. Increasing $\sigma $ reduces mean jitter monotonically but raises Chamfer distance and lowers accuracy, with higher $\alpha $ amplifying both effects. The red circle marks the selected operating point $\sigma = 4$, $\alpha = 1.0$, chosen where jitter reduction is substantial but geometric degradation remains limited.}}{19}{figure.caption.7}\protected@file@percent }
 \newlabel{fig:metric_profiles}{{3.3}{19}{Metric profiles for PI3 as a function of $\sigma $ for each value of $\alpha $, averaged over all subjects and view counts. Increasing $\sigma $ reduces mean jitter monotonically but raises Chamfer distance and lowers accuracy, with higher $\alpha $ amplifying both effects. The red circle marks the selected operating point $\sigma = 4$, $\alpha = 1.0$, chosen where jitter reduction is substantial but geometric degradation remains limited}{figure.caption.7}{}}
 \newlabel{fig:metric_profiles@cref}{{[figure][3][3]3.3}{[1][18][]19}{}{}{}}
-\newlabel{fig:metric_profiles}{{3.3}{19}{Metric profiles for PI3 as a function of $\sigma $ for each value of $\alpha $, averaged over all subjects and view counts. Increasing $\sigma $ reduces mean jitter monotonically but raises Chamfer distance and lowers accuracy, with higher $\alpha $ amplifying both effects. The red circle marks the selected operating point $\sigma = 4$, $\alpha = 1.0$, chosen where jitter reduction is substantial but geometric degradation remains limited}{figure.caption.7}{}}
-\newlabel{fig:metric_profiles@cref}{{[figure][3][3]3.3}{[1][18][]19}{}{}{}}
 \abx@aux@cite{0}{dexycb}
 \abx@aux@segm{0}{0}{dexycb}
 \abx@aux@cite{0}{hi4d}
@@ -246,44 +244,47 @@
 \@writefile{toc}{\contentsline {paragraph}{Camera configurations.}{21}{section.4.1}\protected@file@percent }
 \@writefile{lot}{\contentsline {table}{\numberline {4.1}{\ignorespaces Camera configurations used for sparse-view evaluation on DexYCB and Hi4D.}}{22}{table.caption.8}\protected@file@percent }
 \newlabel{tab:camera_configs}{{4.1}{22}{Camera configurations used for sparse-view evaluation on DexYCB and Hi4D}{table.caption.8}{}}
-\newlabel{tab:camera_configs@cref}{{[table][1][4]4.1}{[1][21][]22}{}{}{}}
+\newlabel{tab:camera_configs@cref}{{[table][1][4]4.1}{[1][22][]22}{}{}{}}
 \@writefile{lof}{\contentsline {figure}{\numberline {4.1}{\ignorespaces DexYCB camera configurations for the 2-, 3-, and 4-view settings. Cameras span frontal and rear viewpoints to maximise coverage of the manipulation region while maintaining inter-view overlap.}}{23}{figure.caption.9}\protected@file@percent }
 \newlabel{fig:dex_configs}{{4.1}{23}{DexYCB camera configurations for the 2-, 3-, and 4-view settings. Cameras span frontal and rear viewpoints to maximise coverage of the manipulation region while maintaining inter-view overlap}{figure.caption.9}{}}
 \newlabel{fig:dex_configs@cref}{{[figure][1][4]4.1}{[1][22][]23}{}{}{}}
-\@writefile{lof}{\contentsline {figure}{\numberline {4.2}{\ignorespaces Hi4D camera configurations for the 2-, 3-, and 4-view settings. Frontal cameras are preferred due to stronger self-occlusions in human--human interaction sequences.}}{23}{figure.caption.9}\protected@file@percent }
-\newlabel{fig:hi4d_configs}{{4.2}{23}{Hi4D camera configurations for the 2-, 3-, and 4-view settings. Frontal cameras are preferred due to stronger self-occlusions in human--human interaction sequences}{figure.caption.9}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {4.2}{\ignorespaces Hi4D camera configurations for the 2-, 3-, and 4-view settings. Cameras are drawn from a concentrated angular range on a single side of the scene, rather than spanning opposing viewpoints, to reduce self-occlusion in human--human interaction sequences.}}{23}{figure.caption.9}\protected@file@percent }
+\newlabel{fig:hi4d_configs}{{4.2}{23}{Hi4D camera configurations for the 2-, 3-, and 4-view settings. Cameras are drawn from a concentrated angular range on a single side of the scene, rather than spanning opposing viewpoints, to reduce self-occlusion in human--human interaction sequences}{figure.caption.9}{}}
 \newlabel{fig:hi4d_configs@cref}{{[figure][2][4]4.2}{[1][22][]23}{}{}{}}
 \@writefile{toc}{\contentsline {section}{\numberline {4.2}Evaluation Pipeline}{24}{section.4.2}\protected@file@percent }
 \newlabel{sec:evaluation_pipeline}{{4.2}{24}{Evaluation Pipeline}{section.4.2}{}}
-\newlabel{sec:evaluation_pipeline@cref}{{[section][2][4]4.2}{[1][24][]24}{}{}{}}
+\newlabel{sec:evaluation_pipeline@cref}{{[section][2][4]4.2}{[1][23][]24}{}{}{}}
 \@writefile{lof}{\contentsline {figure}{\numberline {4.3}{\ignorespaces Evaluation pipeline overview. The top row shows the per-frame baseline path: raw model outputs are filtered (ground-truth validity, confidence, statistical outlier removal), pixel-wise correspondences are established via projection, and Umeyama similarity alignment registers each frame to its ground truth, producing 3D metrics. The bottom row shows the 4D path: the temporal alignment stage of Chapter~\ref {c:methodology} first brings independently reconstructed frames into a shared coordinate system using static masks, after which the concatenated sequence is aligned globally to ground truth to produce 4D metrics.}}{24}{figure.caption.10}\protected@file@percent }
 \newlabel{fig:evaluation_pipeline}{{4.3}{24}{Evaluation pipeline overview. The top row shows the per-frame baseline path: raw model outputs are filtered (ground-truth validity, confidence, statistical outlier removal), pixel-wise correspondences are established via projection, and Umeyama similarity alignment registers each frame to its ground truth, producing 3D metrics. The bottom row shows the 4D path: the temporal alignment stage of Chapter~\ref {c:methodology} first brings independently reconstructed frames into a shared coordinate system using static masks, after which the concatenated sequence is aligned globally to ground truth to produce 4D metrics}{figure.caption.10}{}}
 \newlabel{fig:evaluation_pipeline@cref}{{[figure][3][4]4.3}{[1][24][]24}{}{}{}}
 \@writefile{toc}{\contentsline {subsection}{\numberline {4.2.1}Point Cloud Filtering}{24}{subsection.4.2.1}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Ground-truth validity masking.}{24}{subsection.4.2.1}\protected@file@percent }
 \abx@aux@cite{0}{rusu2008statistical}
 \abx@aux@segm{0}{0}{rusu2008statistical}
-\@writefile{toc}{\contentsline {paragraph}{Ground-truth validity masking.}{25}{subsection.4.2.1}\protected@file@percent }
 \@writefile{toc}{\contentsline {paragraph}{Confidence-based filtering.}{25}{subsection.4.2.1}\protected@file@percent }
 \@writefile{toc}{\contentsline {paragraph}{Statistical outlier removal.}{25}{subsection.4.2.1}\protected@file@percent }
 \@writefile{toc}{\contentsline {subsection}{\numberline {4.2.2}Correspondence Construction}{25}{subsection.4.2.2}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsection}{\numberline {4.2.3}Per-Frame Similarity Alignment}{26}{subsection.4.2.3}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {4.2.3}Per-Frame Similarity Alignment}{25}{subsection.4.2.3}\protected@file@percent }
 \@writefile{toc}{\contentsline {section}{\numberline {4.3}Metric Suite}{26}{section.4.3}\protected@file@percent }
 \newlabel{sec:metrics}{{4.3}{26}{Metric Suite}{section.4.3}{}}
 \newlabel{sec:metrics@cref}{{[section][3][4]4.3}{[1][26][]26}{}{}{}}
 \@writefile{toc}{\contentsline {subsection}{\numberline {4.3.1}Geometric Metrics}{26}{subsection.4.3.1}\protected@file@percent }
-\@writefile{toc}{\contentsline {paragraph}{Static/dynamic decomposition and motion gap.}{27}{equation.4.3}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Static/dynamic decomposition and motion gap.}{26}{equation.4.3}\protected@file@percent }
 \@writefile{toc}{\contentsline {paragraph}{3D-to-4D consistency.}{27}{equation.4.4}\protected@file@percent }
 \@writefile{toc}{\contentsline {subsection}{\numberline {4.3.2}Temporal Consistency Metrics}{27}{subsection.4.3.2}\protected@file@percent }
+\@writefile{lof}{\contentsline {figure}{\numberline {4.4}{\ignorespaces Visualisation of the jitter evaluation on a DexYCB scene after static mask filtering. Blue points denote all static scene points retained after masking; red points denote the $N{=}5{,}000$ anchors sampled uniformly at random from the persistent static pixels, whose 3D trajectories $\mathbf  {x}_a(t)$ are used to compute the temporal consistency metrics defined in this section. Dynamic regions, including the manipulated object and the hand, are excluded from both sets.}}{28}{figure.caption.11}\protected@file@percent }
+\newlabel{fig:jitter_anchors}{{4.4}{28}{Visualisation of the jitter evaluation on a DexYCB scene after static mask filtering. Blue points denote all static scene points retained after masking; red points denote the $N{=}5{,}000$ anchors sampled uniformly at random from the persistent static pixels, whose 3D trajectories $\mathbf {x}_a(t)$ are used to compute the temporal consistency metrics defined in this section. Dynamic regions, including the manipulated object and the hand, are excluded from both sets}{figure.caption.11}{}}
+\newlabel{fig:jitter_anchors@cref}{{[figure][4][4]4.4}{[1][27][]28}{}{}{}}
 \abx@aux@cite{0}{sturm12iros}
 \abx@aux@segm{0}{0}{sturm12iros}
-\@writefile{toc}{\contentsline {subsection}{\numberline {4.3.3}Camera Pose Metrics}{28}{subsection.4.3.3}\protected@file@percent }
-\@writefile{toc}{\contentsline {paragraph}{Absolute Trajectory Error (ATE).}{28}{subsection.4.3.3}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {4.3.3}Camera Pose Metrics}{29}{subsection.4.3.3}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Absolute Trajectory Error (ATE).}{29}{subsection.4.3.3}\protected@file@percent }
 \@writefile{toc}{\contentsline {paragraph}{Relative Pose Error (RPE).}{29}{equation.4.6}\protected@file@percent }
 \@writefile{toc}{\contentsline {paragraph}{Rotation error.}{29}{equation.4.7}\protected@file@percent }
-\@writefile{toc}{\contentsline {paragraph}{Intrinsic error.}{29}{equation.4.7}\protected@file@percent }
-\@writefile{toc}{\contentsline {section}{\numberline {4.4}Implementation Details}{29}{section.4.4}\protected@file@percent }
-\newlabel{sec:implementation_details}{{4.4}{29}{Implementation Details}{section.4.4}{}}
-\newlabel{sec:implementation_details@cref}{{[section][4][4]4.4}{[1][29][]29}{}{}{}}
+\@writefile{toc}{\contentsline {paragraph}{Intrinsic error.}{30}{equation.4.7}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {4.4}Implementation Details}{30}{section.4.4}\protected@file@percent }
+\newlabel{sec:implementation_details}{{4.4}{30}{Implementation Details}{section.4.4}{}}
+\newlabel{sec:implementation_details@cref}{{[section][4][4]4.4}{[1][30][]30}{}{}{}}
 \@writefile{toc}{\contentsline {chapter}{\numberline {5}Results}{31}{chapter.5}\protected@file@percent }
 \@writefile{lof}{\addvspace {10\p@ }}
 \@writefile{lot}{\addvspace {10\p@ }}
@@ -307,47 +308,47 @@
 \@writefile{toc}{\contentsline {section}{\numberline {5.5}Temporal smoothing refinement}{36}{section.5.5}\protected@file@percent }
 \newlabel{sec:opt_results}{{5.5}{36}{Temporal smoothing refinement}{section.5.5}{}}
 \newlabel{sec:opt_results@cref}{{[section][5][5]5.5}{[1][36][]36}{}{}{}}
-\@writefile{lof}{\contentsline {figure}{\numberline {5.1}{\ignorespaces Geometry vs.\ temporal consistency trade-off on DexYCB, pooled over view counts. Each point represents one model--method combination plotted on logarithmic axes. Opt-smoothed spatial models (blue stars) cluster in the lower-left quadrant, achieving both low Chamfer distance and low mean jitter simultaneously. GGPT points lie to the right of all spatial model configurations, reflecting substantial Chamfer increases; note that GGPT is not trained on DexYCB, which likely contributes to its poor geometric performance on this dataset. Native 4D architectures reduce jitter relative to unsmoothed spatial models but at substantially higher Chamfer. The lower-left corner represents the optimal operating region.}}{37}{figure.caption.14}\protected@file@percent }
-\newlabel{fig:pareto}{{5.1}{37}{Geometry vs.\ temporal consistency trade-off on DexYCB, pooled over view counts. Each point represents one model--method combination plotted on logarithmic axes. Opt-smoothed spatial models (blue stars) cluster in the lower-left quadrant, achieving both low Chamfer distance and low mean jitter simultaneously. GGPT points lie to the right of all spatial model configurations, reflecting substantial Chamfer increases; note that GGPT is not trained on DexYCB, which likely contributes to its poor geometric performance on this dataset. Native 4D architectures reduce jitter relative to unsmoothed spatial models but at substantially higher Chamfer. The lower-left corner represents the optimal operating region}{figure.caption.14}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {5.1}{\ignorespaces Geometry vs.\ temporal consistency trade-off on DexYCB, pooled over view counts. Each point represents one model--method combination plotted on logarithmic axes. Opt-smoothed spatial models (blue stars) cluster in the lower-left quadrant, achieving both low Chamfer distance and low mean jitter simultaneously. GGPT points lie to the right of all spatial model configurations, reflecting substantial Chamfer increases. Native 4D architectures reduce jitter relative to unsmoothed spatial models but at substantially higher Chamfer. The lower-left corner represents the optimal operating region.}}{37}{figure.caption.15}\protected@file@percent }
+\newlabel{fig:pareto}{{5.1}{37}{Geometry vs.\ temporal consistency trade-off on DexYCB, pooled over view counts. Each point represents one model--method combination plotted on logarithmic axes. Opt-smoothed spatial models (blue stars) cluster in the lower-left quadrant, achieving both low Chamfer distance and low mean jitter simultaneously. GGPT points lie to the right of all spatial model configurations, reflecting substantial Chamfer increases. Native 4D architectures reduce jitter relative to unsmoothed spatial models but at substantially higher Chamfer. The lower-left corner represents the optimal operating region}{figure.caption.15}{}}
 \newlabel{fig:pareto@cref}{{[figure][1][5]5.1}{[1][36][]37}{}{}{}}
-\@writefile{lot}{\contentsline {table}{\numberline {5.1}{\ignorespaces Per-frame geometric performance averaged over 2, 3, and 4 views on DexYCB and Hi4D. Each frame is aligned independently to ground truth; no temporal alignment is applied. Accuracy and completeness are reported as percentages at a 1\,cm threshold. Static/dynamic decomposition is reported for DexYCB only; Hi4D provides no static background so all evaluated points are dynamic. GGPT post-processes Strategy 2 aligned output for spatial models and native output for VGGT4D and MonoFusion. \textbf  {Bold} = best per column within dataset, \underline  {underline} = second best.}}{38}{table.caption.11}\protected@file@percent }
-\newlabel{tab:baseline_control_ggpt}{{5.1}{38}{Per-frame geometric performance averaged over 2, 3, and 4 views on DexYCB and Hi4D. Each frame is aligned independently to ground truth; no temporal alignment is applied. Accuracy and completeness are reported as percentages at a 1\,cm threshold. Static/dynamic decomposition is reported for DexYCB only; Hi4D provides no static background so all evaluated points are dynamic. GGPT post-processes Strategy 2 aligned output for spatial models and native output for VGGT4D and MonoFusion. \textbf {Bold} = best per column within dataset, \underline {underline} = second best}{table.caption.11}{}}
+\@writefile{lot}{\contentsline {table}{\numberline {5.1}{\ignorespaces Per-frame geometric performance averaged over 2, 3, and 4 views on DexYCB and Hi4D. Each frame is aligned independently to ground truth; no temporal alignment is applied. Accuracy and completeness are reported as percentages at a 1\,cm threshold. Static/dynamic decomposition is reported for DexYCB only; Hi4D provides no static background so all evaluated points are dynamic. \textbf  {Bold} = best per column within dataset, \underline  {underline} = second best.}}{38}{table.caption.12}\protected@file@percent }
+\newlabel{tab:baseline_control_ggpt}{{5.1}{38}{Per-frame geometric performance averaged over 2, 3, and 4 views on DexYCB and Hi4D. Each frame is aligned independently to ground truth; no temporal alignment is applied. Accuracy and completeness are reported as percentages at a 1\,cm threshold. Static/dynamic decomposition is reported for DexYCB only; Hi4D provides no static background so all evaluated points are dynamic. \textbf {Bold} = best per column within dataset, \underline {underline} = second best}{table.caption.12}{}}
 \newlabel{tab:baseline_control_ggpt@cref}{{[table][1][5]5.1}{[1][31][]38}{}{}{}}
-\@writefile{lot}{\contentsline {table}{\numberline {5.2}{\ignorespaces Alignment strategy comparison on DexYCB and Hi4D, pooled over view counts. $\Delta _{\text  {consistency}}$ measures the increase in Chamfer distance introduced by temporal alignment relative to independent per-frame ground-truth registration; a value near zero indicates that alignment preserves per-frame geometry faithfully. ATE, RPE, and rotation error serve as additional indicators of alignment quality, since the same transformations computed for the point clouds are applied to the cameras. \textbf  {Bold} = best within each strategy block or GGPT block.}}{39}{table.caption.12}\protected@file@percent }
-\newlabel{tab:strategy_extended}{{5.2}{39}{Alignment strategy comparison on DexYCB and Hi4D, pooled over view counts. $\Delta _{\text {consistency}}$ measures the increase in Chamfer distance introduced by temporal alignment relative to independent per-frame ground-truth registration; a value near zero indicates that alignment preserves per-frame geometry faithfully. ATE, RPE, and rotation error serve as additional indicators of alignment quality, since the same transformations computed for the point clouds are applied to the cameras. \textbf {Bold} = best within each strategy block or GGPT block}{table.caption.12}{}}
+\@writefile{lot}{\contentsline {table}{\numberline {5.2}{\ignorespaces Alignment strategy comparison on DexYCB and Hi4D, pooled over view counts. $\Delta _{\text  {consistency}}$ measures the increase in Chamfer distance introduced by temporal alignment relative to independent per-frame ground-truth registration; a value near zero indicates that alignment preserves per-frame geometry faithfully. ATE, RPE, and rotation error serve as additional indicators of alignment quality, since the same transformations computed for the point clouds are applied to the cameras. \textbf  {Bold} = best within each strategy block or GGPT block.}}{39}{table.caption.13}\protected@file@percent }
+\newlabel{tab:strategy_extended}{{5.2}{39}{Alignment strategy comparison on DexYCB and Hi4D, pooled over view counts. $\Delta _{\text {consistency}}$ measures the increase in Chamfer distance introduced by temporal alignment relative to independent per-frame ground-truth registration; a value near zero indicates that alignment preserves per-frame geometry faithfully. ATE, RPE, and rotation error serve as additional indicators of alignment quality, since the same transformations computed for the point clouds are applied to the cameras. \textbf {Bold} = best within each strategy block or GGPT block}{table.caption.13}{}}
 \newlabel{tab:strategy_extended@cref}{{[table][2][5]5.2}{[1][32][]39}{}{}{}}
-\@writefile{lot}{\contentsline {table}{\numberline {5.3}{\ignorespaces Per-view-count spatio-temporal performance on DexYCB. Each block reports results for a fixed number of input views (2, 3, or 4). Accuracy and completeness are evaluated at a 1\,cm threshold and decomposed into static and dynamic scene regions (reported as percentages). Temporal metrics---jitter mean, high-frequency (HF) jitter, and drift---are computed on static scene anchors. Strategy 2 serves as the unsmoothed temporal alignment baseline for spatial models. +Opt applies the proposed Gaussian-weighted temporal smoothing. GGPT\,(S2) and GGPT\,(N4D) apply geometry-grounded point transformer refinement to Strategy 2 and native 4D model outputs, respectively. \textbf  {Bold} = best per column within each view-count block, \underline  {underline} = second best.}}{40}{table.caption.13}\protected@file@percent }
-\newlabel{tab:global_performance_dex_ycb}{{5.3}{40}{Per-view-count spatio-temporal performance on DexYCB. Each block reports results for a fixed number of input views (2, 3, or 4). Accuracy and completeness are evaluated at a 1\,cm threshold and decomposed into static and dynamic scene regions (reported as percentages). Temporal metrics---jitter mean, high-frequency (HF) jitter, and drift---are computed on static scene anchors. Strategy 2 serves as the unsmoothed temporal alignment baseline for spatial models. +Opt applies the proposed Gaussian-weighted temporal smoothing. GGPT\,(S2) and GGPT\,(N4D) apply geometry-grounded point transformer refinement to Strategy 2 and native 4D model outputs, respectively. \textbf {Bold} = best per column within each view-count block, \underline {underline} = second best}{table.caption.13}{}}
+\@writefile{lot}{\contentsline {table}{\numberline {5.3}{\ignorespaces Per-view-count spatio-temporal performance on DexYCB. Each block reports results for a fixed number of input views (2, 3, or 4). Accuracy and completeness are evaluated at a 1\,cm threshold and decomposed into static and dynamic scene regions (reported as percentages). Temporal metrics---jitter mean, high-frequency (HF) jitter, and drift---are computed on static scene anchors. Strategy 2 serves as the unsmoothed temporal alignment baseline for spatial models. +Opt applies the proposed Gaussian-weighted temporal smoothing. GGPT\,(S2) and GGPT\,(N4D) apply geometry-grounded point transformer refinement to Strategy 2 and native 4D model outputs, respectively. \textbf  {Bold} = best per column within each view-count block, \underline  {underline} = second best.}}{40}{table.caption.14}\protected@file@percent }
+\newlabel{tab:global_performance_dex_ycb}{{5.3}{40}{Per-view-count spatio-temporal performance on DexYCB. Each block reports results for a fixed number of input views (2, 3, or 4). Accuracy and completeness are evaluated at a 1\,cm threshold and decomposed into static and dynamic scene regions (reported as percentages). Temporal metrics---jitter mean, high-frequency (HF) jitter, and drift---are computed on static scene anchors. Strategy 2 serves as the unsmoothed temporal alignment baseline for spatial models. +Opt applies the proposed Gaussian-weighted temporal smoothing. GGPT\,(S2) and GGPT\,(N4D) apply geometry-grounded point transformer refinement to Strategy 2 and native 4D model outputs, respectively. \textbf {Bold} = best per column within each view-count block, \underline {underline} = second best}{table.caption.14}{}}
 \newlabel{tab:global_performance_dex_ycb@cref}{{[table][3][5]5.3}{[1][33][]40}{}{}{}}
-\@writefile{lof}{\contentsline {figure}{\numberline {5.2}{\ignorespaces Pipeline progression on DexYCB at 2 views for the four spatial models. Left panel: mean jitter at each pipeline stage (Baseline, Strategy 2, Opt). Right panel: corresponding Chamfer distance. \textit  {Baseline} denotes per-frame aligned output with no temporal alignment applied. Horizontal reference lines mark VGGT4D (dashed teal), MonoFusion (dot-dash brown), and GGPT\,(VGGT) (dotted purple) as fixed baselines. All four spatial models reach or cross below the VGGT4D jitter reference after Opt smoothing. Chamfer remains near or below the Strategy 2 level for three of the four backbones; PI3 improves from 0.031\,m to 0.026\,m. PI3X is the exception, where Chamfer increases from 0.027\,m to 0.040\,m.}}{41}{figure.caption.15}\protected@file@percent }
-\newlabel{fig:pipeline_progression}{{5.2}{41}{Pipeline progression on DexYCB at 2 views for the four spatial models. Left panel: mean jitter at each pipeline stage (Baseline, Strategy 2, Opt). Right panel: corresponding Chamfer distance. \textit {Baseline} denotes per-frame aligned output with no temporal alignment applied. Horizontal reference lines mark VGGT4D (dashed teal), MonoFusion (dot-dash brown), and GGPT\,(VGGT) (dotted purple) as fixed baselines. All four spatial models reach or cross below the VGGT4D jitter reference after Opt smoothing. Chamfer remains near or below the Strategy 2 level for three of the four backbones; PI3 improves from 0.031\,m to 0.026\,m. PI3X is the exception, where Chamfer increases from 0.027\,m to 0.040\,m}{figure.caption.15}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {5.2}{\ignorespaces Pipeline progression on DexYCB at 2 views for the four spatial models. Left panel: mean jitter at each pipeline stage (Baseline, Strategy 2, Opt). Right panel: corresponding Chamfer distance. \textit  {Baseline} denotes per-frame aligned output with no temporal alignment applied. Horizontal reference lines mark VGGT4D (dashed teal), MonoFusion (dot-dash brown), and GGPT\,(VGGT) (dotted purple) as fixed baselines.}}{41}{figure.caption.16}\protected@file@percent }
+\newlabel{fig:pipeline_progression}{{5.2}{41}{Pipeline progression on DexYCB at 2 views for the four spatial models. Left panel: mean jitter at each pipeline stage (Baseline, Strategy 2, Opt). Right panel: corresponding Chamfer distance. \textit {Baseline} denotes per-frame aligned output with no temporal alignment applied. Horizontal reference lines mark VGGT4D (dashed teal), MonoFusion (dot-dash brown), and GGPT\,(VGGT) (dotted purple) as fixed baselines}{figure.caption.16}{}}
 \newlabel{fig:pipeline_progression@cref}{{[figure][2][5]5.2}{[1][36][]41}{}{}{}}
 \@writefile{toc}{\contentsline {subsection}{\numberline {5.5.1}High-frequency Jitter Elimination}{42}{subsection.5.5.1}\protected@file@percent }
 \@writefile{toc}{\contentsline {subsection}{\numberline {5.5.2}Mean Jitter Reduction}{42}{subsection.5.5.2}\protected@file@percent }
 \@writefile{toc}{\contentsline {subsection}{\numberline {5.5.3}Drift and the Limits of Temporal Smoothing}{42}{subsection.5.5.3}\protected@file@percent }
 \@writefile{toc}{\contentsline {subsection}{\numberline {5.5.4}Geometric Cost}{43}{subsection.5.5.4}\protected@file@percent }
 \@writefile{toc}{\contentsline {subsection}{\numberline {5.5.5}Comparison with Native 4D Architectures}{43}{subsection.5.5.5}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsection}{\numberline {5.5.6}Comparison with GGPT}{43}{subsection.5.5.6}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {5.5.6}Comparison with GGPT}{44}{subsection.5.5.6}\protected@file@percent }
 \@writefile{toc}{\contentsline {section}{\numberline {5.6}Qualitative Failure Analysis}{44}{section.5.6}\protected@file@percent }
 \newlabel{sec:qualitative}{{5.6}{44}{Qualitative Failure Analysis}{section.5.6}{}}
 \newlabel{sec:qualitative@cref}{{[section][6][5]5.6}{[1][44][]44}{}{}{}}
-\newlabel{fig:vggt4d_2}{{5.3a}{44}{2 views}{figure.caption.16}{}}
-\newlabel{fig:vggt4d_2@cref}{{[subfigure][1][5,3]5.3a}{[1][44][]44}{}{}{}}
-\newlabel{sub@fig:vggt4d_2}{{a}{44}{2 views}{figure.caption.16}{}}
-\newlabel{sub@fig:vggt4d_2@cref}{{[subfigure][1][5,3]5.3a}{[1][44][]44}{}{}{}}
-\newlabel{fig:vggt4d_3}{{5.3b}{44}{3 views}{figure.caption.16}{}}
-\newlabel{fig:vggt4d_3@cref}{{[subfigure][2][5,3]5.3b}{[1][44][]44}{}{}{}}
-\newlabel{sub@fig:vggt4d_3}{{b}{44}{3 views}{figure.caption.16}{}}
-\newlabel{sub@fig:vggt4d_3@cref}{{[subfigure][2][5,3]5.3b}{[1][44][]44}{}{}{}}
-\newlabel{fig:vggt4d_4}{{5.3c}{44}{4 views}{figure.caption.16}{}}
-\newlabel{fig:vggt4d_4@cref}{{[subfigure][3][5,3]5.3c}{[1][44][]44}{}{}{}}
-\newlabel{sub@fig:vggt4d_4}{{c}{44}{4 views}{figure.caption.16}{}}
-\newlabel{sub@fig:vggt4d_4@cref}{{[subfigure][3][5,3]5.3c}{[1][44][]44}{}{}{}}
-\@writefile{lof}{\contentsline {figure}{\numberline {5.3}{\ignorespaces VGGT4D reconstruction on DexYCB at 2, 3, and 4 views from the same viewpoint. At 2 views~(a), the arm region is diffuse and incomplete. At 3 views~(b), a duplicated arm appears at a second depth layer, visible as increased point density toward the right. At 4 views~(c), the arm collapses into a sweeping curved smear, visually worse than 3 views, directly supporting the non-monotonic completeness pattern of Section~\ref {sec:sparse_view}.}}{44}{figure.caption.16}\protected@file@percent }
-\newlabel{fig:vggt4d_smearing}{{5.3}{44}{VGGT4D reconstruction on DexYCB at 2, 3, and 4 views from the same viewpoint. At 2 views~(a), the arm region is diffuse and incomplete. At 3 views~(b), a duplicated arm appears at a second depth layer, visible as increased point density toward the right. At 4 views~(c), the arm collapses into a sweeping curved smear, visually worse than 3 views, directly supporting the non-monotonic completeness pattern of Section~\ref {sec:sparse_view}}{figure.caption.16}{}}
-\newlabel{fig:vggt4d_smearing@cref}{{[figure][3][5]5.3}{[1][44][]44}{}{}{}}
-\@writefile{lof}{\contentsline {figure}{\numberline {5.4}{\ignorespaces MonoFusion reconstruction on Hi4D at 2 views (blue). The ground truth shows two upright interacting subjects. MonoFusion produces two spatially separated, horizontally collapsed copies of the subject pair rather than a single coherent reconstruction. GGPT is not applied on Hi4D because the duplicated output is an unreliable refinement input.}}{45}{figure.caption.17}\protected@file@percent }
-\newlabel{fig:monofusion_duplicate}{{5.4}{45}{MonoFusion reconstruction on Hi4D at 2 views (blue). The ground truth shows two upright interacting subjects. MonoFusion produces two spatially separated, horizontally collapsed copies of the subject pair rather than a single coherent reconstruction. GGPT is not applied on Hi4D because the duplicated output is an unreliable refinement input}{figure.caption.17}{}}
+\newlabel{fig:vggt4d_2}{{5.3a}{45}{2 views}{figure.caption.17}{}}
+\newlabel{fig:vggt4d_2@cref}{{[subfigure][1][5,3]5.3a}{[1][44][]45}{}{}{}}
+\newlabel{sub@fig:vggt4d_2}{{a}{45}{2 views}{figure.caption.17}{}}
+\newlabel{sub@fig:vggt4d_2@cref}{{[subfigure][1][5,3]5.3a}{[1][44][]45}{}{}{}}
+\newlabel{fig:vggt4d_3}{{5.3b}{45}{3 views}{figure.caption.17}{}}
+\newlabel{fig:vggt4d_3@cref}{{[subfigure][2][5,3]5.3b}{[1][44][]45}{}{}{}}
+\newlabel{sub@fig:vggt4d_3}{{b}{45}{3 views}{figure.caption.17}{}}
+\newlabel{sub@fig:vggt4d_3@cref}{{[subfigure][2][5,3]5.3b}{[1][44][]45}{}{}{}}
+\newlabel{fig:vggt4d_4}{{5.3c}{45}{4 views}{figure.caption.17}{}}
+\newlabel{fig:vggt4d_4@cref}{{[subfigure][3][5,3]5.3c}{[1][44][]45}{}{}{}}
+\newlabel{sub@fig:vggt4d_4}{{c}{45}{4 views}{figure.caption.17}{}}
+\newlabel{sub@fig:vggt4d_4@cref}{{[subfigure][3][5,3]5.3c}{[1][44][]45}{}{}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {5.3}{\ignorespaces VGGT4D reconstruction on DexYCB at 2, 3, and 4 views from the same viewpoint. At 2 views~(a), the arm region is diffuse and incomplete. At 3 views~(b), a duplicated arm appears at a second depth layer, visible as increased point density toward the right. At 4 views~(c), the arm collapses into a sweeping curved smear, visually worse than 3 views, directly supporting the non-monotonic completeness pattern of Section~\ref {sec:sparse_view}.}}{45}{figure.caption.17}\protected@file@percent }
+\newlabel{fig:vggt4d_smearing}{{5.3}{45}{VGGT4D reconstruction on DexYCB at 2, 3, and 4 views from the same viewpoint. At 2 views~(a), the arm region is diffuse and incomplete. At 3 views~(b), a duplicated arm appears at a second depth layer, visible as increased point density toward the right. At 4 views~(c), the arm collapses into a sweeping curved smear, visually worse than 3 views, directly supporting the non-monotonic completeness pattern of Section~\ref {sec:sparse_view}}{figure.caption.17}{}}
+\newlabel{fig:vggt4d_smearing@cref}{{[figure][3][5]5.3}{[1][44][]45}{}{}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {5.4}{\ignorespaces MonoFusion reconstruction on Hi4D at 2 views (blue). The ground truth shows two upright interacting subjects. MonoFusion produces two spatially separated, horizontally collapsed copies of the subject pair rather than a single coherent reconstruction. GGPT is not applied on Hi4D because the duplicated output is an unreliable refinement input.}}{45}{figure.caption.18}\protected@file@percent }
+\newlabel{fig:monofusion_duplicate}{{5.4}{45}{MonoFusion reconstruction on Hi4D at 2 views (blue). The ground truth shows two upright interacting subjects. MonoFusion produces two spatially separated, horizontally collapsed copies of the subject pair rather than a single coherent reconstruction. GGPT is not applied on Hi4D because the duplicated output is an unreliable refinement input}{figure.caption.18}{}}
 \newlabel{fig:monofusion_duplicate@cref}{{[figure][4][5]5.4}{[1][44][]45}{}{}{}}
 \@writefile{toc}{\contentsline {chapter}{\numberline {6}Discussion and Conclusion}{47}{chapter.6}\protected@file@percent }
 \@writefile{lof}{\addvspace {10\p@ }}
@@ -360,8 +361,16 @@
 \@writefile{toc}{\contentsline {subsection}{\numberline {6.1.1}Why Spatial Models Succeed}{47}{subsection.6.1.1}\protected@file@percent }
 \abx@aux@cite{0}{vggt4d}
 \abx@aux@segm{0}{0}{vggt4d}
+\abx@aux@cite{0}{monofusion}
+\abx@aux@segm{0}{0}{monofusion}
+\abx@aux@cite{0}{vggt4d}
+\abx@aux@segm{0}{0}{vggt4d}
+\abx@aux@cite{0}{monofusion}
+\abx@aux@segm{0}{0}{monofusion}
+\abx@aux@cite{0}{ggpt}
+\abx@aux@segm{0}{0}{ggpt}
 \@writefile{toc}{\contentsline {subsection}{\numberline {6.1.2}Why Native 4D Architectures Fail}{48}{subsection.6.1.2}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsection}{\numberline {6.1.3}Why GGPT is Unsuitable for Geometry-Critical Applications}{48}{subsection.6.1.3}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {6.1.3}Why GGPT Fails Under Sparse-View Dynamic Conditions}{49}{subsection.6.1.3}\protected@file@percent }
 \@writefile{toc}{\contentsline {section}{\numberline {6.2}The decoupled framework paradigm}{49}{section.6.2}\protected@file@percent }
 \newlabel{sec:decoupled_paradigm}{{6.2}{49}{The decoupled framework paradigm}{section.6.2}{}}
 \newlabel{sec:decoupled_paradigm@cref}{{[section][2][6]6.2}{[1][49][]49}{}{}{}}
@@ -375,18 +384,18 @@
 \@writefile{toc}{\contentsline {section}{\numberline {6.4}Future work}{51}{section.6.4}\protected@file@percent }
 \newlabel{sec:future_work}{{6.4}{51}{Future work}{section.6.4}{}}
 \newlabel{sec:future_work@cref}{{[section][4][6]6.4}{[1][51][]51}{}{}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {6.4.1}Inference-Time Adaptive Parameter Selection}{52}{subsection.6.4.1}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {6.4.2}Global Anchor-Constrained Drift Correction}{52}{subsection.6.4.2}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {6.4.3}Reprojection-Error Cross-View Refinement}{52}{subsection.6.4.3}\protected@file@percent }
 \abx@aux@cite{0}{multicamrobolab}
 \abx@aux@segm{0}{0}{multicamrobolab}
 \abx@aux@cite{0}{dycheck}
 \abx@aux@segm{0}{0}{dycheck}
-\@writefile{toc}{\contentsline {subsection}{\numberline {6.4.1}Inference-Time Adaptive Parameter Selection}{52}{subsection.6.4.1}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsection}{\numberline {6.4.2}Global Anchor-Constrained Drift Correction}{52}{subsection.6.4.2}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsection}{\numberline {6.4.3}Reprojection-Error Cross-View Refinement}{52}{subsection.6.4.3}\protected@file@percent }
 \@writefile{toc}{\contentsline {subsection}{\numberline {6.4.4}Extension to Moving Cameras and Broader Evaluation}{53}{subsection.6.4.4}\protected@file@percent }
 \@writefile{toc}{\contentsline {section}{\numberline {6.5}Conclusion}{53}{section.6.5}\protected@file@percent }
 \newlabel{sec:conclusion}{{6.5}{53}{Conclusion}{section.6.5}{}}
 \newlabel{sec:conclusion@cref}{{[section][5][6]6.5}{[1][53][]53}{}{}{}}
-\@writefile{toc}{\contentsline {chapter}{Bibliography}{54}{section*.18}\protected@file@percent }
+\@writefile{toc}{\contentsline {chapter}{Bibliography}{54}{section*.19}\protected@file@percent }
 \@writefile{toc}{\contentsline {chapter}{\numberline {A}Artifacts Availability}{58}{appendix.A}\protected@file@percent }
 \@writefile{lof}{\addvspace {10\p@ }}
 \@writefile{lot}{\addvspace {10\p@ }}

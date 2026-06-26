@@ -653,10 +653,11 @@ INPUT ./figures/method_figure_cropped.pdf
 INPUT ./figures/method_figure_cropped.pdf
 INPUT ./figures/method_figure_cropped.pdf
 INPUT ./figures/method_figure_cropped.pdf
-INPUT /Users/fabio/Library/TinyTeX/texmf-dist/tex/latex/lm/t1lmtt.fd
-INPUT /Users/fabio/Library/TinyTeX/texmf-dist/tex/latex/lm/t1lmtt.fd
-INPUT /Users/fabio/Library/TinyTeX/texmf-dist/tex/latex/lm/t1lmtt.fd
-INPUT /Users/fabio/Library/TinyTeX/texmf-dist/fonts/tfm/public/lm/ec-lmtt12.tfm
+INPUT ./figures/Jitter_metrics.png
+INPUT ./figures/Jitter_metrics.png
+INPUT ./figures/Jitter_metrics.png
+INPUT ./figures/Jitter_metrics.png
+INPUT ./figures/Jitter_metrics.png
 INPUT ./chapters/5-experiments.tex
 INPUT ./chapters/5-experiments.tex
 INPUT ./chapters/5-experiments.tex
@@ -693,6 +694,10 @@ INPUT ./chapters/6-limitations.tex
 INPUT ./chapters/6-limitations.tex
 INPUT chapters/6-limitations.tex
 INPUT /Users/fabio/Library/TinyTeX/texmf-dist/fonts/tfm/public/lm/ec-lmcsc10.tfm
+INPUT /Users/fabio/Library/TinyTeX/texmf-dist/tex/latex/lm/t1lmtt.fd
+INPUT /Users/fabio/Library/TinyTeX/texmf-dist/tex/latex/lm/t1lmtt.fd
+INPUT /Users/fabio/Library/TinyTeX/texmf-dist/tex/latex/lm/t1lmtt.fd
+INPUT /Users/fabio/Library/TinyTeX/texmf-dist/fonts/tfm/public/lm/ec-lmtt12.tfm
 INPUT ./chapters/A-appendix.tex
 INPUT ./chapters/A-appendix.tex
 INPUT ./chapters/A-appendix.tex

@@ -37,22 +37,22 @@
 \contentsline {paragraph}{Camera configurations.}{21}{section.4.1}%
 \contentsline {section}{\numberline {4.2}Evaluation Pipeline}{24}{section.4.2}%
 \contentsline {subsection}{\numberline {4.2.1}Point Cloud Filtering}{24}{subsection.4.2.1}%
-\contentsline {paragraph}{Ground-truth validity masking.}{25}{subsection.4.2.1}%
+\contentsline {paragraph}{Ground-truth validity masking.}{24}{subsection.4.2.1}%
 \contentsline {paragraph}{Confidence-based filtering.}{25}{subsection.4.2.1}%
 \contentsline {paragraph}{Statistical outlier removal.}{25}{subsection.4.2.1}%
 \contentsline {subsection}{\numberline {4.2.2}Correspondence Construction}{25}{subsection.4.2.2}%
-\contentsline {subsection}{\numberline {4.2.3}Per-Frame Similarity Alignment}{26}{subsection.4.2.3}%
+\contentsline {subsection}{\numberline {4.2.3}Per-Frame Similarity Alignment}{25}{subsection.4.2.3}%
 \contentsline {section}{\numberline {4.3}Metric Suite}{26}{section.4.3}%
 \contentsline {subsection}{\numberline {4.3.1}Geometric Metrics}{26}{subsection.4.3.1}%
-\contentsline {paragraph}{Static/dynamic decomposition and motion gap.}{27}{equation.4.3}%
+\contentsline {paragraph}{Static/dynamic decomposition and motion gap.}{26}{equation.4.3}%
 \contentsline {paragraph}{3D-to-4D consistency.}{27}{equation.4.4}%
 \contentsline {subsection}{\numberline {4.3.2}Temporal Consistency Metrics}{27}{subsection.4.3.2}%
-\contentsline {subsection}{\numberline {4.3.3}Camera Pose Metrics}{28}{subsection.4.3.3}%
-\contentsline {paragraph}{Absolute Trajectory Error (ATE).}{28}{subsection.4.3.3}%
+\contentsline {subsection}{\numberline {4.3.3}Camera Pose Metrics}{29}{subsection.4.3.3}%
+\contentsline {paragraph}{Absolute Trajectory Error (ATE).}{29}{subsection.4.3.3}%
 \contentsline {paragraph}{Relative Pose Error (RPE).}{29}{equation.4.6}%
 \contentsline {paragraph}{Rotation error.}{29}{equation.4.7}%
-\contentsline {paragraph}{Intrinsic error.}{29}{equation.4.7}%
-\contentsline {section}{\numberline {4.4}Implementation Details}{29}{section.4.4}%
+\contentsline {paragraph}{Intrinsic error.}{30}{equation.4.7}%
+\contentsline {section}{\numberline {4.4}Implementation Details}{30}{section.4.4}%
 \contentsline {chapter}{\numberline {5}Results}{31}{chapter.5}%
 \contentsline {section}{\numberline {5.1}3D Baseline Results}{31}{section.5.1}%
 \contentsline {section}{\numberline {5.2}Alignment Strategy comparison}{32}{section.5.2}%
@@ -67,13 +67,13 @@
 \contentsline {subsection}{\numberline {5.5.3}Drift and the Limits of Temporal Smoothing}{42}{subsection.5.5.3}%
 \contentsline {subsection}{\numberline {5.5.4}Geometric Cost}{43}{subsection.5.5.4}%
 \contentsline {subsection}{\numberline {5.5.5}Comparison with Native 4D Architectures}{43}{subsection.5.5.5}%
-\contentsline {subsection}{\numberline {5.5.6}Comparison with GGPT}{43}{subsection.5.5.6}%
+\contentsline {subsection}{\numberline {5.5.6}Comparison with GGPT}{44}{subsection.5.5.6}%
 \contentsline {section}{\numberline {5.6}Qualitative Failure Analysis}{44}{section.5.6}%
 \contentsline {chapter}{\numberline {6}Discussion and Conclusion}{47}{chapter.6}%
 \contentsline {section}{\numberline {6.1}Architecture family analysis}{47}{section.6.1}%
 \contentsline {subsection}{\numberline {6.1.1}Why Spatial Models Succeed}{47}{subsection.6.1.1}%
 \contentsline {subsection}{\numberline {6.1.2}Why Native 4D Architectures Fail}{48}{subsection.6.1.2}%
-\contentsline {subsection}{\numberline {6.1.3}Why GGPT is Unsuitable for Geometry-Critical Applications}{48}{subsection.6.1.3}%
+\contentsline {subsection}{\numberline {6.1.3}Why GGPT Fails Under Sparse-View Dynamic Conditions}{49}{subsection.6.1.3}%
 \contentsline {section}{\numberline {6.2}The decoupled framework paradigm}{49}{section.6.2}%
 \contentsline {section}{\numberline {6.3}Limitations}{50}{section.6.3}%
 \contentsline {subsection}{\numberline {6.3.1}Per-Backbone Parameter Calibration}{50}{subsection.6.3.1}%
@@ -86,5 +86,5 @@
 \contentsline {subsection}{\numberline {6.4.3}Reprojection-Error Cross-View Refinement}{52}{subsection.6.4.3}%
 \contentsline {subsection}{\numberline {6.4.4}Extension to Moving Cameras and Broader Evaluation}{53}{subsection.6.4.4}%
 \contentsline {section}{\numberline {6.5}Conclusion}{53}{section.6.5}%
-\contentsline {chapter}{Bibliography}{54}{section*.18}%
+\contentsline {chapter}{Bibliography}{54}{section*.19}%
 \contentsline {chapter}{\numberline {A}Artifacts Availability}{58}{appendix.A}%

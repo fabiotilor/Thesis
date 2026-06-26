@@ -10,17 +10,38 @@ This chapter describes the evaluation framework used to compare reconstruction m
 The evaluation uses two complementary benchmark datasets: DexYCB~\cite{dexycb} and Hi4D~\cite{hi4d}. Together they provide dynamic reconstruction scenarios covering human--object and human--human interaction, with high-quality geometric ground truth alongside multiple synchronised camera views.
 
 \paragraph{DexYCB.}
-DexYCB~\cite{dexycb} captures dexterous human--object manipulation across ten subjects, providing RGB-D observations with calibrated sensor depth as ground truth. The dataset covers a wide range of grasping and manipulation motions over diverse object categories, making it representative of practical human--robot interaction scenarios. For each subject, the evaluation uses a sequence of 24 to 25 frames. Sensor depth carries the inherent noise of structured-light capture, but is sufficiently accurate for evaluation at the 1\,cm precision threshold used throughout this thesis.
+DexYCB~\cite{dexycb} captures dexterous human--object manipulation across ten
+subjects, providing RGB-D observations with calibrated sensor depth as ground
+truth. Each sequence depicts a subject grasping and lifting an object, with
+variation arising from diverse subjects and object instances, making it
+representative of practical human--robot interaction scenarios. For each subject,
+the evaluation uses a sequence of 24 to 25 frames. Sensor depth carries the
+inherent noise of structured-light capture, but is sufficiently accurate for
+evaluation at the 1\,cm precision threshold used throughout this thesis.
 
 \paragraph{Hi4D.}
 Hi4D~\cite{hi4d} focuses on close human--human interaction and provides temporally consistent mesh-based ground truth. Compared to DexYCB, it contains substantially larger non-rigid motion, stronger self-occlusions, and more complex interaction patterns. The evaluation covers fifteen interaction sequences across three subject pairs (pair00, pair01, pair09), spanning activities including dance, fight, high-five, taichi, hug, yoga, basketball, talk, and bend. To avoid the approach phase before meaningful contact begins, sequences start at frame index 22, from which 24 consecutive frames are extracted. This sequence length matches DexYCB and remains within GPU memory constraints for the native 4D models, which process the full multi-view sequence jointly.
 
-Ground-truth geometry for Hi4D comes from temporally consistent fitted meshes, projected into each camera view to obtain per-pixel reference depth. Because the mesh covers only the interacting subjects and not the background, dataset-provided segmentation masks restrict evaluation to subject pixels, and all background pixels are set to black before model inference. Section~\ref{sec:evaluation_pipeline} omits confidence-based filtering for Hi4D, since model confidence estimates proved poorly calibrated on this out-of-domain human-interaction data; mask-based filtering already removes most invalid predictions. The absence of a static background also means that the jitter metrics defined in Section~\ref{sec:metrics} cannot be computed for Hi4D, since no stable scene anchors are available.
+Ground-truth geometry for Hi4D comes from temporally consistent fitted meshes,
+projected into each camera view to obtain per-pixel reference depth. Because the
+mesh covers only the interacting subjects and not the background, dataset-provided
+segmentation masks restrict evaluation to subject pixels, and all background
+pixels are set to black before model inference. Confidence-based filtering is
+omitted for Hi4D, since model confidence estimates proved poorly calibrated on
+this out-of-domain human-interaction data; mask-based filtering already removes
+most invalid predictions. The absence of a static background means that the
+jitter metrics defined in Section~\ref{sec:metrics} cannot be computed, since no
+stable scene anchors are available. Hi4D therefore serves as a complementary
+dataset for comparing reconstruction models on geometric accuracy, as reported in
+Chapter~\ref{c:results}.
 
 \paragraph{Camera configurations.}
 Table~\ref{tab:camera_configs} and Figures~\ref{fig:dex_configs}--\ref{fig:hi4d_configs} summarise the camera configurations used for sparse-view evaluation. Both datasets provide eight synchronised and calibrated camera views. The evaluation uses subsets of two, three, and four cameras to study reconstruction performance under progressively sparser conditions. The selection criteria prioritise visibility of the dynamic scene content while maintaining sufficient inter-view overlap for the static correspondences required by the temporal alignment strategies of Chapter~\ref{c:methodology}.
 
-For DexYCB, the selected cameras span both frontal and rear viewpoints, providing broad coverage around the manipulation region. For Hi4D, stronger self-occlusions make frontal viewpoints more reliable, so the configurations primarily use front-facing cameras.
+For DexYCB, the selected cameras span both frontal and rear viewpoints, providing broad coverage around the manipulation region. For Hi4D, stronger self-occlusions in human--human interaction sequences make
+a concentrated angular range on one side of the scene more reliable than
+spanning opposing viewpoints, so all configurations are drawn from a single
+arc of cameras.
 
 \begin{table}[!htb]
 \centering
@@ -84,16 +105,15 @@ coverage across sequences.
         \includegraphics[width=\linewidth]{figures/HI4D4}
         \caption{4 views}
     \end{subfigure}
-    \caption{Hi4D camera configurations for the 2-, 3-, and 4-view settings. Frontal
-    cameras are preferred due to stronger self-occlusions in human--human interaction
-    sequences.}
+    \caption{Hi4D camera configurations for the 2-, 3-, and 4-view settings.
+Cameras are drawn from a concentrated angular range on a single side of the
+scene, rather than spanning opposing viewpoints, to reduce self-occlusion in
+human--human interaction sequences.}
     \label{fig:hi4d_configs}
 \end{minipage}
 \end{figure}
 
 \FloatBarrier
-
-The native 4D models, VGGT4D and MonoFusion, receive the full multi-view video sequence as a single input rather than processing frames independently; the selected camera subsets define the complete input provided at inference time. All other models process each frame independently, with temporal alignment applied as a post-processing step as described in Chapter~\ref{c:methodology}.
 
 %% -----------------------------------------------------------------------
 \section{Evaluation Pipeline}
@@ -125,7 +145,13 @@ Raw reconstructions may contain invalid, geometrically unreliable, or otherwise 
 For DexYCB, the pipeline discards pixels where the sensor depth is invalid or exceeds 1.5\,m. The 1.5\,m cutoff removes distant scene regions that are typically unobserved by the models under sparse-view conditions, avoiding metric bias from large, poorly constrained areas. For Hi4D, dataset-provided segmentation masks replace depth-based validity masks, retaining only pixels that belong to the interacting subjects.
 
 \paragraph{Confidence-based filtering.}
-All evaluated models output per-point confidence scores alongside geometry predictions. For DexYCB, the pipeline retains the top 50\% of points by predicted confidence, independently per frame and per model. This confidence threshold focuses evaluation on regions where each model is most certain while discarding uncertain boundary predictions. Section~\ref{sec:datasets} explains why confidence filtering is omitted for Hi4D.
+All evaluated models output per-point confidence scores alongside geometry
+predictions. For DexYCB, the pipeline retains the top 50\,\% of points by
+predicted confidence, independently per frame and per model; all results
+reported in Chapter~\ref{c:results} for DexYCB reflect this filtering.
+This threshold focuses evaluation on regions where each model is most certain
+while discarding uncertain boundary predictions. Section~\ref{sec:datasets}
+explains why confidence filtering is omitted for Hi4D.
 
 \paragraph{Statistical outlier removal.}
 KDTree-based statistical outlier removal~\cite{rusu2008statistical} eliminates isolated floaters and sparse noise artefacts. For each point, the procedure computes the mean distance to its $k = 15$ nearest neighbours; points whose mean distance exceeds the global mean by more than 0.8 standard deviations are discarded. This criterion removes geometrically inconsistent points without affecting densely reconstructed surfaces.
@@ -187,24 +213,62 @@ Let $P$ denote the set of estimated points and $Q$ the set of ground-truth point
 where KD-trees provide the nearest-neighbour distances. Accuracy measures the fraction of reconstructed points lying within 1\,cm of the true surface; completeness measures the fraction of true surface points recovered within the same tolerance.
 
 \paragraph{Static/dynamic decomposition and motion gap.}
-To identify where models succeed and fail relative to scene dynamics, the evaluation computes accuracy and completeness separately on static and dynamic points. A point is classified as dynamic if it projects into a dynamic region in any view, according to the SAM2-derived mask (Section~\ref{sec:sam2_background}); otherwise it is static. The motion gap,
+To identify where models succeed and fail relative to scene dynamics, the
+evaluation computes accuracy and completeness separately on static and dynamic
+points if applicable to the dataset. A point is classified as dynamic if it projects into a dynamic region
+in any view, according to the SAM2-derived mask
+(Section~\ref{sec:sam2_background}); otherwise it is static. The motion gap,
 \begin{equation}
 \text{motion\_gap} = \text{Accuracy}_{\text{static}} - \text{Accuracy}_{\text{dynamic}},
 \end{equation}
-quantifies how much better a model reconstructs static versus dynamic content. A positive value is expected for models trained primarily on static scenes.
+quantifies the performance difference between static and dynamic scene regions.
+This decomposition is particularly informative for the spatial foundation models
+evaluated in this thesis, which are
+trained predominantly on static scene data. A large positive motion gap indicates
+that a model's geometric priors do not transfer well to dynamic content, which is
+relevant for assessing their suitability in robotics scenarios involving moving
+objects or people.
 
 \paragraph{3D-to-4D consistency.}
-The $\Delta_{\text{consistency}}$ metric isolates the geometric cost introduced purely by temporal alignment, independently of reconstruction quality:
+This thesis introduces $\Delta_{\text{consistency}}$ as a metric to isolate the
+geometric cost introduced purely by temporal alignment:
 \begin{equation}
 \Delta_{\text{consistency}} = \mathrm{Chamfer}_{\mathrm{4D}} - \mathrm{Chamfer}_{\mathrm{3D}},
 \end{equation}
-where $\mathrm{Chamfer}_{\mathrm{3D}}$ is the average per-frame Chamfer distance under independent per-frame alignment and $\mathrm{Chamfer}_{\mathrm{4D}}$ is the Chamfer distance of the concatenated sequence after temporal alignment. A value near zero indicates that the alignment strategy preserves per-frame geometry faithfully; a large positive value reveals geometric distortion introduced by the alignment itself.
+where $\mathrm{Chamfer}_{\mathrm{3D}}$ is the average per-frame Chamfer distance
+under independent per-frame alignment and $\mathrm{Chamfer}_{\mathrm{4D}}$ is
+the Chamfer distance of the concatenated sequence after temporal alignment. A
+value near zero indicates that the alignment strategy preserves per-frame
+geometry faithfully; a large positive value reveals geometric distortion
+introduced by the alignment itself.
 
 \subsection{Temporal Consistency Metrics}
+Figure~\ref{fig:jitter_anchors} illustrates the jitter evaluation setup on a 
+DexYCB scene. Temporal instability manifests as unwanted frame-to-frame 
+movement of scene points that should remain static after alignment. Because 
+filtered point clouds do not retain stable point identities over time, the 
+pipeline computes jitter on the dense per-view pointmaps 
+$\mathbf{P}_{t,v} \in \mathbb{R}^{H \times W \times 3}$ rather than on the 
+final filtered clouds. For a fixed view $v$ and pixel $(y,x)$, an anchor is persistent if it satisfies all of the following in every frame: the pixel is classified as static, the 3D point is finite and non-zero, and the point passes ground-truth validity and confidence filtering where applicable.
 
-Temporal instability manifests as unwanted frame-to-frame movement of scene points that should remain static after alignment. Because filtered point clouds do not retain stable point identities over time, the pipeline computes jitter on the dense per-view pointmaps $\mathbf{P}_{t,v} \in \mathbb{R}^{H \times W \times 3}$ rather than on the final filtered clouds. For a fixed view $v$ and pixel $(y,x)$, an anchor is persistent if it satisfies all of the following in every frame: the pixel is classified as static, the 3D point is finite and non-zero, and the point passes ground-truth validity and confidence filtering where applicable.
+\begin{figure}[t]
+    \centering
+    \includegraphics[width=\linewidth]{figures/Jitter_metrics.png}
+    \caption{Visualisation of the jitter evaluation on a DexYCB scene after 
+    static mask filtering. Blue points denote all static scene points retained 
+    after masking; red points denote the $N{=}5{,}000$ anchors sampled uniformly 
+    at random from the persistent static pixels, whose 3D trajectories 
+    $\mathbf{x}_a(t)$ are used to compute the temporal consistency metrics 
+    defined in this section. Dynamic regions, including the manipulated object 
+    and the hand, are excluded from both sets.}
+    \label{fig:jitter_anchors}
+\end{figure}
 
-From the union of all persistent anchors across views, the evaluation samples $N = 5{,}000$ anchors uniformly at random (fixed seed for reproducibility), and extracts 3D trajectories $\{\mathbf{x}_a(t)\}_{t=1}^{T}$. The following metrics are then defined:
+
+From the union of all persistent anchors across views, the evaluation samples $N = 5{,}000$ anchors uniformly at random (fixed seed for reproducibility), and
+extracts a 3D trajectory $\mathbf{x}_a(t) \in \mathbb{R}^3$ for each anchor
+$a$, where $t = 1, \dots, T$ indexes the frames. The following metrics are then
+defined:
 
 \begin{itemize}
   \item \textbf{Mean jitter}: average frame-to-frame displacement over all anchors,
@@ -282,8 +346,4 @@ Experiments are conducted on two hardware configurations. Most models---MASt3R-S
 VGGT, PI3, PI3X, and GGPT---are run on a single NVIDIA GeForce RTX~4090 with 24\,GB of
 VRAM. VGGT4D and MonoFusion require substantially more memory for joint multi-view
 sequence processing and are run on a node equipped with eight NVIDIA H200 GPUs
-(143\,GB VRAM each), to which access was obtained at a later stage of the project.
-
-Statistical outlier removal, KDTree queries, and all metric computations are implemented
-in Python using \texttt{scipy.spatial.cKDTree}. Results are averaged over all frames, all
-sequences, and all subjects within each dataset.
+(143\,GB VRAM each).
