@@ -81,17 +81,44 @@ pressure, and Opt is free to maximise temporal consistency without any geometric
 pressure, because it operates exclusively on static regions where consistency is
 physically guaranteed.
 
-Strategy 2 is selected as the alignment basis for Opt over Strategy 3 despite Strategy
-3 achieving marginally better $\Delta_{\text{consistency}}$ in most cases. As already discussed in Section~\ref{c:results} and visible in
-Table~\ref{tab:strategy_extended}, the differences between strategies are
-modest throughout and lie within one standard deviation across all model
-families on DexYCB, making the choice of strategy unlikely to have a
-meaningful effect on downstream performance. Strategy 3 requires $\mathcal{O}(T^2)$ pairwise alignments
-and iterative geodesic averaging, making it substantially slower without proportionate
-benefit. Strategy 2's $\mathcal{O}(T \log T)$ complexity and consistent performance
-across all four backbones make it the more suitable foundation for a post-processing
-pipeline intended for practical deployment.
+The choice of alignment strategy follows the same decoupling logic at a smaller scale,
+with Strategy 2 selected over both alternatives for different reasons in each case.
+Against Strategy 1, robustness is the deciding factor. Strategy 1 anchors every frame
+directly to a single reference frame $t_0$, so alignment accuracy for any frame depends
+entirely on how well that frame is observed and how far the scene has moved from its
+initial configuration (Section~\ref{sec:strategy1}). Strategy 2 removes this single
+point of failure by merging frames hierarchically, so no frame's alignment depends on
+one reference that could be poorly observed. Table~\ref{tab:strategy_extended} shows no
+consistent empirical advantage for Strategy 2 over Strategy 1 on DexYCB, since both
+achieve comparable Chamfer and $\Delta_{\text{consistency}}$ values for every backbone;
+the choice rests on robustness to a reference-frame failure that the bounded DexYCB
+sequences happen not to exhibit, not on an observed gap. A longer sequence, or one with
+a poorly observed first frame, would be expected to widen the difference.
 
+The same robustness argument favours Strategy 3 over Strategy 2 under harder
+conditions than those evaluated here. Coupling every frame to every other frame through
+$\mathcal{O}(T^2)$ reliability-weighted edges lets Strategy 3 down-weight a single
+unreliable pairwise alignment rather than propagate it, unlike Strategy 2's hierarchical
+merge, where a poor alignment at one tree level corrupts every frame downstream. Longer
+sequences, where the merge tree has more levels for an error to propagate through, or
+sequences with intermittently unreliable frames, such as motion blur or partial
+occlusion at specific timesteps, are where this advantage should matter most: Strategy
+3's edge-reliability weighting can isolate the affected frames rather than letting them
+corrupt their neighbours in the merge tree. A fixed 50-iteration cap on the alignment
+graph optimisation (Section~\ref{sec:strategy3}) further understates Strategy 3's true
+robustness in the results reported here, since a harder alignment problem could in
+principle require more iterations than the budget allows. None of these harder
+conditions are pronounced enough under the bounded, 24--25 frame DexYCB and Hi4D
+sequences evaluated in this thesis for the advantage to materialise: Strategy 3 achieves
+marginally better $\Delta_{\text{consistency}}$ in most cases, but the differences
+between strategies are modest throughout and lie within one standard deviation across
+all model families on DexYCB. Computational cost therefore drives the final choice.
+Strategy 3's $\mathcal{O}(T^2)$ pairwise alignments and iterative geodesic averaging make
+it substantially slower without a proportionate benefit under these conditions, while
+Strategy 2's $\mathcal{O}(T \log T)$ complexity and consistent performance across all
+four backbones make it the more suitable foundation for a post-processing pipeline
+intended for practical deployment. Strategy 3 should remain the preferred choice for
+longer or less reliable sequences in future work.
 %% -----------------------------------------------------------------------
 \section{Limitations}
 \label{sec:limitations}
