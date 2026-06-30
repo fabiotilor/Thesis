@@ -87,7 +87,7 @@ coverage across sequences.
     \end{subfigure}
     \caption{DexYCB camera configurations for the 2-, 3-, and 4-view settings.
     Cameras span frontal and rear viewpoints to maximise coverage of the manipulation
-    region while maintaining inter-view overlap.}
+    region while maintaining inter-view overlap. The point clouds shown depict the ground-truth geometry.}
     \label{fig:dex_configs}
 \end{minipage}
 \hfill
@@ -108,7 +108,7 @@ coverage across sequences.
     \caption{Hi4D camera configurations for the 2-, 3-, and 4-view settings.
 Cameras are drawn from a concentrated angular range on a single side of the
 scene, rather than spanning opposing viewpoints, to reduce self-occlusion in
-human--human interaction sequences.}
+human--human interaction sequences. The point clouds shown depict the ground-truth geometry.}
     \label{fig:hi4d_configs}
 \end{minipage}
 \end{figure}
@@ -124,11 +124,11 @@ Figure~\ref{fig:evaluation_pipeline} gives an overview of the processing pipelin
 \begin{figure}[!htb]
 \centering
 \includegraphics[width=\textwidth]{figures/method_figure_cropped}
-\caption{Evaluation pipeline overview. The top row shows the per-frame baseline path:
+\caption{Evaluation pipeline overview. The top row (a) shows the per-frame baseline path:
 raw model outputs are filtered (ground-truth validity, confidence, statistical outlier
 removal), pixel-wise correspondences are established via projection, and Umeyama
 similarity alignment registers each frame to its ground truth, producing 3D metrics.
-The bottom row shows the 4D path: the temporal alignment stage of
+The bottom row (b) shows the 4D path: the temporal alignment stage of
 Chapter~\ref{c:methodology} first brings independently reconstructed frames into a
 shared coordinate system using static masks, after which the concatenated sequence is
 aligned globally to ground truth to produce 4D metrics.}
@@ -146,12 +146,43 @@ For DexYCB, the pipeline discards pixels where the sensor depth is invalid or ex
 
 \paragraph{Confidence-based filtering.}
 All evaluated models output per-point confidence scores alongside geometry
-predictions. For DexYCB, the pipeline retains the top 50\,\% of points by
-predicted confidence, independently per frame and per model; all results
-reported in Chapter~\ref{c:results} for DexYCB reflect this filtering.
-This threshold focuses evaluation on regions where each model is most certain
-while discarding uncertain boundary predictions. Section~\ref{sec:datasets}
-explains why confidence filtering is omitted for Hi4D.
+predictions. For DexYCB, the pipeline retains the top 50\,\% of estimated
+points by predicted confidence, independently per frame and per model; the
+ground-truth point cloud is never filtered. All results reported in
+Chapter~\ref{c:results} for DexYCB reflect this filtering. The threshold was
+chosen to prevent low-confidence, geometrically unreliable points from
+polluting the Umeyama alignment (Section~\ref{sec:evaluation_pipeline}): without
+filtering, the estimated similarity transform is itself distorted by
+unreliable correspondences, which would bias the resulting metrics toward
+measuring alignment error rather than the underlying spatial accuracy of the
+model. To validate this choice rather than assume it, Figure~\ref{fig:conf_sweep}
+sweeps the confidence threshold from 30\,\% to 100\,\% across all four spatial
+backbones. MASt3R-SfM, Pi3, and Pi3X each show a clearly U-shaped Chamfer
+curve with a minimum between 50\,\% and 80\,\%, confirming that an
+intermediate threshold is necessary rather than arbitrary: both extremes,
+overly aggressive filtering and no filtering at all, measurably degrade
+reconstruction quality. VGGT is the exception, exhibiting a monotonic
+trade-off in which looser thresholds continue to reduce Chamfer distance at
+the cost of accuracy, rather than a clear interior optimum. Since no single
+threshold is simultaneously optimal across all four backbones, 50\,\% is
+adopted as a threshold that lies within or adjacent to the empirical optimum
+for three of the four models while remaining a safe, non-degenerate choice
+for the fourth; the model-dependence of this trade-off is discussed further
+in Section~\ref{sec:limitations}.
+
+\begin{figure}[!htb]
+\centering
+\includegraphics[width=\textwidth]{figures/dexycb_confidence_grid}
+\caption{Effect of confidence threshold on Chamfer distance, accuracy,
+completeness, and mean jitter for the four spatial backbones (MASt3R-SfM,
+VGGT, Pi3, Pi3X) on DexYCB, evaluated at 2, 3, and 4 views. MASt3R-SfM, Pi3,
+and Pi3X each show a U-shaped Chamfer curve with a minimum between 50\,\%
+and 80\,\%; VGGT shows a monotonic accuracy--completeness trade-off instead.
+The adopted 50\,\% threshold lies within or close to the empirical optimum
+for three of the four backbones.}
+\label{fig:conf_sweep}
+\end{figure} Section~\ref{sec:datasets} explains why
+confidence filtering is omitted for Hi4D.
 
 \paragraph{Statistical outlier removal.}
 KDTree-based statistical outlier removal~\cite{rusu2008statistical} eliminates isolated floaters and sparse noise artefacts. For each point, the procedure computes the mean distance to its $k = 15$ nearest neighbours; points whose mean distance exceeds the global mean by more than 0.8 standard deviations are discarded. This criterion removes geometrically inconsistent points without affecting densely reconstructed surfaces.
@@ -237,10 +268,10 @@ geometric cost introduced purely by temporal alignment:
 \end{equation}
 where $\mathrm{Chamfer}_{\mathrm{3D}}$ is the average per-frame Chamfer distance
 under independent per-frame alignment and $\mathrm{Chamfer}_{\mathrm{4D}}$ is
-the Chamfer distance of the concatenated sequence after temporal alignment. A
-value near zero indicates that the alignment strategy preserves per-frame
-geometry faithfully; a large positive value reveals geometric distortion
-introduced by the alignment itself.
+the Chamfer distance of the concatenated sequence after temporal alignment. A value near zero indicates that the alignment strategy preserves per-frame
+geometry faithfully. A large positive value reveals geometric distortion
+stemming from temporal inconsistencies in the underlying per-frame
+reconstructions, which no alignment strategy can fully resolve.
 
 \subsection{Temporal Consistency Metrics}
 Figure~\ref{fig:jitter_anchors} illustrates the jitter evaluation setup on a 
@@ -283,7 +314,7 @@ defined:
   \item \textbf{Jitter P95}: 95th percentile of per-anchor mean jitter, capturing
         worst-case instability while excluding extreme outliers.
 
-  \item \textbf{Drift}: cumulative displacement over the full sequence,
+  \item \textbf{Drift}: cumulative average displacement over the full sequence,
         \[
           \frac{1}{N}\sum_{a=1}^{N}\|\mathbf{x}_a(T)-\mathbf{x}_a(1)\|_2.
         \]
@@ -321,7 +352,7 @@ We adopt a translation-only variant of Relative Pose Error (RPE) that measures l
 (\mathbf{C}_{\mathrm{est},i}' - \mathbf{C}_{\mathrm{est},j}')
 -
 (\mathbf{C}_{\mathrm{gt},i} - \mathbf{C}_{\mathrm{gt},j})
-\right\|_2^2}.
+\right\|_2^2},
 \end{equation}
 
 where $\mathbf{C}_{\mathrm{est}}'$ denotes the estimated camera centers after similarity alignment using the Umeyama algorithm, $\mathbf{C}_{\mathrm{gt}}$ denotes the ground-truth camera centers, and $N$ is the number of evaluated frame pairs. Unlike the classical SE(3)-based RPE, this metric evaluates translational consistency only and is reported in metres.
@@ -330,20 +361,19 @@ where $\mathbf{C}_{\mathrm{est}}'$ denotes the estimated camera centers after si
 The geodesic distance on $\mathrm{SO}(3)$ (Section~\ref{sec:math_background}) between estimated and ground-truth rotation matrices, after applying the global rotation alignment from the Umeyama step, gives the rotation error in degrees.
 
 \paragraph{Intrinsic error.}
-For models that estimate camera intrinsics (MASt3R-SfM, VGGT, PI3, PI3X, and VGGT4D), the evaluation reports two errors: the relative focal-length error $|f_{\text{est}} - f_{\text{gt}}|\,/\,f_{\text{gt}}$, and the principal-point error $\|\mathbf{pp}_{\text{est}} - \mathbf{pp}_{\text{gt}}\|_2$ in pixels. MonoFusion receives ground-truth camera intrinsics at inference time, so its intrinsic errors are trivially zero and excluded from the comparison.
+For models that estimate camera intrinsics (MASt3R-SfM, VGGT, Pi3, Pi3X, and VGGT4D), the evaluation reports two errors: the relative focal-length error $|f_{\text{est}} - f_{\text{gt}}|\,/\,f_{\text{gt}}$, and the principal-point error $\|\mathbf{pp}_{\text{est}} - \mathbf{pp}_{\text{gt}}\|_2$ in pixels. MonoFusion receives ground-truth camera intrinsics at inference time, so its intrinsic errors are trivially zero and excluded from the comparison.
 
 %% -----------------------------------------------------------------------
 \section{Implementation Details}
 \label{sec:implementation_details}
 
-All models are run using their publicly released checkpoints without further fine-tuning
-and  are each evaluated at their default
-inference resolutions as specified in the respective codebases. GGPT is applied as a
+All models use their publicly released checkpoints without fine-tuning,
+evaluated at their default inference resolutions as specified in the respective codebases. GGPT is applied as a
 post-processing stage on top of the backbone outputs, using its released checkpoint and
 the auxiliary SfM cues extracted from the same sparse-view input.
 
 Experiments are conducted on two hardware configurations. Most models---MASt3R-SfM,
-VGGT, PI3, PI3X, and GGPT---are run on a single NVIDIA GeForce RTX~4090 with 24\,GB of
+VGGT, Pi3, Pi3X, and GGPT---are run on a single NVIDIA GeForce RTX~4090 with 24\,GB of
 VRAM. VGGT4D and MonoFusion require substantially more memory for joint multi-view
 sequence processing and are run on a node equipped with eight NVIDIA H200 GPUs
 (143\,GB VRAM each).

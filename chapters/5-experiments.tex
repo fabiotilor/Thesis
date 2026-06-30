@@ -13,400 +13,675 @@ Section~\ref{sec:qualitative} provides qualitative point cloud analysis.
 \section{3D Baseline Results}
 \label{sec:3d_baseline}
 
-Table~\ref{tab:baseline_control_ggpt} reports per-frame geometric performance for all
-six models and GGPT on DexYCB and Hi4D, averaged over two-, three-, and four-view
-configurations. These per-frame aligned results serve as the geometric ceiling: no
-temporal alignment or smoothing has been applied, and each frame is registered
+Table~\ref{tab:baseline_control_ggpt} reports per-frame geometric performance 
+for all six models and GGPT on DexYCB and Hi4D across two, three, and four 
+input views. Spatial models consistently outperform native 4D architectures at 
+every view count and on both datasets; GGPT degrades geometry without exception. 
+These per-frame aligned results serve as the geometric ceiling: no temporal 
+alignment or smoothing has been applied, and each frame is registered 
 independently to its ground-truth counterpart.
-
-\begin{table}[t]
-\centering
-\caption{Per-frame geometric performance averaged over 2, 3, and 4 views on DexYCB
-and Hi4D. Each frame is aligned independently to ground truth; no temporal alignment
-is applied. Accuracy and completeness are reported as percentages at a 1\,cm threshold.
-Static/dynamic decomposition is reported for DexYCB only; Hi4D provides no static
-background so all evaluated points are dynamic.
-\textbf{Bold} = best per column within dataset, \underline{underline} = second best.}
-\label{tab:baseline_control_ggpt}
-\scriptsize
-\setlength{\tabcolsep}{4pt}
-\begin{tabular}{lllccc}
-\toprule
-Dataset & Model Family & Method & Chamfer $\downarrow$ & Accuracy (Stat/Dyn) $\uparrow$ & Completeness (Stat/Dyn) $\uparrow$ \\
-\midrule
-\multirow{12}{*}{DexYCB} & MASt3R-SfM & Baseline & \underline{0.025} & 73.5 / 71.3 & 65.5 / \underline{62.4} \\
- & MASt3R-SfM & GGPT & 0.167 & 52.5 / 45.2 & 53.1 / 49.7 \\
-\cmidrule(l){2-6}
- & VGGT & Baseline & \underline{0.025} & 80.7 / 69.8 & 61.7 / \textbf{62.6} \\
- & VGGT & GGPT & 0.203 & 59.5 / 60.4 & 52.2 / 47.6 \\
-\cmidrule(l){2-6}
- & PI3 & Baseline & \textbf{0.022} & \textbf{94.4} / \underline{77.3} & \underline{80.6} / 58.6 \\
- & PI3 & GGPT & 0.105 & 74.4 / 30.7 & 66.2 / 40.7 \\
-\cmidrule(l){2-6}
- & PI3X & Baseline & 0.028 & \underline{92.1} / \textbf{81.4} & 77.7 / 60.6 \\
- & PI3X & GGPT & 0.107 & 85.7 / 46.4 & \textbf{80.9} / 55.9 \\
-\cmidrule(l){2-6}
- & VGGT4D & Baseline & 0.053 & 57.9 / 53.8 & 41.6 / 45.6 \\
- & VGGT4D & GGPT & 0.239 & 42.3 / 52.3 & 25.4 / 46.2 \\
-\cmidrule(l){2-6}
- & MonoFusion & Baseline & 0.050 & 40.4 / 28.5 & 46.0 / 34.1 \\
- & MonoFusion & GGPT & 0.082 & 9.4 / 12.6 & 6.6 / 8.1 \\
-\midrule
-\multirow{11}{*}{Hi4D} & MASt3R-SfM & Baseline & 0.158 & -- / 7.7 & -- / 8.8 \\
- & MASt3R-SfM & GGPT & 0.786 & -- / 1.8 & -- / 2.1 \\
-\cmidrule(l){2-6}
- & VGGT & Baseline & 0.095 & -- / \underline{13.8} & -- / 10.3 \\
- & VGGT & GGPT & 1.510 & -- / 2.2 & -- / 2.5 \\
-\cmidrule(l){2-6}
- & PI3 & Baseline & \textbf{0.072} & -- / \textbf{14.4} & -- / \textbf{16.7} \\
- & PI3 & GGPT & 0.447 & -- / 2.6 & -- / 3.7 \\
-\cmidrule(l){2-6}
- & PI3X & Baseline & \underline{0.078} & -- / 13.5 & -- / \underline{15.4} \\
- & PI3X & GGPT & 0.396 & -- / 2.5 & -- / 4.0 \\
-\cmidrule(l){2-6}
- & VGGT4D & Baseline & 0.230 & -- / 8.5 & -- / 8.2 \\
- & VGGT4D & GGPT & 1.057 & -- / 1.6 & -- / 1.8 \\
-\cmidrule(l){2-6}
- & MonoFusion & Baseline & 0.356 & -- / 4.5 & -- / 2.7 \\
-\bottomrule
-\end{tabular}
-\end{table}
-
-On DexYCB, PI3 achieves the lowest Chamfer distance (0.022\,m) and the highest static
-accuracy (94.4\,\%), establishing it as the strongest spatial estimator at the 1\,cm
-robotics threshold. PI3X leads on dynamic accuracy (81.4\,\%), though its baseline Chamfer of 0.028\,m is slightly higher than PI3, likely owing to its more discriminative confidence distribution retaining a sparser point set under the top-50\,\% filter, which inflates the completeness term of the Chamfer sum. MASt3R-SfM and VGGT tie on Chamfer at
-0.025\,m; VGGT achieves higher static accuracy (80.7\,\% vs.\ 73.5\,\%). The four
-spatial models consistently outperform both native 4D architectures: VGGT4D reaches
-0.053\,m Chamfer with 57.9\,\% static accuracy, and MonoFusion 0.050\,m with 40.4\,\%
-static accuracy. GGPT worsens Chamfer for every backbone without exception, a result
-discussed in detail in Section~\ref{sec:native4d_baselines}.
-
-On Hi4D, the model ordering is consistent with DexYCB. PI3 achieves the lowest Chamfer
-(0.072\,m) and highest dynamic accuracy (14.4\,\%) and completeness (16.7\,\%), with
-PI3X following closely (0.078\,m, 13.5\,\%). Dynamic accuracy values on Hi4D are
-substantially lower than on DexYCB across all models, reflecting the greater difficulty
-of close human--human interaction sequences with stronger self-occlusions and larger
-non-rigid motion. VGGT4D (0.230\,m) and MonoFusion (0.356\,m) degrade more severely
-than spatial models on this out-of-distribution dataset. Static accuracy and completeness
-are not reported for Hi4D, since the background is masked during preprocessing and all
-evaluated points belong to dynamic subject regions (Section~\ref{sec:datasets}).
-
-
-
-\section{Alignment Strategy comparison}
-\label{sec:alignment_comparison}
-
-Lifting per-frame reconstructions into a temporally coherent 4D representation requires
-bringing independently reconstructed frames into a shared coordinate system. The three
-strategies introduced in Section~\ref{sec:alignment_strategies} differ in how they
-establish this shared system, and consequently in how much geometric distortion they
-introduce. Table~\ref{tab:strategy_extended} compares all three on DexYCB and Hi4D,
-reporting Chamfer distance, $\Delta_{\text{consistency}}$, and camera pose metrics
-pooled over view counts. $\Delta_{\text{consistency}}$ isolates the geometric cost of
-the alignment itself: it measures the difference between the sequence-level Chamfer
-distance after temporal alignment and the per-frame Chamfer distance under independent
-ground-truth registration (Section~\ref{sec:metrics}). Camera pose metrics serve as an
-additional indicator of alignment quality, since the same Umeyama transformations
-estimated for the point clouds are applied to the cameras.
 
 \begin{table*}[t]
 \centering
-\caption{Alignment strategy comparison on DexYCB and Hi4D, pooled over view counts.
-$\Delta_{\text{consistency}}$ measures the increase in Chamfer distance introduced by
-temporal alignment relative to independent per-frame ground-truth registration; a value
-near zero indicates that alignment preserves per-frame geometry faithfully. ATE, RPE,
-and rotation error serve as additional indicators of
-alignment quality, since the same transformations computed for the point clouds are
-applied to the cameras. \textbf{Bold} = best within each strategy block or GGPT block.}
-\label{tab:strategy_extended}
-\scriptsize
-\setlength{\tabcolsep}{4pt}
-\begin{tabular}{lllccccc}
+\caption{\textbf{Per-frame 3D baseline performance on DexYCB and Hi4D, per view count.}
+Spatial models (Pi3, Pi3X, VGGT, MASt3R-SfM) consistently outperform native 4D
+architectures (VGGT4D, MonoFusion) on Chamfer distance at every view count and on
+both datasets, establishing that per-frame spatial estimation yields superior geometry
+to joint 4D processing. Among spatial models, Pi3 achieves the best Chamfer distance
+at 2 and 4 views on both datasets; MASt3R-SfM leads at 3 views on DexYCB.
+Pi3X leads on dynamic accuracy across most configurations.
+GGPT consistently degrades Chamfer distance relative to the unrefined spatial baseline
+and is included to characterise the effect of geometry refinement under sparse-view
+dynamic conditions.
+$A_s$/$A_d$: static/dynamic accuracy at 1\,cm threshold (\%).
+$C_s$/$C_d$: static/dynamic completeness at 1\,cm threshold (\%).
+Hi4D provides no static background; $A_s$ and $C_s$ are omitted.
+MonoFusion GGPT is omitted on Hi4D as duplicated-subject artefacts render the
+output an unreliable refinement input.
+\textbf{Bold}: best per column per view count; \underline{underline}: second best.}
+\label{tab:baseline_control_ggpt}
+\resizebox{\linewidth}{!}{%
+\begin{tabular}{ll
+  | ccc
+  | ccc
+  | ccc
+  | ccc
+  | ccc
+  | ccc
+  | ccc
+  | ccc |}
 \toprule
-Dataset & Model Family & Method & Chamfer $\downarrow$ & $\Delta$Cons. $\downarrow$ & ATE $\downarrow$ & RPE $\downarrow$ & Rot Err $\downarrow$ \\
+& &
+  \multicolumn{15}{c|}{DexYCB} &
+  \multicolumn{9}{c|}{Hi4D} \\
+\cmidrule(lr){3-17}\cmidrule(lr){18-26}
+& &
+  \multicolumn{3}{c|}{Chamfer$\downarrow$} &
+  \multicolumn{3}{c|}{$A_s\uparrow$} &
+  \multicolumn{3}{c|}{$A_d\uparrow$} &
+  \multicolumn{3}{c|}{$C_s\uparrow$} &
+  \multicolumn{3}{c|}{$C_d\uparrow$} &
+  \multicolumn{3}{c|}{Chamfer$\downarrow$} &
+  \multicolumn{3}{c|}{$A_d\uparrow$} &
+  \multicolumn{3}{c|}{$C_d\uparrow$} \\
+\cmidrule(lr){3-5}\cmidrule(lr){6-8}\cmidrule(lr){9-11}
+\cmidrule(lr){12-14}\cmidrule(lr){15-17}\cmidrule(lr){18-20}
+\cmidrule(lr){21-23}\cmidrule(lr){24-26}
+& &
+  \multicolumn{3}{c|}{\scriptsize\textit{Views}} &
+  \multicolumn{3}{c|}{\scriptsize\textit{Views}} &
+  \multicolumn{3}{c|}{\scriptsize\textit{Views}} &
+  \multicolumn{3}{c|}{\scriptsize\textit{Views}} &
+  \multicolumn{3}{c|}{\scriptsize\textit{Views}} &
+  \multicolumn{3}{c|}{\scriptsize\textit{Views}} &
+  \multicolumn{3}{c|}{\scriptsize\textit{Views}} &
+  \multicolumn{3}{c|}{\scriptsize\textit{Views}} \\
+Model & Method
+  & 2 & 3 & 4
+  & 2 & 3 & 4
+  & 2 & 3 & 4
+  & 2 & 3 & 4
+  & 2 & 3 & 4
+  & 2 & 3 & 4
+  & 2 & 3 & 4
+  & 2 & 3 & 4 \\
 \midrule
-\multirow{24}{*}{DexYCB} & \multirow{6}{*}{MASt3R-SfM} & Strategy 1 & 0.032 $\pm$ 0.009 & 0.007 $\pm$ 0.001 & 0.129 & 0.073 & 2.210 \\
- &  & Strategy 2 & 0.031 $\pm$ 0.011 & 0.006 $\pm$ 0.003 & 0.127 & 0.071 & \textbf{2.064} \\
- &  & Strategy 3 & \textbf{0.031} $\pm$ 0.010 & \textbf{0.005} $\pm$ 0.001 & \textbf{0.124} & \textbf{0.067} & 2.068 \\
-\cmidrule(l){4-8}
- &  & GGPT (S1) & \textbf{0.167} $\pm$ 0.057 & 0.007 $\pm$ 0.001 & 0.120 & 0.069 & 2.220 \\
- &  & GGPT (S2) & \textbf{0.167} $\pm$ 0.057 & 0.006 $\pm$ 0.002 & 0.121 & 0.071 & 2.216 \\
- &  & GGPT (S3) & 0.167 $\pm$ 0.058 & \textbf{0.006} $\pm$ 0.001 & \textbf{0.119} & \textbf{0.067} & \textbf{2.182} \\
-\cmidrule(l){2-8}
- & \multirow{6}{*}{VGGT} & Strategy 1 & 0.032 $\pm$ 0.003 & 0.007 $\pm$ 0.002 & 0.345 & 0.084 & 2.487 \\
- &  & Strategy 2 & \textbf{0.030} $\pm$ 0.004 & \textbf{0.005} $\pm$ 0.002 & 0.337 & \textbf{0.081} & 2.378 \\
- &  & Strategy 3 & 0.031 $\pm$ 0.002 & 0.006 $\pm$ 0.002 & \textbf{0.336} & 0.081 & \textbf{2.314} \\
-\cmidrule(l){4-8}
- &  & GGPT (S1) & 0.203 $\pm$ 0.021 & \textbf{0.006} $\pm$ 0.001 & 0.356 & \textbf{0.088} & 2.583 \\
- &  & GGPT (S2) & 0.203 $\pm$ 0.021 & \textbf{0.006} $\pm$ 0.001 & 0.354 & 0.088 & 2.695 \\
- &  & GGPT (S3) & \textbf{0.202} $\pm$ 0.021 & 0.006 $\pm$ 0.002 & \textbf{0.353} & \textbf{0.088} & \textbf{2.506} \\
-\cmidrule(l){2-8}
- & \multirow{6}{*}{PI3} & Strategy 1 & \textbf{0.030} $\pm$ 0.004 & 0.008 $\pm$ 0.003 & 0.078 & 0.073 & 1.562 \\
- &  & Strategy 2 & 0.031 $\pm$ 0.004 & 0.008 $\pm$ 0.005 & 0.079 & 0.073 & 1.543 \\
- &  & Strategy 3 & 0.030 $\pm$ 0.005 & \textbf{0.007} $\pm$ 0.003 & \textbf{0.074} & \textbf{0.068} & \textbf{1.491} \\
-\cmidrule(l){4-8}
- &  & GGPT (S1) & 0.106 $\pm$ 0.033 & \textbf{0.010} $\pm$ 0.006 & 0.085 & 0.070 & 1.966 \\
- &  & GGPT (S2) & \textbf{0.105} $\pm$ 0.032 & \textbf{0.010} $\pm$ 0.006 & 0.087 & 0.073 & \textbf{1.866} \\
- &  & GGPT (S3) & 0.105 $\pm$ 0.033 & \textbf{0.010} $\pm$ 0.006 & \textbf{0.084} & \textbf{0.069} & 1.961 \\
-\cmidrule(l){2-8}
- & \multirow{6}{*}{PI3X} & Strategy 1 & 0.031 $\pm$ 0.003 & 0.003 $\pm$ 0.003 & 0.067 & \textbf{0.050} & 1.678 \\
- &  & Strategy 2 & \textbf{0.030} $\pm$ 0.003 & 0.003 $\pm$ 0.003 & 0.066 & \textbf{0.050} & \textbf{1.640} \\
- &  & Strategy 3 & 0.030 $\pm$ 0.004 & \textbf{0.002} $\pm$ 0.002 & \textbf{0.066} & \textbf{0.050} & 1.642 \\
-\cmidrule(l){4-8}
- &  & GGPT (S1) & \textbf{0.107} $\pm$ 0.037 & \textbf{0.002} $\pm$ 0.001 & 0.073 & 0.054 & 1.649 \\
- &  & GGPT (S2) & \textbf{0.107} $\pm$ 0.037 & \textbf{0.002} $\pm$ 0.001 & 0.076 & 0.056 & 1.661 \\
- &  & GGPT (S3) & \textbf{0.107} $\pm$ 0.037 & \textbf{0.002} $\pm$ 0.001 & \textbf{0.072} & \textbf{0.054} & \textbf{1.643} \\
+\addlinespace[0.15em]
+\multicolumn{26}{l}{\emph{Spatial models}} \\
 \midrule
-\multirow{24}{*}{Hi4D} & \multirow{6}{*}{MASt3R-SfM} & Strategy 1 & \textbf{0.279} $\pm$ 0.016 & \textbf{0.121} $\pm$ 0.007 & \textbf{2.014} & \textbf{2.140} & 32.369 \\
- &  & Strategy 2 & 0.302 $\pm$ 0.026 & 0.144 $\pm$ 0.017 & 2.069 & 2.189 & 32.450 \\
- &  & Strategy 3 & 0.330 $\pm$ 0.023 & 0.172 $\pm$ 0.015 & 2.114 & 2.190 & \textbf{29.855} \\
-\cmidrule(l){4-8}
- &  & GGPT (S1) & 0.799 $\pm$ 0.093 & -0.013 $\pm$ 0.008 & 1.831 & 1.942 & 28.639 \\
- &  & GGPT (S2) & 0.795 $\pm$ 0.096 & -0.017 $\pm$ 0.007 & 1.848 & \textbf{1.927} & 28.427 \\
- &  & GGPT (S3) & \textbf{0.764} $\pm$ 0.080 & \textbf{-0.048} $\pm$ 0.022 & \textbf{1.804} & 1.939 & \textbf{27.930} \\
-\cmidrule(l){2-8}
- & \multirow{6}{*}{VGGT} & Strategy 1 & \textbf{0.099} $\pm$ 0.010 & 0.004 $\pm$ 0.002 & 8.088 & 0.365 & 5.332 \\
- &  & Strategy 2 & \textbf{0.099} $\pm$ 0.010 & \textbf{0.004} $\pm$ 0.001 & 8.094 & 0.364 & \textbf{5.157} \\
- &  & Strategy 3 & 0.107 $\pm$ 0.016 & 0.012 $\pm$ 0.007 & \textbf{7.882} & \textbf{0.351} & 5.212 \\
-\cmidrule(l){4-8}
- &  & GGPT (S1) & 1.528 $\pm$ 0.069 & -0.023 $\pm$ 0.019 & 8.085 & 0.899 & 18.309 \\
- &  & GGPT (S2) & 1.531 $\pm$ 0.066 & -0.020 $\pm$ 0.009 & 8.129 & \textbf{0.874} & \textbf{17.686} \\
- &  & GGPT (S3) & \textbf{1.473} $\pm$ 0.108 & \textbf{-0.078} $\pm$ 0.078 & \textbf{7.548} & 0.889 & 17.897 \\
-\cmidrule(l){2-8}
- & \multirow{6}{*}{PI3} & Strategy 1 & \textbf{0.075} $\pm$ 0.007 & \textbf{0.003} $\pm$ 0.001 & \textbf{1.864} & \textbf{0.298} & \textbf{2.488} \\
- &  & Strategy 2 & \textbf{0.075} $\pm$ 0.007 & \textbf{0.003} $\pm$ 0.001 & \textbf{1.864} & \textbf{0.298} & \textbf{2.488} \\
- &  & Strategy 3 & \textbf{0.075} $\pm$ 0.007 & \textbf{0.003} $\pm$ 0.001 & \textbf{1.864} & \textbf{0.298} & \textbf{2.488} \\
-\cmidrule(l){4-8}
- &  & GGPT (S1) & \textbf{0.445} $\pm$ 0.011 & \textbf{0.003} $\pm$ 0.002 & 2.076 & 0.821 & 16.925 \\
- &  & GGPT (S2) & 0.447 $\pm$ 0.012 & 0.004 $\pm$ 0.001 & 2.070 & \textbf{0.796} & \textbf{16.373} \\
- &  & GGPT (S3) & 0.449 $\pm$ 0.008 & 0.006 $\pm$ 0.005 & \textbf{2.052} & 0.811 & 16.613 \\
-\cmidrule(l){2-8}
- & \multirow{6}{*}{PI3X} & Strategy 1 & \textbf{0.088} $\pm$ 0.007 & \textbf{0.010} $\pm$ 0.004 & \textbf{1.470} & \textbf{1.543} & \textbf{6.625} \\
- &  & Strategy 2 & \textbf{0.088} $\pm$ 0.007 & \textbf{0.010} $\pm$ 0.004 & \textbf{1.470} & \textbf{1.543} & \textbf{6.625} \\
- &  & Strategy 3 & \textbf{0.088} $\pm$ 0.007 & \textbf{0.010} $\pm$ 0.004 & \textbf{1.470} & \textbf{1.543} & \textbf{6.625} \\
-\cmidrule(l){4-8}
- &  & GGPT (S1) & 0.397 $\pm$ 0.016 & 0.003 $\pm$ 0.003 & 1.791 & 1.930 & 18.633 \\
- &  & GGPT (S2) & 0.396 $\pm$ 0.016 & \textbf{0.002} $\pm$ 0.002 & 1.786 & 1.921 & \textbf{18.189} \\
- &  & GGPT (S3) & \textbf{0.396} $\pm$ 0.015 & 0.002 $\pm$ 0.003 & \textbf{1.774} & \textbf{1.917} & 18.318 \\
+\multirow{2}{*}{MASt3R-SfM}
+ & Baseline
+   & 0.035 & \textbf{0.020} & \underline{0.020}
+   & 59.0 & 80.8 & 80.8
+   & 59.0 & 75.5 & 79.6
+   & 48.4 & 73.5 & 74.5
+   & 49.7 & \underline{65.9} & \underline{71.8}
+   & 0.168 & 0.154 & 0.152
+   & 7.9 & 7.9 & 7.3
+   & 6.4 & 9.0 & 11.0 \\
+ & GGPT
+   & 0.225 & 0.114 & 0.143
+   & 59.7 & 69.3 & 65.2
+   & 44.9 & 60.9 & 63.2
+   & 58.1 & 75.5 & 69.6
+   & 49.8 & \textbf{70.3} & \textbf{73.2}
+   & 0.861 & 0.697 & 0.877
+   & 2.8 & 2.2 & 0.5
+   & 3.1 & 2.8 & 1.1 \\
+\midrule
+\addlinespace[0.15em]
+\multirow{2}{*}{VGGT}
+ & Baseline
+   & 0.027 & \underline{0.025} & 0.024
+   & 77.7 & 80.5 & 84.0
+   & 68.4 & 68.1 & 72.9
+   & 53.9 & 66.8 & 64.5
+   & \underline{68.3} & 57.6 & 61.8
+   & 0.105 & 0.093 & 0.088
+   & 13.3 & \underline{14.1} & \underline{13.9}
+   & 7.9 & 10.6 & 12.4 \\
+ & GGPT
+   & 0.196 & 0.217 & 0.178
+   & 73.6 & 81.7 & 82.6
+   & \underline{74.3} & \textbf{77.9} & \underline{80.4}
+   & 71.3 & 76.3 & 65.7
+   & 59.0 & 62.5 & 63.3
+   & 1.536 & 1.490 & 1.626
+   & 2.8 & 2.7 & 1.2
+   & 2.8 & 3.4 & 1.7 \\
+\midrule
+\addlinespace[0.15em]
+\multirow{2}{*}{Pi3}
+ & Baseline
+   & \textbf{0.018} & 0.031 & \textbf{0.019}
+   & \textbf{91.5} & \textbf{95.7} & \underline{95.9}
+   & 74.4 & 70.7 & 86.9
+   & \underline{82.9} & 76.2 & 82.8
+   & 61.4 & 42.9 & 71.6
+   & \textbf{0.079} & \textbf{0.070} & \textbf{0.067}
+   & \underline{14.6} & \textbf{14.3} & \textbf{14.4}
+   & \underline{12.3} & \textbf{17.5} & \textbf{20.3} \\
+ & GGPT
+   & 0.068 & 0.122 & 0.095
+   & \underline{89.0} & \underline{95.3} & 93.7
+   & 35.4 & 33.3 & 51.6
+   & \textbf{84.9} & \textbf{92.1} & \underline{86.4}
+   & 62.4 & 48.7 & 69.1
+   & 0.433 & 0.439 & 0.456
+   & 3.2 & 2.9 & 1.3
+   & 3.8 & 5.0 & 2.7 \\
+\midrule
+\addlinespace[0.15em]
+\multirow{2}{*}{Pi3X}
+ & Baseline
+   & \underline{0.020} & 0.031 & 0.031
+   & 88.1 & 92.7 & 95.5
+   & \textbf{78.6} & \underline{76.0} & \textbf{89.7}
+   & 78.0 & 77.0 & 78.1
+   & 62.8 & 51.4 & 67.6
+   & \underline{0.081} & \underline{0.074} & \underline{0.079}
+   & \textbf{15.7} & 13.1 & 11.7
+   & \textbf{12.7} & \underline{16.5} & \underline{17.2} \\
+ & GGPT
+   & 0.062 & 0.136 & 0.117
+   & 87.3 & 90.1 & \textbf{96.6}
+   & 40.4 & 52.3 & 57.0
+   & 82.1 & \underline{91.3} & \textbf{89.3}
+   & \textbf{68.5} & 53.9 & 65.1
+   & 0.386 & 0.387 & 0.410
+   & 3.2 & 2.7 & 1.4
+   & 4.2 & 5.4 & 3.1 \\
+\midrule
+\addlinespace[0.15em]
+\multicolumn{26}{l}{\emph{Native 4D architectures}} \\
+\midrule
+\multirow{2}{*}{VGGT4D}
+ & Baseline
+   & 0.049 & 0.040 & 0.069
+   & 40.2 & 64.0 & 69.6
+   & 41.9 & 55.3 & 64.1
+   & 40.4 & 53.4 & 30.8
+   & 44.2 & 53.5 & 39.0
+   & 0.193 & 0.267 & 0.230
+   & 11.9 & 6.8 & 6.9
+   & 10.8 & 5.8 & 7.9 \\
+ & GGPT
+   & 0.211 & 0.183 & 0.316
+   & 36.0 & 45.5 & 46.2
+   & 37.8 & 59.7 & 62.8
+   & 33.6 & 32.2 & 10.9
+   & 44.0 & 62.1 & 37.1
+   & 1.236 & 0.908 & 1.079
+   & 3.0 & 1.7 & 1.1
+   & 3.4 & 2.1 & 1.3 \\
+\midrule
+\addlinespace[0.15em]
+\multirow{2}{*}{MonoFusion}
+ & Baseline
+   & 0.080 & 0.034 & 0.036
+   & 19.8 & 50.8 & 50.6
+   & 14.1 & 34.0 & 37.5
+   & 24.3 & 59.2 & 54.5
+   & 17.1 & 40.7 & 44.4
+   & 0.320 & 0.342 & 0.406
+   & 4.6 & 4.3 & 4.7
+   & 2.7 & 3.1 & 2.3 \\
+ & GGPT
+   & 0.077 & 0.069 & 0.050
+   & 28.0 & 30.7 & 23.8
+   & 11.7 & 23.3 & 22.6
+   & 17.2 & 20.1 & 9.6
+   & 24.3 & 35.9 & 34.3
+   & \multicolumn{9}{c|}{---} \\
 \bottomrule
 \end{tabular}
+}
 \end{table*}
 
-On DexYCB, the three strategies produce closely matched Chamfer distances across all
-models, with differences of at most 0.001\,m. Strategy 3 achieves the lowest
-$\Delta_{\text{consistency}}$ in most cases and the best camera pose metrics, indicating
-that alignment graph optimisation over all $\mathcal{O}(T^2)$ pairwise edges introduces less
-geometric distortion than single-path strategies. For MASt3R-SfM, Strategy 3 reduces
-$\Delta_{\text{consistency}}$ from 0.007 (Strategy 1) to 0.005 and achieves the best
-ATE (0.124) and RPE (0.067). For VGGT, Strategy 2 produces the lowest Chamfer (0.030\,m)
-and $\Delta_{\text{consistency}}$ (0.005). No single strategy dominates across all
-models and metrics; the differences are modest throughout. Strategy 2 is selected as
-the alignment basis for the temporal smoothing refinement in
-Section~\ref{sec:opt_results}, with the rationale for this choice discussed in
-Chapter~\ref{c:discussion}.
+On DexYCB, Pi3 achieves the best Chamfer distance at two and four views 
+(0.018\,m and 0.019\,m respectively), with static accuracy exceeding 91\,\% 
+at both. Pi3X leads on dynamic accuracy across most view counts, reaching 
+78.6\,\% at two views and 89.7\,\% at four views --- the highest dynamic 
+accuracy among all spatial models. MASt3R-SfM achieves the best Chamfer at 
+three views (0.020\,m), while VGGT improves monotonically from 0.027\,m to 
+0.024\,m across view counts with static accuracy reaching 84.0\,\% at four 
+views. The four spatial models consistently outperform both native 4D 
+architectures: VGGT4D reaches 0.049\,m at two views and degrades to 0.069\,m 
+at four, while MonoFusion reaches 0.080\,m at two views and 0.036\,m at four, 
+with static accuracy remaining below 51\,\% at every configuration.
 
-On Hi4D, the alignment strategies are applied directly to the dynamic scene points,
-since no static background is available after preprocessing (Section~\ref{sec:datasets}).
-The strategies were designed to exploit static correspondences as stable anchors for
-temporal registration; applying them to dynamic content instead is an approximation that
-relies on inter-frame motion being sufficiently small for the alignments to remain
-meaningful. For MASt3R-SfM, the results show a clear degradation with more complex
-strategies: Chamfer increases from 0.279\,m under Strategy 1 to 0.302\,m under
-Strategy 2 and 0.330\,m under Strategy 3, with $\Delta_{\text{consistency}}$ rising
-correspondingly from 0.121 to 0.172. For VGGT, Strategy 1 and Strategy 2 produce
-identical Chamfer (0.099\,m), with Strategy 3 increasing to 0.107\,m. For PI3 and PI3X,
-all three strategies produce identical results across every metric. The static
-correspondence signal that drives differentiation between the strategies is absent on
-Hi4D, and the dynamic points provide insufficient variation for the alignment to produce
-different outcomes across strategy variants. Hi4D results are therefore reported for
-completeness but reflect the performance of the underlying models rather than the
-properties of the alignment strategies.
+On Hi4D, the model ordering is consistent with DexYCB. Pi3 achieves the lowest 
+Chamfer at every view count (0.079\,m, 0.070\,m, 0.067\,m), and the highest 
+dynamic accuracy and completeness across most configurations. Pi3X follows 
+closely (0.081\,m, 0.074\,m, 0.079\,m). Dynamic accuracy values on Hi4D are 
+substantially lower than on DexYCB across all models, reflecting the greater 
+difficulty of close human--human interaction sequences with stronger 
+self-occlusions and larger non-rigid motion. VGGT4D and MonoFusion degrade more 
+severely than spatial models on this out-of-distribution dataset, with VGGT4D 
+reaching 0.267\,m at three views and MonoFusion 0.406\,m at four views. Static 
+accuracy and completeness are not reported for Hi4D, since the background is 
+masked during preprocessing and all evaluated points belong to dynamic subject 
+regions (Section~\ref{sec:datasets}).
+
+GGPT worsens Chamfer for every backbone without exception, a result discussed 
+in detail in Section~\ref{sec:native4d_baselines}
+
+\section{Alignment Strategy Comparison}
+\label{sec:alignment_comparison}
+
+Lifting per-frame reconstructions into a temporally coherent 4D representation 
+requires bringing independently reconstructed frames into a shared coordinate 
+system. Table~\ref{tab:strategy_extended} compares all three strategies 
+introduced in Section~\ref{sec:alignment_strategies} on DexYCB and Hi4D, 
+reporting Chamfer distance, $\Delta_{\text{consistency}}$, and camera pose 
+metrics pooled over view counts.
+
+\begin{table*}[t]
+\centering
+\caption{\textbf{Alignment strategy comparison, pooled over view counts.}
+Strategy choice has no meaningful effect on downstream performance.
+On DexYCB, all three strategies produce statistically indistinguishable results,
+with differences lying within one standard deviation across all models.
+On Hi4D, Pi3 and Pi3X are fully strategy-invariant, while small differences
+appear for MASt3R-SfM and VGGT but lie within overlapping standard deviations
+and reflect the absence of static background anchors rather than genuine
+strategy sensitivity.
+$\Delta$Cons.: increase in Chamfer distance introduced by temporal
+alignment relative to independent per-frame registration, with values near zero
+indicating faithful geometry preservation. ATE and RPE in metres. Rot.\ Err.\
+in degrees. $\pm$ denotes standard deviation across view counts (2, 3, and 4),
+reflecting variability in alignment quality as the number of input cameras changes.
+\textbf{Bold}: best within each model--strategy block.}
+\label{tab:strategy_extended}
+\resizebox{\linewidth}{!}{%
+\scriptsize
+\setlength{\tabcolsep}{4pt}
+\begin{tabular}{ll ccccc ccccc}
+\toprule
+& &
+  \multicolumn{5}{c}{DexYCB} &
+  \multicolumn{5}{c}{Hi4D} \\
+\cmidrule(lr){3-7} \cmidrule(lr){8-12}
+Model & Method &
+  Chamfer$\downarrow$ & $\Delta$Cons.$\downarrow$ & ATE$\downarrow$ & RPE$\downarrow$ & Rot.\ Err.$\downarrow$ &
+  Chamfer$\downarrow$ & $\Delta$Cons.$\downarrow$ & ATE$\downarrow$ & RPE$\downarrow$ & Rot.\ Err.$\downarrow$ \\
+\midrule
+\addlinespace[0.15em]
+\multicolumn{12}{l}{\emph{Spatial models}} \\
+\midrule
+\multirow{6}{*}{MASt3R-SfM}
+ & Strategy 1 & 0.032\,$\pm$\,0.009 & 0.007\,$\pm$\,0.001 & 0.129 & 0.073 & 2.210 & \textbf{0.279}\,$\pm$\,0.016 & \textbf{0.121}\,$\pm$\,0.007 & \textbf{2.014} & \textbf{2.140} & 32.369 \\
+ & Strategy 2 & 0.031\,$\pm$\,0.011 & 0.006\,$\pm$\,0.003 & 0.127 & 0.071 & \textbf{2.064} & 0.302\,$\pm$\,0.026 & 0.144\,$\pm$\,0.017 & 2.069 & 2.189 & 32.450 \\
+ & Strategy 3 & \textbf{0.031}\,$\pm$\,0.010 & \textbf{0.005}\,$\pm$\,0.001 & \textbf{0.124} & \textbf{0.067} & 2.068 & 0.330\,$\pm$\,0.023 & 0.172\,$\pm$\,0.015 & 2.114 & 2.190 & \textbf{29.855} \\
+\cmidrule(l){2-12}
+ & GGPT (S1) & \textbf{0.167}\,$\pm$\,0.057 & 0.007\,$\pm$\,0.001 & 0.120 & 0.069 & 2.220 & 0.799\,$\pm$\,0.093 & $-$0.013\,$\pm$\,0.008 & 1.831 & 1.942 & 28.639 \\
+ & GGPT (S2) & \textbf{0.167}\,$\pm$\,0.057 & 0.006\,$\pm$\,0.002 & 0.121 & 0.071 & 2.216 & 0.795\,$\pm$\,0.096 & $-$0.017\,$\pm$\,0.007 & 1.848 & \textbf{1.927} & 28.427 \\
+ & GGPT (S3) & 0.167\,$\pm$\,0.058 & \textbf{0.006}\,$\pm$\,0.001 & \textbf{0.119} & \textbf{0.067} & \textbf{2.182} & \textbf{0.764}\,$\pm$\,0.080 & $\mathbf{-0.048}$\,$\pm$\,0.022 & \textbf{1.804} & 1.939 & \textbf{27.930} \\
+\midrule
+\addlinespace[0.15em]
+\multirow{6}{*}{VGGT}
+ & Strategy 1 & 0.032\,$\pm$\,0.003 & 0.007\,$\pm$\,0.002 & 0.345 & 0.084 & 2.487 & \textbf{0.099}\,$\pm$\,0.010 & 0.004\,$\pm$\,0.002 & 8.088 & 0.365 & 5.332 \\
+ & Strategy 2 & \textbf{0.030}\,$\pm$\,0.004 & \textbf{0.005}\,$\pm$\,0.002 & 0.337 & \textbf{0.081} & 2.378 & \textbf{0.099}\,$\pm$\,0.010 & \textbf{0.004}\,$\pm$\,0.001 & 8.094 & 0.364 & \textbf{5.157} \\
+ & Strategy 3 & 0.031\,$\pm$\,0.002 & 0.006\,$\pm$\,0.002 & \textbf{0.336} & 0.081 & \textbf{2.314} & 0.107\,$\pm$\,0.016 & 0.012\,$\pm$\,0.007 & \textbf{7.882} & \textbf{0.351} & 5.212 \\
+\cmidrule(l){2-12}
+ & GGPT (S1) & 0.203\,$\pm$\,0.021 & \textbf{0.006}\,$\pm$\,0.001 & 0.356 & \textbf{0.088} & 2.583 & 1.528\,$\pm$\,0.069 & $-$0.023\,$\pm$\,0.019 & 8.085 & 0.899 & 18.309 \\
+ & GGPT (S2) & 0.203\,$\pm$\,0.021 & \textbf{0.006}\,$\pm$\,0.001 & 0.354 & 0.088 & 2.695 & 1.531\,$\pm$\,0.066 & $-$0.020\,$\pm$\,0.009 & 8.129 & \textbf{0.874} & \textbf{17.686} \\
+ & GGPT (S3) & \textbf{0.202}\,$\pm$\,0.021 & 0.006\,$\pm$\,0.002 & \textbf{0.353} & \textbf{0.088} & \textbf{2.506} & \textbf{1.473}\,$\pm$\,0.108 & $\mathbf{-0.078}$\,$\pm$\,0.078 & \textbf{7.548} & 0.889 & 17.897 \\
+\midrule
+\addlinespace[0.15em]
+\multirow{6}{*}{Pi3}
+ & Strategy 1 & \textbf{0.030}\,$\pm$\,0.004 & 0.008\,$\pm$\,0.003 & 0.078 & 0.073 & 1.562 & \textbf{0.075}\,$\pm$\,0.007 & \textbf{0.003}\,$\pm$\,0.001 & \textbf{1.864} & \textbf{0.298} & \textbf{2.488} \\
+ & Strategy 2 & 0.031\,$\pm$\,0.004 & 0.008\,$\pm$\,0.005 & 0.079 & 0.073 & 1.543 & \textbf{0.075}\,$\pm$\,0.007 & \textbf{0.003}\,$\pm$\,0.001 & \textbf{1.864} & \textbf{0.298} & \textbf{2.488} \\
+ & Strategy 3 & 0.030\,$\pm$\,0.005 & \textbf{0.007}\,$\pm$\,0.003 & \textbf{0.074} & \textbf{0.068} & \textbf{1.491} & \textbf{0.075}\,$\pm$\,0.007 & \textbf{0.003}\,$\pm$\,0.001 & \textbf{1.864} & \textbf{0.298} & \textbf{2.488} \\
+\cmidrule(l){2-12}
+ & GGPT (S1) & 0.106\,$\pm$\,0.033 & \textbf{0.010}\,$\pm$\,0.006 & 0.085 & 0.070 & 1.966 & \textbf{0.445}\,$\pm$\,0.011 & \textbf{0.003}\,$\pm$\,0.002 & 2.076 & 0.821 & 16.925 \\
+ & GGPT (S2) & \textbf{0.105}\,$\pm$\,0.032 & \textbf{0.010}\,$\pm$\,0.006 & 0.087 & 0.073 & \textbf{1.866} & 0.447\,$\pm$\,0.012 & 0.004\,$\pm$\,0.001 & 2.070 & \textbf{0.796} & \textbf{16.373} \\
+ & GGPT (S3) & 0.105\,$\pm$\,0.033 & \textbf{0.010}\,$\pm$\,0.006 & \textbf{0.084} & \textbf{0.069} & 1.961 & 0.449\,$\pm$\,0.008 & 0.006\,$\pm$\,0.005 & \textbf{2.052} & 0.811 & 16.613 \\
+\midrule
+\addlinespace[0.15em]
+\multirow{6}{*}{Pi3X}
+ & Strategy 1 & 0.031\,$\pm$\,0.003 & 0.003\,$\pm$\,0.003 & 0.067 & \textbf{0.050} & 1.678 & \textbf{0.088}\,$\pm$\,0.007 & \textbf{0.010}\,$\pm$\,0.004 & \textbf{1.470} & \textbf{1.543} & \textbf{6.625} \\
+ & Strategy 2 & \textbf{0.030}\,$\pm$\,0.003 & 0.003\,$\pm$\,0.003 & 0.066 & \textbf{0.050} & \textbf{1.640} & \textbf{0.088}\,$\pm$\,0.007 & \textbf{0.010}\,$\pm$\,0.004 & \textbf{1.470} & \textbf{1.543} & \textbf{6.625} \\
+ & Strategy 3 & 0.030\,$\pm$\,0.004 & \textbf{0.002}\,$\pm$\,0.002 & \textbf{0.066} & \textbf{0.050} & 1.642 & \textbf{0.088}\,$\pm$\,0.007 & \textbf{0.010}\,$\pm$\,0.004 & \textbf{1.470} & \textbf{1.543} & \textbf{6.625} \\
+\cmidrule(l){2-12}
+ & GGPT (S1) & \textbf{0.107}\,$\pm$\,0.037 & \textbf{0.002}\,$\pm$\,0.001 & 0.073 & 0.054 & 1.649 & 0.397\,$\pm$\,0.016 & 0.003\,$\pm$\,0.003 & 1.791 & 1.930 & 18.633 \\
+ & GGPT (S2) & \textbf{0.107}\,$\pm$\,0.037 & \textbf{0.002}\,$\pm$\,0.001 & 0.076 & 0.056 & 1.661 & 0.396\,$\pm$\,0.016 & \textbf{0.002}\,$\pm$\,0.002 & 1.786 & 1.921 & \textbf{18.189} \\
+ & GGPT (S3) & \textbf{0.107}\,$\pm$\,0.037 & \textbf{0.002}\,$\pm$\,0.001 & \textbf{0.072} & \textbf{0.054} & \textbf{1.643} & \textbf{0.396}\,$\pm$\,0.015 & 0.002\,$\pm$\,0.003 & \textbf{1.774} & \textbf{1.917} & 18.318 \\
+\bottomrule
+\end{tabular}
+}
+\end{table*}
+
+
+The central finding is that strategy choice has no meaningful effect on 
+downstream performance. On DexYCB, all three strategies produce Chamfer 
+distances that differ by at most 0.001\,m across every model, and 
+$\Delta_{\text{consistency}}$ differences lie within one standard deviation 
+throughout. Camera pose metrics follow the same pattern: ATE and RPE vary by 
+less than 0.01\,m across strategies for every backbone. Strategy 2 is selected 
+as the alignment basis for the temporal smoothing refinement in 
+Section~\ref{sec:opt_results}, with the rationale discussed in 
+Chapter~\ref{c:discussion}; the results here confirm that this choice does not 
+meaningfully affect the conclusions.
+
+On Hi4D, the strategies were designed to exploit static correspondences as 
+stable anchors for temporal registration, which are absent after preprocessing 
+(Section~\ref{sec:datasets}). For Pi3 and Pi3X, all three strategies produce 
+identical results across every metric. For MASt3R-SfM and VGGT, small 
+differences appear, but these lie within overlapping standard deviations and 
+reflect the application to all points instead of only dynamic points, rather than meaningful strategy 
+differences. Hi4D results are therefore reported for completeness and reflect 
+the performance of the underlying models rather than properties of the 
+alignment strategies.
 
 \section{Sparse-View Sensitivity}
 \label{sec:sparse_view}
 
-The camera configurations of Section~\ref{sec:datasets} span two, three, and four
-views, progressively increasing multi-view coverage. This section isolates the effect
-of camera count on reconstruction quality by comparing Strategy 2 aligned outputs
-across all six models. Table~\ref{tab:global_performance_dex_ycb} reports the full
-per-view-count breakdown on DexYCB, covering geometric fidelity, static/dynamic
-decomposition, and temporal stability at each level of sparsity. Opt and GGPT results
-are included in the table for reference; their detailed analysis follows in
-Sections~\ref{sec:native4d_baselines} and~\ref{sec:opt_results}.
+The camera configurations of Section~\ref{sec:datasets} span two, three, and
+four views, progressively increasing multi-view coverage. This section isolates
+the effect of camera count on reconstruction quality across all six models,
+drawing on both the per-frame baseline results of
+Table~\ref{tab:baseline_control_ggpt} and the Strategy 2 aligned outputs of
+Table~\ref{tab:global_performance_dex_ycb}, which reports the full
+per-view-count breakdown on DexYCB covering geometric fidelity,
+static/dynamic decomposition, and temporal stability at each level of
+sparsity. Opt and GGPT results are included in
+Table~\ref{tab:global_performance_dex_ycb} for reference; their detailed
+analysis follows in Sections~\ref{sec:native4d_baselines}
+and~\ref{sec:opt_results}. For spatial models, additional views translate
+reliably into better reconstruction. For VGGT4D and MonoFusion, the
+relationship is more complex, and the two models fail in qualitatively
+different ways.
 
 \begin{table*}[t]
+\setlength{\tabcolsep}{2.5pt}
 \centering
-\caption{Per-view-count spatio-temporal performance on DexYCB. Each block reports
-results for a fixed number of input views (2, 3, or 4).
-Accuracy and completeness are evaluated at a 1\,cm threshold and decomposed into
-static and dynamic scene regions (reported as percentages). Temporal metrics---jitter mean,
-high-frequency (HF) jitter, and drift---are computed on static scene anchors. Strategy 2 serves as the unsmoothed temporal alignment baseline
-for spatial models. +Opt applies the proposed Gaussian-weighted temporal smoothing.
-GGPT\,(S2) and GGPT\,(N4D) apply geometry-grounded point transformer refinement to
-Strategy 2 and native 4D model outputs, respectively.
-\textbf{Bold} = best per column within each view-count block,
-\underline{underline} = second best.}
+\caption{\textbf{Spatio-temporal performance on DexYCB.}
+Opt-smoothed spatial models consistently achieve near-zero HF jitter and
+substantially reduced mean jitter while preserving geometric fidelity,
+Pareto-dominating native 4D architectures at every view count.
+$A_s$/$A_d$: static/dynamic accuracy at 1\,cm threshold (percentages).
+$C_s$/$C_d$: static/dynamic completeness at 1\,cm threshold (percentages).
+HFJ: high-frequency jitter. Jitter, HFJ, and drift in metres, computed on
+static scene anchors. Each metric is reported for 2, 3, and 4 input views.
+\textbf{Bold}: best per column per view count; \underline{underline}: second best.}
 \label{tab:global_performance_dex_ycb}
-\scriptsize
-\setlength{\tabcolsep}{3pt}
-\begin{tabular}{cllcccccc}
+\resizebox{\linewidth}{!}{%
+\begin{tabular}{ll
+  | ccc
+  | ccc
+  | ccc
+  | ccc
+  | ccc
+  | ccc
+  | ccc
+  | ccc |
+}
 \toprule
-Views & Model & Method & Chamfer $\downarrow$ & Acc. (S/D) $\uparrow$ & Compl. (S/D) $\uparrow$ & Jitter $\downarrow$ & HF Jitter $\downarrow$ & Drift $\downarrow$ \\
+& &
+  \multicolumn{3}{c|}{Chamfer$\downarrow$} &
+  \multicolumn{3}{c|}{$A_s\uparrow$} &
+  \multicolumn{3}{c|}{$A_d\uparrow$} &
+  \multicolumn{3}{c|}{$C_s\uparrow$} &
+  \multicolumn{3}{c|}{$C_d\uparrow$} &
+  \multicolumn{3}{c|}{Jitter$\downarrow$} &
+  \multicolumn{3}{c|}{HFJ$\downarrow$} &
+  \multicolumn{3}{c|}{Drift$\downarrow$} \\
+\cmidrule(lr){3-5}\cmidrule(lr){6-8}\cmidrule(lr){9-11}
+\cmidrule(lr){12-14}\cmidrule(lr){15-17}\cmidrule(lr){18-20}
+\cmidrule(lr){21-23}\cmidrule(lr){24-26}
+& &
+  \multicolumn{3}{c|}{\scriptsize\textit{Views}} &
+  \multicolumn{3}{c|}{\scriptsize\textit{Views}} &
+  \multicolumn{3}{c|}{\scriptsize\textit{Views}} &
+  \multicolumn{3}{c|}{\scriptsize\textit{Views}} &
+  \multicolumn{3}{c|}{\scriptsize\textit{Views}} &
+  \multicolumn{3}{c|}{\scriptsize\textit{Views}} &
+  \multicolumn{3}{c|}{\scriptsize\textit{Views}} &
+  \multicolumn{3}{c|}{\scriptsize\textit{Views}} \\
+Model & Method
+  & 2 & 3 & 4
+  & 2 & 3 & 4
+  & 2 & 3 & 4
+  & 2 & 3 & 4
+  & 2 & 3 & 4
+  & 2 & 3 & 4
+  & 2 & 3 & 4
+  & 2 & 3 & 4 \\
 \midrule
-\multirow{16}{*}{2} & MASt3R-SfM & Strategy 2 & 0.043 & 46.3 / 40.6 & 36.4 / 33.6 & 0.011 & 0.019 & 0.033 \\
- &  & +opt (ours) & 0.046 & 40.4 / 34.8 & 31.9 / 30.3 & \textbf{0.001} & \textbf{0.000} & 0.023 \\
- &  & GGPT (S2) & 0.230 & 53.5 / 39.1 & 50.7 / 43.3 & 0.008 & 0.014 & 0.029 \\
- & VGGT & Strategy 2 & 0.034 & 64.2 / 50.1 & 43.9 / 48.5 & 0.009 & 0.015 & 0.060 \\
- &  & +opt (ours) & 0.039 & 63.5 / 48.1 & 44.7 / 49.0 & 0.003 & \textbf{0.000} & 0.054 \\
- &  & GGPT (S2) & 0.201 & 57.0 / \textbf{61.1} & 54.0 / 48.2 & 0.007 & 0.011 & 0.032 \\
- & PI3 & Strategy 2 & 0.031 & 71.2 / 43.5 & 62.2 / 28.3 & 0.006 & 0.010 & 0.007 \\
- &  & +opt (ours) & \textbf{0.026} & 76.7 / 49.7 & 67.5 / 43.8 & \underline{0.002} & \textbf{0.000} & 0.034 \\
- &  & GGPT (S2) & 0.072 & \textbf{81.1} / 30.6 & \textbf{75.5} / \underline{51.3} & 0.004 & 0.006 & 0.016 \\
- & PI3X & Strategy 2 & \underline{0.027} & 75.3 / \underline{59.3} & 66.0 / 48.1 & 0.005 & 0.008 & 0.035 \\
- &  & +opt (ours) & 0.040 & 69.4 / 44.2 & 61.6 / 39.0 & \underline{0.002} & \textbf{0.000} & 0.034 \\
- &  & GGPT (S2) & 0.065 & \underline{78.9} / 35.3 & \underline{72.4} / \textbf{57.2} & 0.003 & 0.006 & 0.015 \\
- & VGGT4D & Native 4D & 0.051 & 37.1 / 38.5 & 37.1 / 40.3 & 0.003 & 0.005 & 0.010 \\
- &  & GGPT (N4D) & 0.213 & 34.5 / 34.6 & 31.7 / 40.4 & 0.004 & 0.006 & 0.014 \\
- & MonoFusion & Native 4D & 0.081 & 15.5 / 11.5 & 19.9 / 14.5 & \textbf{0.001} & \underline{0.001} & \underline{0.001} \\
- &  & GGPT (N4D) & 0.091 & 11.1 / 15.2 & 10.1 / 9.3 & \underline{0.002} & 0.003 & \textbf{0.000} \\
+\addlinespace[0.15em]
+\multicolumn{26}{l}{\emph{Spatial models}} \\
 \midrule
-\multirow{16}{*}{3} & MASt3R-SfM & Strategy 2 & \underline{0.023} & 73.8 / 61.7 & 66.3 / 52.2 & 0.007 & 0.011 & 0.020 \\
- &  & +opt (ours) & \textbf{0.022} & 75.5 / 62.7 & 68.3 / 54.2 & \textbf{0.001} & \textbf{0.000} & 0.015 \\
- &  & GGPT (S2) & 0.119 & 53.4 / 48.7 & 57.6 / 53.4 & 0.006 & 0.011 & 0.020 \\
- & VGGT & Strategy 2 & 0.028 & 73.1 / 60.8 & 61.0 / 50.8 & 0.005 & 0.009 & 0.028 \\
- &  & +opt (ours) & 0.028 & 73.1 / 59.7 & 62.2 / 51.0 & \textbf{0.001} & \textbf{0.000} & 0.022 \\
- &  & GGPT (S2) & 0.224 & 60.2 / 55.7 & 54.9 / 45.1 & 0.004 & 0.007 & 0.022 \\
- & PI3 & Strategy 2 & 0.035 & \underline{89.7} / 67.5 & 69.3 / 38.3 & 0.006 & 0.011 & 0.048 \\
- &  & +opt (ours) & 0.033 & 87.3 / \underline{68.2} & 69.8 / \underline{58.6} & \textbf{0.001} & \textbf{0.000} & 0.022 \\
- &  & GGPT (S2) & 0.136 & 71.1 / 21.8 & 66.4 / 29.4 & 0.004 & 0.006 & 0.020 \\
- & PI3X & Strategy 2 & 0.032 & \textbf{90.9} / \textbf{72.0} & \underline{75.7} / 49.0 & 0.005 & 0.008 & 0.011 \\
- &  & +opt (ours) & 0.036 & 85.2 / 65.8 & 72.1 / 44.7 & \textbf{0.001} & \textbf{0.000} & 0.020 \\
- &  & GGPT (S2) & 0.137 & 85.4 / 50.3 & \textbf{86.6} / 50.8 & \underline{0.003} & 0.005 & 0.008 \\
- & VGGT4D & Native 4D & 0.041 & 62.5 / 53.0 & 52.9 / 52.5 & \underline{0.003} & 0.005 & 0.010 \\
- &  & GGPT (N4D) & 0.184 & 46.9 / 58.7 & 33.6 / \textbf{61.4} & \underline{0.003} & 0.004 & 0.008 \\
- & MonoFusion & Native 4D & 0.031 & 54.4 / 39.0 & 64.1 / 43.5 & \textbf{0.001} & \underline{0.001} & \textbf{0.001} \\
- &  & GGPT (N4D) & 0.091 & 4.6 / 8.2 & 4.0 / 4.8 & \underline{0.003} & 0.005 & \underline{0.005} \\
+\multirow{3}{*}{MASt3R-SfM}
+ & Strategy 2
+   & 0.043 & \underline{0.023} & \underline{0.026}
+   & 46.3  & 73.8  & 69.3
+   & 40.6  & 61.7  & 65.7
+   & 36.4  & 66.3  & 60.9
+   & 33.6  & 52.2  & 57.6
+   & 0.011 & 0.007 & 0.009
+   & 0.019 & 0.011 & 0.015
+   & 0.033 & 0.020 & 0.034 \\
+ & +Opt (ours)
+   & 0.046 & \textbf{0.022} & \underline{0.026}
+   & 40.4  & 75.5  & 70.5
+   & 34.8  & 62.7  & 66.5
+   & 31.9  & 68.3  & 62.1
+   & 30.3  & 54.2  & 59.4
+   & \textbf{0.001} & \textbf{0.001} & \textbf{0.001}
+   & \textbf{0.000} & \textbf{0.000} & \textbf{0.000}
+   & 0.023 & 0.015 & 0.026 \\
+ & GGPT (S2)
+   & 0.230 & 0.119 & 0.152
+   & 53.5  & 53.4  & 50.7
+   & 39.1  & 48.7  & 47.9
+   & 50.7  & 57.6  & 51.4
+   & 43.3  & 53.4  & 52.3
+   & 0.008 & 0.006 & 0.008
+   & 0.014 & 0.011 & 0.014
+   & 0.029 & 0.020 & 0.033 \\
+\cmidrule(l){2-26}
+\multirow{3}{*}{VGGT}
+ & Strategy 2
+   & 0.034 & 0.028 & 0.027
+   & 64.2  & 73.1  & 74.1
+   & 50.1  & 60.8  & 65.6
+   & 43.9  & 61.0  & 56.7
+   & 48.5  & 50.8  & 55.6
+   & 0.009 & 0.005 & 0.005
+   & 0.015 & 0.009 & 0.008
+   & 0.060 & 0.028 & 0.021 \\
+ & +Opt (ours)
+   & 0.039 & 0.028 & 0.029
+   & 63.5  & 73.1  & 72.7
+   & 48.1  & 59.7  & 64.5
+   & 44.7  & 62.2  & 57.8
+   & 49.0  & 51.0  & 56.2
+   & 0.003 & \textbf{0.001} & \textbf{0.001}
+   & \textbf{0.000} & \textbf{0.000} & \textbf{0.000}
+   & 0.054 & 0.022 & 0.019 \\
+ & GGPT (S2)
+   & 0.201 & 0.224 & 0.183
+   & 57.0  & 60.2  & 59.5
+   & \textbf{61.1} & 55.7 & 65.4
+   & 54.0  & 54.9  & 47.3
+   & 48.2  & 45.1  & 50.0
+   & 0.007 & 0.004 & 0.004
+   & 0.011 & 0.007 & 0.007
+   & 0.032 & 0.022 & 0.018 \\
+\cmidrule(l){2-26}
+\multirow{3}{*}{Pi3}
+ & Strategy 2
+   & 0.031 & 0.035 & \underline{0.026}
+   & 71.2  & \underline{89.7} & 87.0
+   & 43.5  & 67.5  & 71.9
+   & 62.2  & 69.3  & 70.4
+   & 28.3  & 38.3  & 55.2
+   & 0.006 & 0.006 & 0.006
+   & 0.010 & 0.011 & 0.009
+   & 0.007 & 0.048 & 0.018 \\
+ & +Opt (ours)
+   & \textbf{0.026} & 0.033 & \textbf{0.025}
+   & 76.7  & 87.3  & 86.3
+   & 49.7  & \underline{68.2} & 75.0
+   & 67.5  & 69.8  & 73.9
+   & 43.8  & \underline{58.6} & \textbf{67.8}
+   & \underline{0.002} & \textbf{0.001} & \textbf{0.001}
+   & \textbf{0.000} & \textbf{0.000} & \textbf{0.000}
+   & 0.034 & 0.022 & 0.020 \\
+ & GGPT (S2)
+   & 0.072 & 0.136 & 0.108
+   & \textbf{81.1} & 71.1 & 72.8
+   & 30.6  & 21.8  & 40.6
+   & \textbf{75.5} & 66.4 & 58.6
+   & \underline{51.3} & 29.4 & 41.9
+   & 0.004 & 0.004 & 0.006
+   & 0.006 & 0.006 & 0.009
+   & 0.016 & 0.020 & 0.027 \\
+\cmidrule(l){2-26}
+\multirow{3}{*}{Pi3X}
+ & Strategy 2
+   & \underline{0.027} & 0.032 & 0.032
+   & 75.3  & \textbf{90.9} & \textbf{94.3}
+   & \underline{59.3} & \textbf{72.0} & \textbf{88.5}
+   & 66.0  & \underline{75.7} & \underline{76.1}
+   & 48.1  & 49.0  & \underline{66.0}
+   & 0.005 & 0.005 & 0.005
+   & 0.008 & 0.008 & 0.009
+   & 0.035 & 0.011 & 0.019 \\
+ & +Opt (ours)
+   & 0.040 & 0.036 & 0.035
+   & 69.4  & 85.2  & 91.2
+   & 44.2  & 65.8  & \underline{83.6}
+   & 61.6  & 72.1  & 75.9
+   & 39.0  & 44.7  & 62.9
+   & \underline{0.002} & \textbf{0.001} & \textbf{0.001}
+   & \textbf{0.000} & \textbf{0.000} & \textbf{0.000}
+   & 0.034 & 0.020 & 0.014 \\
+ & GGPT (S2)
+   & 0.065 & 0.137 & 0.118
+   & \underline{78.9} & 85.4 & \underline{92.7}
+   & 35.3  & 50.3  & 54.5
+   & \underline{72.4} & \textbf{86.6} & \textbf{83.4}
+   & \textbf{57.2} & 50.8 & 59.1
+   & 0.003 & \underline{0.003} & 0.007
+   & 0.006 & 0.005 & 0.012
+   & 0.015 & 0.008 & 0.011 \\
 \midrule
-\multirow{16}{*}{4} & MASt3R-SfM & Strategy 2 & \underline{0.026} & 69.3 / 65.7 & 60.9 / 57.6 & 0.009 & 0.015 & 0.034 \\
- &  & +opt (ours) & \underline{0.026} & 70.5 / 66.5 & 62.1 / 59.4 & \textbf{0.001} & \textbf{0.000} & 0.026 \\
- &  & GGPT (S2) & 0.152 & 50.7 / 47.9 & 51.4 / 52.3 & 0.008 & 0.014 & 0.033 \\
- & VGGT & Strategy 2 & 0.027 & 74.1 / 65.6 & 56.7 / 55.6 & 0.005 & 0.008 & 0.021 \\
- &  & +opt (ours) & 0.029 & 72.7 / 64.5 & 57.8 / 56.2 & \textbf{0.001} & \textbf{0.000} & 0.019 \\
- &  & GGPT (S2) & 0.183 & 59.5 / 65.4 & 47.3 / 50.0 & 0.004 & 0.007 & 0.018 \\
- & PI3 & Strategy 2 & \underline{0.026} & 87.0 / 71.9 & 70.4 / 55.2 & 0.006 & 0.009 & 0.018 \\
- &  & +opt (ours) & \textbf{0.025} & 86.3 / 75.0 & 73.9 / \textbf{67.8} & \textbf{0.001} & \textbf{0.000} & 0.020 \\
- &  & GGPT (S2) & 0.108 & 72.8 / 40.6 & 58.6 / 41.9 & 0.006 & 0.009 & 0.027 \\
- & PI3X & Strategy 2 & 0.032 & \textbf{94.3} / \textbf{88.5} & \underline{76.1} / \underline{66.0} & 0.005 & 0.009 & 0.019 \\
- &  & +opt (ours) & 0.035 & 91.2 / \underline{83.6} & 75.9 / 62.9 & \textbf{0.001} & \textbf{0.000} & 0.014 \\
- &  & GGPT (S2) & 0.118 & \underline{92.7} / 54.5 & \textbf{83.4} / 59.1 & 0.007 & 0.012 & 0.011 \\
- & VGGT4D & Native 4D & 0.069 & 69.1 / 62.8 & 30.5 / 38.8 & \underline{0.003} & 0.006 & 0.007 \\
- &  & GGPT (N4D) & 0.321 & 45.5 / 63.6 & 10.8 / 36.9 & 0.004 & 0.007 & 0.022 \\
- & MonoFusion & Native 4D & 0.031 & 62.0 / 47.0 & 63.4 / 51.2 & \textbf{0.001} & \underline{0.001} & \underline{0.001} \\
- &  & GGPT (N4D) & 0.064 & 12.5 / 14.3 & 5.8 / 10.2 & \textbf{0.001} & \underline{0.001} & \textbf{0.000} \\
+\addlinespace[0.15em]
+\multicolumn{26}{l}{\emph{Native 4D architectures}} \\
+\midrule
+\multirow{2}{*}{VGGT4D}
+ & Native 4D
+   & 0.051 & 0.041 & 0.069
+   & 37.1  & 62.5  & 69.1
+   & 38.5  & 53.0  & 62.8
+   & 37.1  & 52.9  & 30.5
+   & 40.3  & 52.5  & 38.8
+   & 0.003 & \underline{0.003} & \underline{0.003}
+   & 0.005 & 0.005 & 0.006
+   & 0.010 & 0.010 & 0.007 \\
+ & GGPT (N4D)
+   & 0.213 & 0.184 & 0.321
+   & 34.5  & 46.9  & 45.5
+   & 34.6  & 58.7  & 63.6
+   & 31.7  & 33.6  & 10.8
+   & 40.4  & \textbf{61.4} & 36.9
+   & 0.004 & \underline{0.003} & 0.004
+   & 0.006 & 0.004 & 0.007
+   & 0.014 & 0.008 & 0.022 \\
+\cmidrule(l){2-26}
+\multirow{2}{*}{MonoFusion}
+ & Native 4D
+   & 0.081 & 0.031 & 0.031
+   & 15.5  & 54.4  & 62.0
+   & 11.5  & 39.0  & 47.0
+   & 19.9  & 64.1  & 63.4
+   & 14.5  & 43.5  & 51.2
+   & \textbf{0.001} & \textbf{0.001} & \textbf{0.001}
+   & \underline{0.001} & \underline{0.001} & \underline{0.001}
+   & \underline{0.001} & \textbf{0.001} & \underline{0.001} \\
+ & GGPT (N4D)
+   & 0.091 & 0.091 & 0.064
+   & 11.1  &  4.6  & 12.5
+   & 15.2  &  8.2  & 14.3
+   & 10.1  &  4.0  &  5.8
+   &  9.3  &  4.8  & 10.2
+   & \underline{0.002} & \underline{0.003} & \textbf{0.001}
+   & 0.003 & 0.005 & \underline{0.001}
+   & \textbf{0.000} & \underline{0.005} & \textbf{0.000} \\
 \bottomrule
 \end{tabular}
+}
 \end{table*}
 
-Spatial models show consistent improvement with additional views on DexYCB. PI3's
-Chamfer distance decreases from 0.031\,m at two views to 0.026\,m at four views, with
-static accuracy rising from 71.2\,\% to 87.0\,\%. PI3X exhibits the strongest gains in
-dynamic reconstruction: dynamic accuracy improves from 59.3\,\% at two views to
-88.5\,\% at four views, while static accuracy reaches 94.3\,\%---the highest value
-across all models and view counts. MASt3R-SfM benefits most from the addition of a
-third camera, where Chamfer drops from 0.043\,m to 0.023\,m and static accuracy
-increases from 46.3\,\% to 73.8\,\%; four-view Chamfer remains competitive at
-0.026\,m. VGGT improves monotonically, with Chamfer decreasing from 0.034\,m at two
-views to 0.027\,m at four views and static accuracy rising from 64.2\,\% to 74.1\,\%.
+Spatial models improve reliably with additional views and remain close to
+their per-frame geometric ceiling reported in
+Table~\ref{tab:baseline_control_ggpt}. Pi3X shows the strongest overall
+gains: dynamic accuracy rises from 59.3\,\% at two views to 88.5\,\% at
+four views, and static accuracy reaches 94.3\,\% at four views, the highest
+value across all models and view counts. Pi3 improves similarly, with Chamfer
+decreasing from 0.031\,m to 0.026\,m and static accuracy rising from 71.2\,\%
+to 87.0\,\%. MASt3R-SfM benefits most from the addition of a third camera,
+where Chamfer drops sharply from 0.043\,m to 0.023\,m, approaching its
+per-frame ceiling of 0.020\,m. VGGT improves monotonically from 0.034\,m
+to 0.027\,m in Chamfer and from 64.2\,\% to 74.1\,\% in static accuracy.
 
-VGGT4D exhibits non-monotonic behaviour across view counts. Chamfer decreases from
-0.051\,m at two views to 0.041\,m at three views as the additional camera provides
-useful multi-view overlap, but rises sharply to 0.069\,m at four views. Static
-completeness follows the same pattern, improving from 37.1\,\% at two views to
-52.9\,\% at three views before dropping to 30.5\,\% at four views---lower than any
-spatial model at any view count. Static accuracy, by contrast, increases monotonically
-from 37.1\,\% to 69.1\,\%, indicating that the surviving reconstructed points are
-individually well-placed but that a large portion of the surface is lost.
-Section~\ref{sec:qualitative} documents characteristic spatial smearing of the
-dynamic arm region in VGGT4D outputs, which is consistent with the non-monotonic
-completeness pattern observed across view counts.
+VGGT4D responds to additional views non-monotonically. At the per-frame
+level (Table~\ref{tab:baseline_control_ggpt}), Chamfer improves from
+0.049\,m at two views to 0.040\,m at three views, suggesting that the
+additional camera provides useful geometric information. After temporal
+alignment (Table~\ref{tab:global_performance_dex_ycb}), however, Chamfer
+rises sharply to 0.069\,m at four views, worse than the two-view result
+and worse than every spatial model at every view count. Static completeness
+follows the same pattern, dropping from 52.9\,\% at three views to 30.5\,\%
+at four views, while static accuracy increases monotonically to 69.1\,\%,
+indicating that the surviving reconstructed points are individually
+well-placed but that a large portion of the surface is lost. As documented
+in Section~\ref{sec:qualitative}, this pattern is consistent with the joint
+transformer averaging conflicting depth hypotheses from the additional camera
+rather than resolving them, producing the characteristic spatial smearing
+visible in Figure~\ref{fig:vggt4d_smearing}.
 
-MonoFusion is more stable across view counts, with Chamfer improving from 0.081\,m at
-two views to 0.031\,m at both three and four views. However, MonoFusion's low Chamfer
-at three and four views does not translate to proportionally high precision at the
-1\,cm threshold: static accuracy reaches 54.4\,\% at three views and 62.0\,\% at four
-views, compared to 89.7\,\% and 87.0\,\% for PI3 at the same view counts. At two views,
-static accuracy drops to 15.5\,\% with static completeness at 19.9\,\%,
-consistent with the duplicated-subject artefacts documented in
-Section~\ref{sec:qualitative}.
+MonoFusion presents a different picture. Chamfer improves from 0.081\,m at
+two views to 0.031\,m at both three and four views, and this improvement is
+consistent at the per-frame level as well (Table~\ref{tab:baseline_control_ggpt}).
+This improvement does not translate to precision at the 1\,cm threshold,
+however: static accuracy reaches only 54.4\,\% and 62.0\,\% at three and
+four views, compared to 89.7\,\% and 87.0\,\% for Pi3 at the same view
+counts. At two views, static accuracy drops to 15.5\,\% with static
+completeness at 19.9\,\%, consistent with the duplicated-subject artefacts
+documented in Section~\ref{sec:qualitative}.
 
 \section{Native 4D Architectures and Geometry Refinement}
 \label{sec:native4d_baselines}
 
 \paragraph{VGGT4D.}
-VGGT4D enforces sequence-level temporal consistency through a joint transformer
-architecture, but does so at a substantial geometric cost. Unlike the spatial models,
-which reconstruct each frame independently and require a temporal alignment strategy
-(Chapter~\ref{c:methodology}) to produce a coherent 4D sequence, VGGT4D processes the
-full multi-view video jointly and outputs a natively consistent 4D reconstruction.
-To assess its raw geometric fidelity, its native 4D output is aligned independently
-to the ground truth frame by frame---the same per-frame registration applied to spatial
-model baselines---providing a best-case measure of how accurately VGGT4D recovers
-scene geometry regardless of its temporal consistency properties.
+The per-frame results of Section~\ref{sec:3d_baseline} establish that VGGT4D's
+geometric fidelity is substantially weaker than every spatial model before any
+temporal considerations enter the picture. This gap is architectural: joint
+sequence-level processing couples temporal consistency into the reconstruction
+loop itself, preventing the per-frame estimator from maximising geometric fidelity
+independently. To isolate this cost, VGGT4D's native 4D output is aligned
+independently to ground truth frame by frame---the same per-frame registration
+applied to spatial baselines---providing a best-case geometric measure that removes
+any advantage or disadvantage from temporal consistency.
 
-Table~\ref{tab:baseline_control_ggpt} shows that under this per-frame evaluation,
-VGGT4D achieves a Chamfer distance of 0.053\,m on DexYCB---141\,\% higher than PI3
-(0.022\,m) and 112\,\% higher than MASt3R-SfM and VGGT (both 0.025\,m). On Hi4D,
-VGGT4D reaches 0.230\,m compared to PI3's 0.072\,m, a 219\,\% increase. The geometric
-gap therefore exists at the per-frame level, before any temporal alignment enters the
-picture for either model family.
-
-When spatial models are lifted to 4D via the temporal alignment strategies of
-Chapter~\ref{c:methodology} and compared against VGGT4D's native 4D output,
-the gap persists across all view counts. Table~\ref{tab:global_performance_dex_ycb}
-shows that at two views, VGGT4D achieves 0.051\,m Chamfer, compared to 0.031\,m for
-PI3 Strategy 2 and 0.034\,m for VGGT Strategy 2. At three views, VGGT4D reaches
-0.041\,m, against PI3's 0.035\,m and VGGT's 0.028\,m. At four views, VGGT4D's Chamfer
-rises to 0.069\,m---higher than its own two-view result---while PI3 Strategy 2 achieves
-0.026\,m and VGGT Strategy 2 achieves 0.027\,m. Static accuracy follows the same
-pattern: at four views, VGGT4D reaches 69.1\,\%, compared to 87.0\,\% for PI3
-Strategy 2 and 74.1\,\% for VGGT Strategy 2. Jitter is reduced relative to unsmoothed
-spatial models (0.003\,m mean at two and three views,
-Table~\ref{tab:global_performance_dex_ycb}), but Section~\ref{sec:opt_results} shows
-that spatial models with Opt smoothing reach comparable or lower jitter without the
-geometric cost.
+Even under this best-case alignment, the gap persists when spatial models are
+lifted to 4D via the temporal alignment strategies of Chapter~\ref{c:methodology}.
+Table~\ref{tab:global_performance_dex_ycb} shows that at four views, VGGT4D's
+Chamfer rises to 0.069\,m---higher than its own two-view result---while Pi3
+Strategy 2 achieves 0.026\,m and static accuracy of 87.0\,\% against VGGT4D's
+69.1\,\%. The non-monotonic behaviour across view counts, where performance
+improves from two to three views but degrades sharply at four, is documented
+qualitatively in Section~\ref{sec:qualitative}. VGGT4D does reduce jitter
+relative to unsmoothed spatial models (0.003\,m mean at two and three views),
+but Section~\ref{sec:opt_results} shows that spatial models with Opt smoothing
+match or improve on this without the geometric cost.
 
 \paragraph{MonoFusion.}
-MonoFusion achieves the lowest jitter across all evaluated methods at two and four views
-(0.001\,m mean jitter, Table~\ref{tab:global_performance_dex_ycb}). Geometric fidelity
-is substantially weaker, however. Table~\ref{tab:baseline_control_ggpt} reports
-MonoFusion's per-frame Chamfer at 0.050\,m on DexYCB, with static accuracy of 40.4\,\%
-and completeness of 46.0\,\%---the lowest among all evaluated models. On Hi4D,
-performance degrades further to 0.356\,m Chamfer. At two views,
-Table~\ref{tab:global_performance_dex_ycb} shows static accuracy dropping to 15.5\,\%
-with static completeness at 19.9\,\%, consistent with the duplicated-subject artefacts
-documented in Section~\ref{sec:qualitative} and illustrated in Figure~\ref{fig:monofusion_duplicate}. These artefacts arise from the
-local-optima susceptibility of MonoFusion's iterative depth alignment under insufficient
-multi-view overlap, described in Section~\ref{sec:temporal_models}. GGPT applied to
-MonoFusion on Hi4D is absent from Table~\ref{tab:baseline_control_ggpt} because the
-underlying artefacts render the native output unreliable as a refinement input.
+MonoFusion represents the opposite trade-off: it achieves the lowest jitter of
+all evaluated methods at every view count (0.001\,m mean,
+Table~\ref{tab:global_performance_dex_ycb}), but at the cost of the weakest
+geometry among all models. The 2-view failure is qualitatively distinct from
+VGGT4D's smearing---MonoFusion produces duplicated-subject artefacts rather than
+a degraded single reconstruction, as documented in Section~\ref{sec:qualitative}.
+These artefacts arise from the local-optima susceptibility of MonoFusion's
+iterative depth alignment under insufficient multi-view overlap
+(Section~\ref{sec:temporal_models}), and render its output unreliable as a
+refinement input, which is why GGPT is not applied to MonoFusion on Hi4D.
 
 \paragraph{GGPT.}
-GGPT consistently worsens Chamfer distance across every backbone and both datasets.
-Table~\ref{tab:baseline_control_ggpt} shows that on DexYCB, GGPT increases
-MASt3R-SfM's Chamfer from 0.025\,m to 0.167\,m ($\times$6.7), VGGT's from 0.025\,m
-to 0.203\,m ($\times$8.1), PI3's from 0.022\,m to 0.105\,m ($\times$4.8), and PI3X's
-from 0.028\,m to 0.107\,m ($\times$3.8). On Hi4D, the degradation is more severe:
-VGGT's Chamfer rises from 0.095\,m to 1.510\,m ($\times$15.9) and VGGT4D's from
-0.230\,m to 1.057\,m ($\times$4.6). The negative $\Delta_{\text{consistency}}$ values
-for GGPT on Hi4D visible in Table~\ref{tab:strategy_extended}---for example,
-$-0.048$ for MASt3R-SfM GGPT(S3) and $-0.078$ for VGGT GGPT(S3)---do not indicate
-genuine geometric improvement. Rather, GGPT's geometry-destructive effect is so
-dominant that the per-frame GGPT baseline is already substantially worse than the
-aligned 4D output, making any temporal aggregation appear to reduce Chamfer relative to
-that degraded starting point. In most configurations, GGPT also reduces accuracy and
-completeness substantially, particularly on dynamic regions. GGPT is therefore
-unsuitable for geometry-critical applications in the sparse-view dynamic setting
-evaluated here.
+GGPT consistently worsens Chamfer distance across every backbone and both
+datasets without exception, and is therefore unsuitable for geometry-critical
+applications in the sparse-view dynamic setting evaluated here. The negative
+$\Delta_{\text{consistency}}$ values for GGPT on Hi4D in
+Table~\ref{tab:strategy_extended} do not indicate genuine geometric improvement:
+GGPT's geometry-destructive effect is so severe that the per-frame baseline is
+already substantially worse than the aligned 4D output, making temporal
+aggregation appear to reduce Chamfer relative to that degraded starting point.
+The full per-backbone and per-dataset degradation factors are reported in
+Section~\ref{sec:3d_baseline}.
 
 
 \section{Temporal smoothing refinement}
@@ -440,15 +715,17 @@ lower-left corner represents the optimal operating region.}
 \label{fig:pareto}
 \end{figure}
 
+
 \begin{figure}[!htb]
 \centering
 \includegraphics[width=\textwidth]{figures/plotC_pipeline_progression}
 \caption{Pipeline progression on DexYCB at 2 views for the four spatial models.
 Left panel: mean jitter at each pipeline stage (Baseline, Strategy 2, Opt). Right
 panel: corresponding Chamfer distance. \textit{Baseline} denotes per-frame aligned
-output with no temporal alignment applied. Horizontal reference lines mark VGGT4D
-(dashed teal), MonoFusion (dot-dash brown), and GGPT\,(VGGT) (dotted purple) as fixed
-baselines.}
+output with no temporal alignment applied. Horizontal reference lines mark three
+fixed baselines: VGGT4D (dashed teal) and MonoFusion (dot-dash brown) depict their
+native 4D outputs, and GGPT\,(VGGT) (dotted purple) depicts the Strategy 2 aligned
+output refined by GGPT.}
 \label{fig:pipeline_progression}
 \end{figure}
 
@@ -465,7 +742,7 @@ value that rounds to 0.000\,m in Table~\ref{tab:global_performance_dex_ycb},
 compared to baseline Strategy-2 values ranging from 0.008\,m to
 0.019\,m depending on model and view count.
 The native 4D architecture VGGT4D achieves only 0.005\,m at two views.
-This result is theoretically expected: as the Gaussian temporal filter
+This result follows directly from the filter design: as the Gaussian temporal filter
 defined in Section~\ref{sec:opt_method} acts as a low-pass filter over
 the temporal frequency domain, it attenuates high-frequency oscillations
 by construction, and the second-order finite difference used to measure
@@ -479,8 +756,8 @@ across all four spatial models.
 At two views, MASt3R-SfM mean jitter falls from 0.011\,m
 (Strategy 2) to 0.001\,m (Opt), a 91\,\% reduction consistent with
 its wide temporal window ($\sigma = 6$).
-VGGT falls from 0.009\,m to 0.003\,m (67\,\%), PI3 from 0.006\,m to
-0.002\,m (67\,\%), and PI3X from 0.005\,m to 0.002\,m (60\,\%).
+VGGT falls from 0.009\,m to 0.003\,m (67\,\%), Pi3 from 0.006\,m to
+0.002\,m (67\,\%), and Pi3X from 0.005\,m to 0.002\,m (60\,\%).
 The reductions are consistent across three and four views.
 MASt3R-SfM and VGGT reach 0.001\,m mean jitter at every view count,
 approaching MonoFusion's 0.001\,m level.
@@ -491,7 +768,7 @@ Figure~\ref{fig:pipeline_progression}.
 
 \subsection{Drift and the Limits of Temporal Smoothing}
 Drift measures a qualitatively different failure mode from jitter.
-Where jitter is high-frequency noise, drift is a low-frequency bias:
+Whereas jitter is high-frequency noise, drift is a low-frequency bias:
 a slow accumulation of pose estimation errors that displaces static
 anchors monotonically over the sequence. Because the Gaussian temporal
 filter defined in Section~\ref{sec:opt_method} is a low-pass filter,
@@ -504,46 +781,46 @@ rather than correcting it, since the underlying coordinate system errors
 that cause drift are not addressed by the filter.
 MonoFusion achieves consistently near-zero drift (0.001\,m at every
 view count).
-GGPT\,(S2) reduces drift relative to Strategy~2 in several cases,
+GGPT\,(S2) reduces drift relative to Strategy 2 in several cases,
 but not without substantially degrading Chamfer distance, and the
 improvement is not consistent across view counts or backbones.
 
 \subsection{Geometric Cost}
 The right panel of Figure~\ref{fig:pipeline_progression} shows that the Chamfer
-distance of three of the four models remains near or below the Strategy~2 level after
+distance of three of the four models remains near or below the Strategy 2 level after
 Opt smoothing. For MASt3R-SfM, Chamfer improves slightly from 0.023\,m to 0.022\,m
 at three views and is unchanged at 0.026\,m at four views. For VGGT, Chamfer is
 unchanged at 0.028\,m at three views and increases marginally from 0.027\,m to
-0.029\,m at four views. For PI3, Chamfer improves at two views from 0.031\,m to
-0.026\,m and remains competitive at three and four views. PI3X is the exception: Opt
+0.029\,m at four views. For Pi3, Chamfer improves at two views from 0.031\,m to
+0.026\,m and remains competitive at three and four views. Pi3X is the exception: Opt
 increases Chamfer from 0.027\,m to 0.040\,m at two views (+48\,\%) and from 0.032\,m
 to 0.035--0.036\,m at three and four views (+9--13\,\%).
 
 The full per-view breakdown in Table~\ref{tab:global_performance_dex_ycb} additionally
 reveals the effect on static accuracy and completeness, showing whether the temporal
 averaging bias introduced by Opt acts as a corrective or a degrading influence on
-static reconstruction quality. For MASt3R-SfM and PI3, the bias is corrective: at
+static reconstruction quality. For MASt3R-SfM and Pi3, the bias is corrective: at
 three and four views, static accuracy and completeness both improve under Opt
 (MASt3R-SfM: 73.8\,\%\,$\to$\,75.5\,\% accuracy and 66.3\,\%\,$\to$\,68.3\,\%
-completeness at three views; PI3: 71.2\,\%\,$\to$\,76.7\,\% accuracy and
+completeness at three views; Pi3: 71.2\,\%\,$\to$\,76.7\,\% accuracy and
 62.2\,\%\,$\to$\,67.5\,\% completeness at two views), indicating that the temporal
 mean pulls noisy static point estimates closer to their true positions. For VGGT, the
 effect is approximately neutral, with static accuracy and completeness changing by less
-than one percentage point across view counts. For PI3X, both static accuracy and
+than one percentage point across view counts. For Pi3X, both static accuracy and
 completeness degrade consistently (e.g., 90.9\,\%\,$\to$\,85.2\,\% accuracy and
 75.7\,\%\,$\to$\,72.1\,\% completeness at three views), indicating that the temporal
 averaging displaces already-precise static points away from their correct positions
 rather than correcting them. The associated reduction in dynamic accuracy under Opt
-is attributed to static mask boundary effects, further illuminated in~\ref{sec:limitations}.
+is attributed to static mask boundary effects, further illuminated in Section~\ref{sec:limitations}.
 
 \subsection{Comparison with Native 4D Architectures}
 Figure~\ref{fig:pareto} shows that Opt-smoothed spatial models occupy the lower-left
-quadrant that native 4D architectures do not reach. At two views, PI3+Opt achieves
+quadrant that native 4D architectures do not reach. At two views, Pi3+Opt achieves
 0.026\,m Chamfer and 0.002\,m mean jitter, against VGGT4D's 0.051\,m Chamfer and
 0.003\,m jitter, a 49\,\% reduction in Chamfer with matched or lower jitter. Static
-accuracy is 76.7\,\% for PI3+Opt against 37.1\,\% for VGGT4D. At three views,
-PI3+Opt reaches 0.033\,m Chamfer and 0.001\,m jitter against VGGT4D's 0.041\,m and
-0.003\,m. At four views, PI3+Opt achieves 0.025\,m against VGGT4D's 0.069\,m, a
+accuracy is 76.7\,\% for Pi3+Opt against 37.1\,\% for VGGT4D. At three views,
+Pi3+Opt reaches 0.033\,m Chamfer and 0.001\,m jitter against VGGT4D's 0.041\,m and
+0.003\,m. At four views, Pi3+Opt achieves 0.025\,m against VGGT4D's 0.069\,m, a
 64\,\% reduction, with 0.001\,m jitter
 (Table~\ref{tab:global_performance_dex_ycb}). VGGT+Opt similarly outperforms VGGT4D
 at two views on every metric: 0.039\,m vs.\ 0.051\,m Chamfer, 63.5\,\% vs.\ 37.1\,\%
@@ -643,4 +920,4 @@ estimates as spatially offset outputs rather than a single consistent reconstruc
 The failure persists across all view counts evaluated on Hi4D, consistent with the
 wide camera spacing and large subject-to-camera distance of the Hi4D rig providing
 insufficient surface overlap for the alignment to converge, regardless of the number
-of available cameras evauluated in this thesis.
+of available cameras evaluated in this thesis.

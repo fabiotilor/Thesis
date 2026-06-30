@@ -7,7 +7,7 @@ architectures reduce jitter at the cost of geometric accuracy, leaving no prior
 method that achieves both simultaneously.
 
 This thesis proposes a decoupled paradigm: apply a strong per-frame spatial
-estimator, lift its outputs into a common coordinate frame via a lightweight
+estimator, lift its outputs into a common coordinate frame via a training-free
 temporal alignment strategy, and suppress residual jitter through
 Confidence-Weighted Temporal Smoothing (Opt), a training-free Gaussian filter
 restricted to static scene regions. Geometric accuracy and temporal consistency
@@ -21,5 +21,5 @@ drift, and camera pose error. Opt eliminates high-frequency jitter entirely and
 reduces mean jitter by 60--91\,\% across four spatial backbones while leaving
 Chamfer distance flat or improved for three of the four. The resulting pipeline
 Pareto-dominates native 4D architectures on the geometry--jitter trade-off at
-every view count. The remaining open problem is drift, which the low-pass filter
+every view count. The remaining open problem is drift, which Opt
 cannot address by design; anchor-constrained optimisation is the natural next step.

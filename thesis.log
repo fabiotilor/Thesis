@@ -1,4 +1,4 @@
-This is pdfTeX, Version 3.141592653-2.6-1.40.28 (TeX Live 2025) (preloaded format=pdflatex 2026.4.17)  26 JUN 2026 22:06
+This is pdfTeX, Version 3.141592653-2.6-1.40.28 (TeX Live 2025) (preloaded format=pdflatex 2026.4.17)  30 JUN 2026 20:10
 entering extended mode
  restricted \write18 enabled.
  %&-line parsing enabled.
@@ -1156,22 +1156,22 @@ Underfull \hbox (badness 10000) in paragraph at lines 37--37
 
  []
 
-<figures/uzh_logo.png, id=268, 287.3937pt x 99.4917pt>
+<figures/uzh_logo.png, id=272, 287.3937pt x 99.4917pt>
 File: figures/uzh_logo.png Graphic file (type png)
 <use figures/uzh_logo.png>
 Package pdftex.def Info: figures/uzh_logo.png  used on input line 45.
 (pdftex.def)             Requested size: 82.1887pt x 28.45274pt.
-<figures/dast-logo.png, id=270, 621.82312pt x 165.61874pt>
+<figures/dast-logo.png, id=274, 621.82312pt x 165.61874pt>
 File: figures/dast-logo.png Graphic file (type png)
 <use figures/dast-logo.png>
 Package pdftex.def Info: figures/dast-logo.png  used on input line 46.
 (pdftex.def)             Requested size: 106.81865pt x 28.45274pt.
-<figures/ETHlogo.pdf, id=271, 179.67125pt x 45.16875pt>
+<figures/ETHlogo.pdf, id=275, 179.67125pt x 45.16875pt>
 File: figures/ETHlogo.pdf Graphic file (type pdf)
 <use figures/ETHlogo.pdf>
 Package pdftex.def Info: figures/ETHlogo.pdf  used on input line 49.
 (pdftex.def)             Requested size: 113.17976pt x 28.45274pt.
-<figures/logo-vlg-text.png, id=272, 2739.23375pt x 711.65875pt>
+<figures/logo-vlg-text.png, id=276, 2739.23375pt x 711.65875pt>
 File: figures/logo-vlg-text.png Graphic file (type png)
 <use figures/logo-vlg-text.png>
 Package pdftex.def Info: figures/logo-vlg-text.png  used on input line 50.
@@ -1185,7 +1185,17 @@ Overfull \hbox (82.86652pt too wide) in paragraph at lines 59--60
 
 \openout5 = `thesis.ist'.
 
-{/Users/fabio/Library/TinyTeX/texmf-var/fonts/map/pdftex/updmap/pdftex.map}{/Users/fabio/Library/TinyTeX/texmf-dist/fonts/enc/dvips/base/8r.enc} <./figures/uzh_logo.png> <./figures/dast-logo.png> <./figures/ETHlogo.pdf> <./figures/logo-vlg-text.png>]) (./chapters/0-abstract-en.tex)
+{/Users/fabio/Library/TinyTeX/texmf-var/fonts/map/pdftex/updmap/pdftex.map}{/Users/fabio/Library/TinyTeX/texmf-dist/fonts/enc/dvips/base/8r.enc} <./figures/uzh_logo.png> <./figures/dast-logo.png> <./figures/ETHlogo.pdf> <./figures/logo-vlg-text.png>]) (./chapters/0-abstract-en.tex
+Overfull \hbox (21.18463pt too wide) in paragraph at lines 9--16
+\T1/lmr/m/n/12 free tem-po-ral align-ment strat-egy, and sup-press resid-ual jit-ter through Confidence-
+ []
+
+
+Overfull \hbox (3.83112pt too wide) in paragraph at lines 9--16
+\T1/lmr/m/n/12 Weighted Tem-po-ral Smooth-ing (Opt), a training-free Gaus-sian fil-ter re-stricted
+ []
+
+)
 pdfTeX warning (ext4): destination with the same identifier (name{page.i}) has been already used, duplicate ignored
 <to be read again> 
                    \relax 
@@ -1249,8 +1259,8 @@ File: ursfs.fd 1998/03/24 rsfs font definition file (jk)
  [6] (./chapters/1-introduction.tex
 Chapter 1.
 
-Overfull \hbox (4.79178pt too wide) in paragraph at lines 13--21
-\T1/lmr/m/n/12 MASt3R-SfM [[][]15[][]], VGGT [[][]27[][]], PI3, and PI3X [[][]29[][]] regress dense 3D pointmaps
+Overfull \hbox (2.8418pt too wide) in paragraph at lines 13--21
+\T1/lmr/m/n/12 MASt3R-SfM [[][]16[][]], VGGT [[][]28[][]], Pi3, and Pi3X [[][]30[][]] regress dense 3D pointmaps
  []
 
 [1
@@ -1286,12 +1296,12 @@ Overfull \hbox (14.97005pt too wide) in paragraph at lines 6--6
 
 ] [5] [6] [7]
 Overfull \hbox (0.98065pt too wide) in paragraph at lines 74--75
-[] []\T1/lmr/bx/n/12 GGPT.[] \T1/lmr/m/n/12 GGPT [[][]4[][]] (Geometry-Grounded Point Trans-former) is a geometry-
+[] []\T1/lmr/bx/n/12 GGPT.[] \T1/lmr/m/n/12 GGPT [[][]5[][]] (Geometry-Grounded Point Trans-former) is a geometry-
  []
 
 
 Overfull \hbox (17.1978pt too wide) in paragraph at lines 85--86
-[] []\T1/lmr/bx/n/12 VGGT4D.[] \T1/lmr/m/n/12 VGGT4D [[][]13[][]] ex-tends the VGGT ar-chi-tec-ture to four-dimensional
+[] []\T1/lmr/bx/n/12 VGGT4D.[] \T1/lmr/m/n/12 VGGT4D [[][]14[][]] ex-tends the VGGT ar-chi-tec-ture to four-dimensional
  []
 
 [8] [9]
@@ -1325,22 +1335,22 @@ Overfull \hbox (18.22754pt too wide) in paragraph at lines 1--1
 [13
 
 ]
-<figures/difference_mask.png, id=562, 642.4pt x 481.8pt>
+<figures/difference_mask.png, id=569, 642.4pt x 481.8pt>
 File: figures/difference_mask.png Graphic file (type png)
 <use figures/difference_mask.png>
 Package pdftex.def Info: figures/difference_mask.png  used on input line 69.
 (pdftex.def)             Requested size: 121.67776pt x 96.3279pt.
-<figures/sam2_07.png, id=564, 642.4pt x 481.8pt>
+<figures/sam2_07.png, id=571, 642.4pt x 481.8pt>
 File: figures/sam2_07.png Graphic file (type png)
 <use figures/sam2_07.png>
 Package pdftex.def Info: figures/sam2_07.png  used on input line 81.
 (pdftex.def)             Requested size: 121.67776pt x 96.3279pt.
-<figures/farneback_07.png, id=566, 642.4pt x 481.8pt>
+<figures/farneback_07.png, id=573, 642.4pt x 481.8pt>
 File: figures/farneback_07.png Graphic file (type png)
 <use figures/farneback_07.png>
 Package pdftex.def Info: figures/farneback_07.png  used on input line 96.
 (pdftex.def)             Requested size: 124.80286pt x 98.80142pt.
-<figures/strategies_figure_cropped.pdf, id=574, 305.14pt x 127.47626pt>
+<figures/strategies_figure_cropped.pdf, id=581, 305.14pt x 127.47626pt>
 File: figures/strategies_figure_cropped.pdf Graphic file (type pdf)
 <use figures/strategies_figure_cropped.pdf>
 Package pdftex.def Info: figures/strategies_figure_cropped.pdf  used on input line 124.
@@ -1351,7 +1361,7 @@ Overfull \hbox (2.59857pt too wide) in paragraph at lines 199--199
  []
 
 [17]
-<figures/metric_profiles.pdf, id=676, 1000.71222pt x 346.4945pt>
+<figures/metric_profiles.pdf, id=683, 1000.71222pt x 346.4945pt>
 File: figures/metric_profiles.pdf Graphic file (type pdf)
 <use figures/metric_profiles.pdf>
 Package pdftex.def Info: figures/metric_profiles.pdf  used on input line 267.
@@ -1367,122 +1377,123 @@ Underfull \hbox (badness 1043) in paragraph at lines 48--48
 
 LaTeX Font Info:    External font `lmex10' loaded for size
 (Font)              <5> on input line 63.
-<figures/DEX2.png, id=756, 721.69624pt x 441.65pt>
+<figures/DEX2.png, id=763, 721.69624pt x 441.65pt>
 File: figures/DEX2.png Graphic file (type png)
 <use figures/DEX2.png>
 Package pdftex.def Info: figures/DEX2.png  used on input line 77.
 (pdftex.def)             Requested size: 187.19833pt x 114.55672pt.
-<figures/DEX3.png, id=757, 721.69624pt x 441.65pt>
+<figures/DEX3.png, id=764, 721.69624pt x 441.65pt>
 File: figures/DEX3.png Graphic file (type png)
 <use figures/DEX3.png>
 Package pdftex.def Info: figures/DEX3.png  used on input line 81.
 (pdftex.def)             Requested size: 187.19833pt x 114.55672pt.
-<figures/DEX4.png, id=758, 721.69624pt x 441.65pt>
+<figures/DEX4.png, id=765, 721.69624pt x 441.65pt>
 File: figures/DEX4.png Graphic file (type png)
 <use figures/DEX4.png>
 Package pdftex.def Info: figures/DEX4.png  used on input line 85.
 (pdftex.def)             Requested size: 187.19833pt x 114.55672pt.
-<figures/HI4D2.png, id=759, 721.69624pt x 441.65pt>
+
+Underfull \hbox (badness 1490) in paragraph at lines 90--90
+\T1/lmr/m/n/12 and rear view-points to max-imise
+ []
+
+<figures/HI4D2.png, id=766, 721.69624pt x 441.65pt>
 File: figures/HI4D2.png Graphic file (type png)
 <use figures/HI4D2.png>
 Package pdftex.def Info: figures/HI4D2.png  used on input line 97.
 (pdftex.def)             Requested size: 187.19833pt x 114.55672pt.
-<figures/HI4D3.png, id=760, 721.69624pt x 441.65pt>
+<figures/HI4D3.png, id=767, 721.69624pt x 441.65pt>
 File: figures/HI4D3.png Graphic file (type png)
 <use figures/HI4D3.png>
 Package pdftex.def Info: figures/HI4D3.png  used on input line 101.
 (pdftex.def)             Requested size: 187.19833pt x 114.55672pt.
-<figures/HI4D4.png, id=761, 721.69624pt x 441.65pt>
+<figures/HI4D4.png, id=768, 721.69624pt x 441.65pt>
 File: figures/HI4D4.png Graphic file (type png)
 <use figures/HI4D4.png>
 Package pdftex.def Info: figures/HI4D4.png  used on input line 105.
 (pdftex.def)             Requested size: 187.19833pt x 114.55672pt.
-[22] [23 <./figures/DEX2.png> <./figures/DEX3.png> <./figures/DEX4.png> <./figures/HI4D2.png> <./figures/HI4D3.png> <./figures/HI4D4.png>]
-<figures/method_figure_cropped.pdf, id=779, 396.48125pt x 116.435pt>
+
+Underfull \hbox (badness 1735) in paragraph at lines 111--111
+\T1/lmr/m/n/12 clouds shown de-pict the ground-
+ []
+
+[22]
+
+LaTeX Warning: Text page 23 contains only floats.
+
+
+Overfull \vbox (3.47011pt too high) has occurred while \output is active []
+
+ [23 <./figures/DEX2.png> <./figures/DEX3.png> <./figures/DEX4.png> <./figures/HI4D2.png> <./figures/HI4D3.png> <./figures/HI4D4.png>]
+<figures/method_figure_cropped.pdf, id=787, 396.48125pt x 167.62625pt>
 File: figures/method_figure_cropped.pdf Graphic file (type pdf)
 <use figures/method_figure_cropped.pdf>
 Package pdftex.def Info: figures/method_figure_cropped.pdf  used on input line 126.
-(pdftex.def)             Requested size: 390.0pt x 114.53368pt.
- [24 <./figures/method_figure_cropped.pdf>] [25]
-Overfull \hbox (8.78145pt too wide) in paragraph at lines 200--201
+(pdftex.def)             Requested size: 390.0pt x 164.889pt.
+ [24 <./figures/method_figure_cropped.pdf>]
+<figures/dexycb_confidence_grid.pdf, id=841, 981.09915pt x 715.2509pt>
+File: figures/dexycb_confidence_grid.pdf Graphic file (type pdf)
+<use figures/dexycb_confidence_grid.pdf>
+Package pdftex.def Info: figures/dexycb_confidence_grid.pdf  used on input line 175.
+(pdftex.def)             Requested size: 390.0pt x 284.31633pt.
+ [25] [26 <./figures/dexycb_confidence_grid.pdf>]
+Overfull \hbox (8.78145pt too wide) in paragraph at lines 231--232
 \T1/lmr/m/n/12 The pri-mary dis-tance met-ric is the sym-met-ric Cham-fer dis-tance (Sec-tion [][]2.4.4[][]).
  []
 
-[26]
-<figures/Jitter_metrics.png, id=851, 721.69624pt x 441.65pt>
+[27] [28]
+<figures/Jitter_metrics.png, id=982, 721.69624pt x 441.65pt>
 File: figures/Jitter_metrics.png Graphic file (type png)
 <use figures/Jitter_metrics.png>
-Package pdftex.def Info: figures/Jitter_metrics.png  used on input line 256.
+Package pdftex.def Info: figures/Jitter_metrics.png  used on input line 287.
 (pdftex.def)             Requested size: 390.0pt x 238.66266pt.
- [27] [28 <./figures/Jitter_metrics.png>] [29]) (./chapters/5-experiments.tex
-Overfull \hbox (9.48291pt too wide) in paragraph at lines 345--1
+ [29 <./figures/Jitter_metrics.png>] [30]) (./chapters/5-experiments.tex
+Overfull \hbox (9.48291pt too wide) in paragraph at lines 375--1
 []\T1/lmr/m/n/12 Experiments are con-ducted on two hard-ware con-fig-u-ra-tions. Most models---
  []
 
-[30]
+[31]
 Chapter 5.
+[32
 
-Overfull \hbox (1.18317pt too wide) in paragraph at lines 33--73
- [][] 
- []
-
-[31
-
-]
-
-LaTeX Warning: Float too large for page by 99.68793pt on input line 193.
-
-[32]
-Overfull \hbox (31.13623pt too wide) in paragraph at lines 252--308
- [][] 
- []
-
-
-LaTeX Warning: Float too large for page by 68.33531pt on input line 308.
-
-[33]
-Overfull \hbox (3.13713pt too wide) in paragraph at lines 346--355
-[] []\T1/lmr/bx/n/12 VGGT4D.[] \T1/lmr/m/n/12 VGGT4D en-forces sequence-level tem-po-ral con-sis-tency through
- []
-
-[34] [35]
-<figures/plotA_pareto_jitter_chamfer_v3.pdf, id=944, 252.68216pt x 216.56862pt>
+] [33] [34] [35] [36]
+<figures/plotA_pareto_jitter_chamfer_v3.pdf, id=1072, 252.68216pt x 216.56862pt>
 File: figures/plotA_pareto_jitter_chamfer_v3.pdf Graphic file (type pdf)
 <use figures/plotA_pareto_jitter_chamfer_v3.pdf>
-Package pdftex.def Info: figures/plotA_pareto_jitter_chamfer_v3.pdf  used on input line 431.
+Package pdftex.def Info: figures/plotA_pareto_jitter_chamfer_v3.pdf  used on input line 706.
 (pdftex.def)             Requested size: 331.50238pt x 284.14975pt.
-<figures/plotC_pipeline_progression.pdf, id=945, 505.67255pt x 233.20525pt>
+<figures/plotC_pipeline_progression.pdf, id=1073, 505.67255pt x 233.20525pt>
 File: figures/plotC_pipeline_progression.pdf Graphic file (type pdf)
 <use figures/plotC_pipeline_progression.pdf>
-Package pdftex.def Info: figures/plotC_pipeline_progression.pdf  used on input line 445.
+Package pdftex.def Info: figures/plotC_pipeline_progression.pdf  used on input line 721.
 (pdftex.def)             Requested size: 390.0pt x 179.86394pt.
- [36] [37 <./figures/plotA_pareto_jitter_chamfer_v3.pdf>] [38] [39] [40] [41 <./figures/plotC_pipeline_progression.pdf>] [42
+ [37] [38 <./figures/plotA_pareto_jitter_chamfer_v3.pdf>] [39] [40] [41 <./figures/plotC_pipeline_progression.pdf>] [42
 
 ]
-Overfull \hbox (5.05377pt too wide) in paragraph at lines 540--554
+Overfull \hbox (5.05377pt too wide) in paragraph at lines 817--831
 \T1/lmr/m/n/12 achieves 0.026m Cham-fer and 0.002m mean jit-ter, against VGGT4D's 0.051m
  []
 
 [43]
-<figures/VGGT4D2.png, id=1032, 858.20625pt x 421.575pt>
+<figures/VGGT4D2.png, id=1156, 858.20625pt x 421.575pt>
 File: figures/VGGT4D2.png Graphic file (type png)
 <use figures/VGGT4D2.png>
-Package pdftex.def Info: figures/VGGT4D2.png  used on input line 583.
+Package pdftex.def Info: figures/VGGT4D2.png  used on input line 860.
 (pdftex.def)             Requested size: 124.80286pt x 61.3037pt.
-<figures/VGGT4D3.png, id=1033, 858.20625pt x 421.575pt>
+<figures/VGGT4D3.png, id=1157, 858.20625pt x 421.575pt>
 File: figures/VGGT4D3.png Graphic file (type png)
 <use figures/VGGT4D3.png>
-Package pdftex.def Info: figures/VGGT4D3.png  used on input line 590.
+Package pdftex.def Info: figures/VGGT4D3.png  used on input line 867.
 (pdftex.def)             Requested size: 124.80286pt x 61.3037pt.
-<figures/VGGT4D4.png, id=1034, 858.20625pt x 421.575pt>
+<figures/VGGT4D4.png, id=1158, 858.20625pt x 421.575pt>
 File: figures/VGGT4D4.png Graphic file (type png)
 <use figures/VGGT4D4.png>
-Package pdftex.def Info: figures/VGGT4D4.png  used on input line 597.
+Package pdftex.def Info: figures/VGGT4D4.png  used on input line 874.
 (pdftex.def)             Requested size: 124.80286pt x 61.3037pt.
-<figures/MonoFusionHI4D2.png, id=1037, 851.18pt x 793.96625pt>
+<figures/MonoFusionHI4D2.png, id=1161, 851.18pt x 793.96625pt>
 File: figures/MonoFusionHI4D2.png Graphic file (type png)
 <use figures/MonoFusionHI4D2.png>
-Package pdftex.def Info: figures/MonoFusionHI4D2.png  used on input line 612.
+Package pdftex.def Info: figures/MonoFusionHI4D2.png  used on input line 889.
 (pdftex.def)             Requested size: 292.5pt x 272.84042pt.
  [44]
 
@@ -1497,16 +1508,21 @@ Overfull \hbox (5.3888pt too wide) in paragraph at lines 22--29
 
 [47
 
-] [48] [49] [50] [51] [52] [53]) [54]
+] [48] [49] [50] [51] [52] [53]) [54] [55]
 LaTeX Font Info:    Trying to load font information for T1+lmtt on input line 57.
  (/Users/fabio/Library/TinyTeX/texmf-dist/tex/latex/lm/t1lmtt.fd
 File: t1lmtt.fd 2015/05/01 v1.6.1 Font defs for Latin Modern
 )
+Overfull \hbox (1.07928pt too wide) in paragraph at lines 58--58
+[]\T1/lmr/m/n/12 P.J. Besl and Neil D. McKay. ^^P  A method for reg-is-tra-tion of 3-D shapes^^Q.
+ []
+
+
 Overfull \hbox (3.01653pt too wide) in paragraph at lines 58--58
 []\T1/lmr/m/n/12 Yu-Wei Chao \T1/lmr/m/it/12 et al\T1/lmr/m/n/12 . ^^P  DexYCB: A Bench-mark for Cap-tur-ing Hand Grasp-
  []
 
-[55
+[56
 
 ]
 Overfull \hbox (4.8738pt too wide) in paragraph at lines 58--58
@@ -1528,23 +1544,23 @@ Overfull \hbox (2.71123pt too wide) in paragraph at lines 58--58
 \T1/lmr/m/it/12 Structure-from-Motion\T1/lmr/m/n/12 . 2025. arXiv: [][]$\T1/lmtt/m/n/12 2504 . 20040$ [cs.CV][][]\T1/lmr/m/n/12 . \T1/lmr/m/sc/12 url\T1/lmr/m/n/12 : [][]$\T1/lmtt/m/n/12 https :
  []
 
-[56]
+[57]
 Overfull \hbox (5.40579pt too wide) in paragraph at lines 58--58
 []\T1/lmr/m/n/12 Yifan Wang \T1/lmr/m/it/12 et al\T1/lmr/m/n/12 . ^^P  $\OML/lmm/m/it/12 ^^Y[]$\T1/lmr/m/n/12 : Permutation-Equivariant Vi-sual Ge-om-e-try Learn-
  []
 
-[57] (./chapters/A-appendix.tex
+[58] (./chapters/A-appendix.tex
 Appendix A.
-) (./resources/declaration_en.tex [58
+) (./resources/declaration_en.tex [59
 
 
 ]
 File: figures/uzh_logo.png Graphic file (type png)
 <use figures/uzh_logo.png>
-Package pdftex.def Info: figures/uzh_logo.png  used on input line 41.
+Package pdftex.def Info: figures/uzh_logo.png  used on input line 48.
 (pdftex.def)             Requested size: 164.3818pt x 56.9055pt.
 
-Overfull \hbox (82.86652pt too wide) in paragraph at lines 45--46
+Overfull \hbox (82.86652pt too wide) in paragraph at lines 52--53
 [][] 
  []
 
@@ -1555,7 +1571,7 @@ Overfull \vbox (51.0289pt too high) has occurred while \output is active []
 pdfTeX warning (ext4): destination with the same identifier (name{page.1}) has been already used, duplicate ignored
 <to be read again> 
                    \relax 
-l.46 \end{titlepage}
+l.53 \end{titlepage}
                      [1])
 
 Package glossaries Warning: No \printglossary or \printglossaries found. 
@@ -1568,24 +1584,24 @@ LaTeX2e <2025-11-01>
 L3 programming layer <2026-01-19>
  ***********
 Package rerunfilecheck Info: File `thesis.out' has not changed.
-(rerunfilecheck)             Checksum: D657F6EDD76BBC6810BACEFD10E12F55;12964.
+(rerunfilecheck)             Checksum: 55FA232B2695FD37D52FC1F7205C0A4C;13256.
 Package logreq Info: Writing requests to 'thesis.run.xml'.
 \openout1 = `thesis.run.xml'.
 
  ) 
 Here is how much of TeX's memory you used:
- 43971 strings out of 469443
- 877201 string characters out of 5466399
- 1887852 words of memory out of 5000000
- 71737 multiletter control sequences out of 15000+600000
- 754578 words of font info for 138 fonts, out of 8000000 for 9000
+ 43993 strings out of 469443
+ 878011 string characters out of 5466399
+ 1898595 words of memory out of 5000000
+ 71754 multiletter control sequences out of 15000+600000
+ 758842 words of font info for 139 fonts, out of 8000000 for 9000
  38 hyphenation exceptions out of 8191
  132i,12n,135p,2593b,2463s stack positions out of 10000i,1000n,20000p,200000b,200000s
-</Users/fabio/Library/TinyTeX/texmf-dist/fonts/type1/public/amsfonts/euler/eufm10.pfb></Users/fabio/Library/TinyTeX/texmf-dist/fonts/type1/public/lm/lmbx12.pfb></Users/fabio/Library/TinyTeX/texmf-dist/fonts/type1/public/lm/lmbx8.pfb></Users/fabio/Library/TinyTeX/texmf-dist/fonts/type1/public/lm/lmcsc10.pfb></Users/fabio/Library/TinyTeX/texmf-dist/fonts/type1/public/lm/lmex10.pfb></Users/fabio/Library/TinyTeX/texmf-dist/fonts/type1/public/lm/lmmi12.pfb></Users/fabio/Library/TinyTeX/texmf-dist/fonts/type1/public/lm/lmmi8.pfb></Users/fabio/Library/TinyTeX/texmf-dist/fonts/type1/public/lm/lmr10.pfb></Users/fabio/Library/TinyTeX/texmf-dist/fonts/type1/public/lm/lmr12.pfb></Users/fabio/Library/TinyTeX/texmf-dist/fonts/type1/public/lm/lmr7.pfb></Users/fabio/Library/TinyTeX/texmf-dist/fonts/type1/public/lm/lmr8.pfb></Users/fabio/Library/TinyTeX/texmf-dist/fonts/type1/public/lm/lmri12.pfb></Users/fabio/Library/TinyTeX/texmf-dist/fonts/type1/public/lm/lmsy10.pfb></Users/fabio/Library/TinyTeX/texmf-dist/fonts/type1/public/lm/lmsy6.pfb></Users/fabio/Library/TinyTeX/texmf-dist/fonts/type1/public/lm/lmsy7.pfb></Users/fabio/Library/TinyTeX/texmf-dist/fonts/type1/public/lm/lmsy8.pfb></Users/fabio/Library/TinyTeX/texmf-dist/fonts/type1/public/lm/lmtt10.pfb></Users/fabio/Library/TinyTeX/texmf-dist/fonts/type1/public/lm/lmtt12.pfb></Users/fabio/Library/TinyTeX/texmf-dist/fonts/type1/public/amsfonts/symbols/msbm10.pfb></Users/fabio/Library/TinyTeX/texmf-dist/fonts/type1/urw/helvetic/uhvb8a.pfb></Users/fabio/Library/TinyTeX/texmf-dist/fonts/type1/urw/helvetic/uhvr8a.pfb>
-Output written on thesis.pdf (66 pages, 23172412 bytes).
+</Users/fabio/Library/TinyTeX/texmf-dist/fonts/type1/public/amsfonts/euler/eufm10.pfb></Users/fabio/Library/TinyTeX/texmf-dist/fonts/type1/public/lm/lmbx12.pfb></Users/fabio/Library/TinyTeX/texmf-dist/fonts/type1/public/lm/lmbx8.pfb></Users/fabio/Library/TinyTeX/texmf-dist/fonts/type1/public/lm/lmcsc10.pfb></Users/fabio/Library/TinyTeX/texmf-dist/fonts/type1/public/lm/lmex10.pfb></Users/fabio/Library/TinyTeX/texmf-dist/fonts/type1/public/lm/lmmi12.pfb></Users/fabio/Library/TinyTeX/texmf-dist/fonts/type1/public/lm/lmmi8.pfb></Users/fabio/Library/TinyTeX/texmf-dist/fonts/type1/public/lm/lmr10.pfb></Users/fabio/Library/TinyTeX/texmf-dist/fonts/type1/public/lm/lmr12.pfb></Users/fabio/Library/TinyTeX/texmf-dist/fonts/type1/public/lm/lmr7.pfb></Users/fabio/Library/TinyTeX/texmf-dist/fonts/type1/public/lm/lmr8.pfb></Users/fabio/Library/TinyTeX/texmf-dist/fonts/type1/public/lm/lmri12.pfb></Users/fabio/Library/TinyTeX/texmf-dist/fonts/type1/public/lm/lmri8.pfb></Users/fabio/Library/TinyTeX/texmf-dist/fonts/type1/public/lm/lmsy10.pfb></Users/fabio/Library/TinyTeX/texmf-dist/fonts/type1/public/lm/lmsy6.pfb></Users/fabio/Library/TinyTeX/texmf-dist/fonts/type1/public/lm/lmsy7.pfb></Users/fabio/Library/TinyTeX/texmf-dist/fonts/type1/public/lm/lmsy8.pfb></Users/fabio/Library/TinyTeX/texmf-dist/fonts/type1/public/lm/lmtt10.pfb></Users/fabio/Library/TinyTeX/texmf-dist/fonts/type1/public/lm/lmtt12.pfb></Users/fabio/Library/TinyTeX/texmf-dist/fonts/type1/public/amsfonts/symbols/msbm10.pfb></Users/fabio/Library/TinyTeX/texmf-dist/fonts/type1/urw/helvetic/uhvb8a.pfb></Users/fabio/Library/TinyTeX/texmf-dist/fonts/type1/urw/helvetic/uhvr8a.pfb>
+Output written on thesis.pdf (67 pages, 23242845 bytes).
 PDF statistics:
- 1324 PDF objects out of 1440 (max. 8388607)
- 1059 compressed objects within 11 object streams
- 200 named destinations out of 1000 (max. 500000)
- 666 words of extra memory for PDF output out of 10000 (max. 10000000)
+ 1462 PDF objects out of 1728 (max. 8388607)
+ 1089 compressed objects within 11 object streams
+ 204 named destinations out of 1000 (max. 500000)
+ 679 words of extra memory for PDF output out of 10000 (max. 10000000)
 

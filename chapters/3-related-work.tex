@@ -257,7 +257,7 @@ $\sigma \in \{0.5, 1, 2, 4, 6, 8, 12, 20, 30\}$ and
 $\alpha \in \{0.2, 0.5, 0.8, 1.0\}$, and measuring the resulting trade-off
 between jitter reduction and geometric fidelity relative to the unsmoothed
 Strategy 2 output. Figure~\ref{fig:metric_profiles} shows the metric profiles
-for PI3, illustrating how increasing $\sigma$ reduces mean jitter monotonically
+for Pi3, illustrating how increasing $\sigma$ reduces mean jitter monotonically
 while simultaneously increasing Chamfer distance and reducing accuracy, with
 higher $\alpha$ amplifying both effects. A single operating point per backbone
 is selected from this sweep.
@@ -265,7 +265,7 @@ is selected from this sweep.
 \begin{figure}[!htb]
 \centering
 \includegraphics[width=\textwidth]{figures/metric_profiles}
-\caption{Metric profiles for PI3 as a function of $\sigma$ for each value of
+\caption{Metric profiles for Pi3 as a function of $\sigma$ for each value of
 $\alpha$, averaged over all subjects and view counts. Increasing $\sigma$ reduces
 mean jitter monotonically but raises Chamfer distance and lowers accuracy, with
 higher $\alpha$ amplifying both effects. The red circle marks the selected
@@ -277,7 +277,7 @@ substantial but geometric degradation remains limited.}
 \FloatBarrier
 
 The selected configurations are $\sigma = 6$, $\alpha = 1.0$ for MASt3R-SfM,
-while all other evaluated models (PI3, PI3X, and VGGT) share a configuration
+while all other evaluated models (Pi3, Pi3X, and VGGT) share a configuration
 of $\sigma = 4$, $\alpha = 1.0$. MASt3R-SfM requires the widest temporal
 window, consistent with it exhibiting the highest baseline jitter of the four
 backbones at every camera count evaluated.

@@ -4,7 +4,7 @@
 This thesis set out to answer a single question: can sparse-view dynamic reconstruction
 achieve both geometric fidelity and temporal consistency simultaneously, without
 sacrificing one for the other? The results of Chapter~\ref{c:results} provide a clear
-answer. The decoupled paradigm of a strong per-frame spatial estimator, lightweight
+answer. The decoupled paradigm of a strong per-frame spatial estimator, training-free
 temporal alignment, and targeted static-region smoothing consistently achieves both
 properties across every backbone and every view count evaluated. No existing alternative
 matches this trade-off. This chapter interprets why, identifies what remains unsolved,
@@ -22,10 +22,10 @@ Understanding why requires examining the architectural assumptions each family m
 Spatial foundation models reconstruct each frame independently, using learned priors to
 recover dense geometry from sparse observations. Independence is a strength: each frame
 is solved without any assumption about what neighbouring frames look like, so
-reconstruction errors do not propagate across time. PI3 achieves 0.022\,m Chamfer and
-94.4\,\% static accuracy on DexYCB at the per-frame level, the highest geometric
-fidelity among all evaluated models, precisely because no temporal constraint forces it
-to compromise geometric detail for sequence consistency.
+reconstruction errors do not propagate across time. Pi3 achieves the highest geometric fidelity among all evaluated models, reaching
+0.019\,m Chamfer and 95.9\,\% static accuracy at four views on DexYCB, precisely
+because no temporal constraint forces it to compromise geometric detail for sequence
+consistency.
 
 \subsection{Why Native 4D Architectures Fail}
 The fundamental limitation of native 4D architectures and temporal estimators stems from a structural coupling: they embed temporal consistency directly into the core scene reconstruction loop, sacrificing frame-level geometric fidelity to enforce sequence-level smoothness~\cite{vggt4d, monofusion}. 
@@ -61,14 +61,15 @@ end-to-end approaches.
 
 The argument has three parts. First, spatial foundation models achieve higher geometric
 fidelity than native 4D architectures at the per-frame level, before any temporal
-processing is applied; as established in Section~\ref{sec:native4d_baselines}, PI3
-outperforms VGGT4D by 141\,\% on DexYCB Chamfer at the per-frame level. Second, temporal consistency can be added after the
+processing is applied; as established in Section~\ref{sec:native4d_baselines}, Pi3
+outperforms VGGT4D by 63--72\,\% on DexYCB Chamfer distance across two- and four-view
+configurations (0.018--0.019\,m vs.\ 0.049--0.069\,m). Second, temporal consistency can be added after the
 fact without destroying geometry, provided the smoothing is applied only where it is
 valid, namely static regions. Opt reduces mean jitter by 60--91\,\% across four backbones and eliminates
 high-frequency jitter entirely (Section~\ref{sec:native4d_baselines}), while leaving
-Chamfer flat or improved for all but PI3X. Third, the
+Chamfer flat or improved for all but Pi3X. Third, the
 resulting pipeline Pareto-dominates native 4D architectures on the geometry--jitter
-trade-off at every view count for every backbone evaluated. PI3+Opt achieves 0.025\,m
+trade-off at every view count for every backbone evaluated. Pi3+Opt achieves 0.025\,m
 Chamfer and 0.001\,m mean jitter at four views; VGGT4D achieves 0.069\,m Chamfer and
 0.003\,m jitter at the same view count.
 
@@ -95,7 +96,7 @@ pipeline intended for practical deployment.
 \section{Limitations}
 \label{sec:limitations}
 
-Four limitations of the proposed approach warrant explicit discussion.
+Five limitations of the proposed approach warrant explicit discussion.
 
 \subsection{Per-Backbone Parameter Calibration}
 As discussed in Section~\ref{sec:opt_parameters}, Opt requires per-backbone
@@ -114,7 +115,7 @@ does not reliably reduce drift. Drift is a slow, monotonic accumulation of pose
 estimation errors that displaces static anchors over the sequence. Because the
 Gaussian filter operates symmetrically in time, it attenuates rapid oscillations
 effectively but cannot correct a bias that accumulates monotonically. The
-increase observed for PI3 at two views, where drift rises from 0.007\,m under
+increase observed for Pi3 at two views, where drift rises from 0.007\,m under
 Strategy 2 to 0.034\,m under Opt, reflects the unusually low baseline drift of
 Strategy 2 for this backbone: temporal smoothing redistributes pointmap positions
 along the sequence, which can introduce long-term displacement where little
@@ -131,7 +132,7 @@ dynamic regions are spatially adjacent. Boundary pixels at the static-dynamic
 boundary are incidentally affected by Opt smoothing: projecting smoothed boundary
 points back into 2D shifts their apparent class assignment, producing a reduction
 in reported dynamic accuracy beyond the direct effect of the filter. This boundary
-reclassification effect is most pronounced for PI3X, which achieves the highest
+reclassification effect is most pronounced for Pi3X, which achieves the highest
 baseline dynamic accuracy of all evaluated backbones; a higher proportion of
 correctly classified dynamic boundary pixels means the reclassification effect
 has more to act on, producing a larger absolute drop in reported dynamic accuracy
@@ -148,12 +149,35 @@ comparison covers both datasets, but Hi4D results reflect the performance of the
 underlying models rather than the properties of the strategies, since static
 correspondences are absent after preprocessing.
 
+\subsection{Confidence Threshold as a Global Compromise}
+The 50\,\% confidence threshold used throughout Chapter~\ref{c:results}
+(Section~\ref{sec:evaluation_pipeline}) was validated post hoc through a sweep
+across all four spatial backbones (Figure~\ref{fig:conf_sweep}). This sweep
+revealed that MASt3R-SfM, Pi3, and Pi3X share a similarly shaped Chamfer curve
+with an interior minimum between 50\,\% and 80\,\%, while VGGT instead shows a
+monotonic accuracy--completeness trade-off with no comparable interior optimum.
+A single global threshold is therefore necessarily a compromise: it cannot be
+simultaneously optimal for a backbone with a U-shaped response and a backbone
+with a monotonic one. The 50\,\% threshold adopted in this thesis lies within
+or close to the empirical optimum for three of the four backbones and avoids
+the degenerate extremes for the fourth, but a per-backbone threshold, calibrated
+in the same spirit as the per-backbone $\sigma$ and $\alpha$ values of
+Section~\ref{sec:opt_parameters}, would likely yield a modest further
+improvement in reported geometric fidelity. This limitation is methodological
+rather than substantive: confidence filtering exists to prevent unreliable
+correspondences from biasing the Umeyama alignment, not to optimise the
+reported metrics directly, and an alternative such as confidence-weighted or
+robust alignment (e.g., iterative closest point with outlier rejection~\cite{121791})
+could remove the need for a hard threshold altogether. This direction is noted
+for future work but was not pursued here due to the scope of the evaluation
+already covering six models, two datasets, and three view counts.
+
 %% -----------------------------------------------------------------------
 \section{Future work}
 \label{sec:future_work}
 
 This thesis established a foundation: spatial foundation models can be lifted to
-temporally consistent 4D reconstruction through lightweight alignment and a
+temporally consistent 4D reconstruction through training-free alignment and a
 training-free temporal low-pass filter, without sacrificing geometric fidelity. The
 remaining open problems are clear. Drift is not corrected. The 2-view to 4-view
 performance gap is not closed. Evaluation is limited to fixed, calibrated camera rigs

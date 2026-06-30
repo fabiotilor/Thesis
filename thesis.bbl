@@ -98,6 +98,43 @@
       \field{title}{Image Matching as a Distance Measure}
       \field{year}{1977}
     \endentry
+    \entry{121791}{article}{}{}
+      \name{author}{2}{}{%
+        {{hash=2037e68971cb5f865d353e1683f19d3f}{%
+           family={Besl},
+           familyi={B\bibinitperiod},
+           given={P.J.},
+           giveni={P\bibinitperiod}}}%
+        {{hash=069445b230220d610c916f4272b33ced}{%
+           family={McKay},
+           familyi={M\bibinitperiod},
+           given={Neil\bibnamedelima D.},
+           giveni={N\bibinitperiod\bibinitdelim D\bibinitperiod}}}%
+      }
+      \strng{namehash}{479b493e2194e0abd35d55b8efd0be0a}
+      \strng{fullhash}{479b493e2194e0abd35d55b8efd0be0a}
+      \strng{fullhashraw}{479b493e2194e0abd35d55b8efd0be0a}
+      \strng{bibnamehash}{479b493e2194e0abd35d55b8efd0be0a}
+      \strng{authorbibnamehash}{479b493e2194e0abd35d55b8efd0be0a}
+      \strng{authornamehash}{479b493e2194e0abd35d55b8efd0be0a}
+      \strng{authorfullhash}{479b493e2194e0abd35d55b8efd0be0a}
+      \strng{authorfullhashraw}{479b493e2194e0abd35d55b8efd0be0a}
+      \field{sortinit}{B}
+      \field{sortinithash}{d7095fff47cda75ca2589920aae98399}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{journaltitle}{IEEE Transactions on Pattern Analysis and Machine Intelligence}
+      \field{number}{2}
+      \field{title}{A method for registration of 3-D shapes}
+      \field{volume}{14}
+      \field{year}{1992}
+      \field{pages}{239\bibrangedash 256}
+      \range{pages}{18}
+      \verb{doi}
+      \verb 10.1109/34.121791
+      \endverb
+      \keyw{Solid modeling;Motion estimation;Iterative closest point algorithm;Iterative algorithms;Testing;Inspection;Shape measurement;Iterative methods;Convergence;Quaternions}
+    \endentry
     \entry{dexycb}{inproceedings}{}{}
       \name{author}{12}{}{%
         {{hash=d7bd68dee7391e49eed4a1acfe0a6158}{%
@@ -301,14 +338,9 @@
       \field{sortinithash}{4d103a86280481745c9c897c925753c0}
       \field{labelnamesource}{author}
       \field{labeltitlesource}{title}
-      \field{title}{MonSter++: Unified Stereo Matching, Multi-view Stereo, and Real-time Stereo with Monodepth Priors}
+      \field{booktitle}{International Conference on Learning Representations (ICLR)}
+      \field{title}{Mon{S}ter++: Unified Stereo Matching, Multi-view Stereo, and Real-time Stereo with Monodepth Priors}
       \field{year}{2025}
-      \verb{urlraw}
-      \verb https://api.semanticscholar.org/CorpusID:275544438
-      \endverb
-      \verb{url}
-      \verb https://api.semanticscholar.org/CorpusID:275544438
-      \endverb
     \endentry
     \entry{chirikjian2011stochastic}{book}{}{}
       \name{author}{1}{}{%
@@ -934,7 +966,7 @@
       \verb https://arxiv.org/abs/2504.20040
       \endverb
     \endentry
-    \entry{sam2}{article}{}{}
+    \entry{sam2}{inproceedings}{}{}
       \name{author}{18}{}{%
         {{hash=29e72fba9e2b3c5537682a7be7bc14e4}{%
            family={Ravi},
@@ -1016,8 +1048,8 @@
            familyi={G\bibinitperiod},
            given={Ross},
            giveni={R\bibinitperiod}}}%
-        {{hash=ecd149fdcb3e0503881d49e545744c3d}{%
-           family={Dollár},
+        {{hash=37843fd1a96680e7945ac1a059b6e8b8}{%
+           family={Dollar},
            familyi={D\bibinitperiod},
            given={Piotr},
            giveni={P\bibinitperiod}}}%
@@ -1028,25 +1060,25 @@
            giveni={C\bibinitperiod}}}%
       }
       \strng{namehash}{122b0c0c258a2e9f0862d559d3369d99}
-      \strng{fullhash}{1d075f09ffd1d1e0ac0f2e0e502b680f}
-      \strng{fullhashraw}{1d075f09ffd1d1e0ac0f2e0e502b680f}
+      \strng{fullhash}{18b7274bcd8daba59765f0b204da360d}
+      \strng{fullhashraw}{18b7274bcd8daba59765f0b204da360d}
       \strng{bibnamehash}{122b0c0c258a2e9f0862d559d3369d99}
       \strng{authorbibnamehash}{122b0c0c258a2e9f0862d559d3369d99}
       \strng{authornamehash}{122b0c0c258a2e9f0862d559d3369d99}
-      \strng{authorfullhash}{1d075f09ffd1d1e0ac0f2e0e502b680f}
-      \strng{authorfullhashraw}{1d075f09ffd1d1e0ac0f2e0e502b680f}
+      \strng{authorfullhash}{18b7274bcd8daba59765f0b204da360d}
+      \strng{authorfullhashraw}{18b7274bcd8daba59765f0b204da360d}
       \field{sortinit}{R}
       \field{sortinithash}{5e1c39a9d46ffb6bebd8f801023a9486}
       \field{labelnamesource}{author}
       \field{labeltitlesource}{title}
-      \field{journaltitle}{arXiv preprint arXiv:2408.00714}
-      \field{title}{SAM 2: Segment Anything in Images and Videos}
-      \field{year}{2024}
+      \field{booktitle}{The Thirteenth International Conference on Learning Representations}
+      \field{title}{{SAM} 2: Segment Anything in Images and Videos}
+      \field{year}{2025}
       \verb{urlraw}
-      \verb https://arxiv.org/abs/2408.00714
+      \verb https://openreview.net/forum?id=Ha6RTeWMd0
       \endverb
       \verb{url}
-      \verb https://arxiv.org/abs/2408.00714
+      \verb https://openreview.net/forum?id=Ha6RTeWMd0
       \endverb
     \endentry
     \entry{rusu2008statistical}{inproceedings}{}{}

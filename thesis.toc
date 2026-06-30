@@ -7,7 +7,7 @@
 \contentsline {subsection}{\numberline {2.2.1}Spatial Reconstruction Models}{6}{subsection.2.2.1}%
 \contentsline {paragraph}{MASt3R-SfM.}{7}{subsection.2.2.1}%
 \contentsline {paragraph}{VGGT.}{7}{subsection.2.2.1}%
-\contentsline {paragraph}{PI3 and PI3X.}{7}{subsection.2.2.1}%
+\contentsline {paragraph}{Pi3 and Pi3X.}{7}{subsection.2.2.1}%
 \contentsline {subsection}{\numberline {2.2.2}Geometry Refinement Models}{8}{subsection.2.2.2}%
 \contentsline {paragraph}{GGPT.}{8}{subsection.2.2.2}%
 \contentsline {subsection}{\numberline {2.2.3}Temporal Reconstruction Models}{8}{subsection.2.2.3}%
@@ -39,29 +39,29 @@
 \contentsline {subsection}{\numberline {4.2.1}Point Cloud Filtering}{24}{subsection.4.2.1}%
 \contentsline {paragraph}{Ground-truth validity masking.}{24}{subsection.4.2.1}%
 \contentsline {paragraph}{Confidence-based filtering.}{25}{subsection.4.2.1}%
-\contentsline {paragraph}{Statistical outlier removal.}{25}{subsection.4.2.1}%
-\contentsline {subsection}{\numberline {4.2.2}Correspondence Construction}{25}{subsection.4.2.2}%
-\contentsline {subsection}{\numberline {4.2.3}Per-Frame Similarity Alignment}{25}{subsection.4.2.3}%
-\contentsline {section}{\numberline {4.3}Metric Suite}{26}{section.4.3}%
-\contentsline {subsection}{\numberline {4.3.1}Geometric Metrics}{26}{subsection.4.3.1}%
-\contentsline {paragraph}{Static/dynamic decomposition and motion gap.}{26}{equation.4.3}%
-\contentsline {paragraph}{3D-to-4D consistency.}{27}{equation.4.4}%
-\contentsline {subsection}{\numberline {4.3.2}Temporal Consistency Metrics}{27}{subsection.4.3.2}%
-\contentsline {subsection}{\numberline {4.3.3}Camera Pose Metrics}{29}{subsection.4.3.3}%
-\contentsline {paragraph}{Absolute Trajectory Error (ATE).}{29}{subsection.4.3.3}%
-\contentsline {paragraph}{Relative Pose Error (RPE).}{29}{equation.4.6}%
-\contentsline {paragraph}{Rotation error.}{29}{equation.4.7}%
-\contentsline {paragraph}{Intrinsic error.}{30}{equation.4.7}%
-\contentsline {section}{\numberline {4.4}Implementation Details}{30}{section.4.4}%
-\contentsline {chapter}{\numberline {5}Results}{31}{chapter.5}%
-\contentsline {section}{\numberline {5.1}3D Baseline Results}{31}{section.5.1}%
-\contentsline {section}{\numberline {5.2}Alignment Strategy comparison}{32}{section.5.2}%
-\contentsline {section}{\numberline {5.3}Sparse-View Sensitivity}{33}{section.5.3}%
-\contentsline {section}{\numberline {5.4}Native 4D Architectures and Geometry Refinement}{34}{section.5.4}%
-\contentsline {paragraph}{VGGT4D.}{34}{section.5.4}%
-\contentsline {paragraph}{MonoFusion.}{35}{section.5.4}%
-\contentsline {paragraph}{GGPT.}{35}{section.5.4}%
-\contentsline {section}{\numberline {5.5}Temporal smoothing refinement}{36}{section.5.5}%
+\contentsline {paragraph}{Statistical outlier removal.}{25}{figure.caption.11}%
+\contentsline {subsection}{\numberline {4.2.2}Correspondence Construction}{26}{subsection.4.2.2}%
+\contentsline {subsection}{\numberline {4.2.3}Per-Frame Similarity Alignment}{27}{subsection.4.2.3}%
+\contentsline {section}{\numberline {4.3}Metric Suite}{27}{section.4.3}%
+\contentsline {subsection}{\numberline {4.3.1}Geometric Metrics}{27}{subsection.4.3.1}%
+\contentsline {paragraph}{Static/dynamic decomposition and motion gap.}{28}{equation.4.3}%
+\contentsline {paragraph}{3D-to-4D consistency.}{28}{equation.4.4}%
+\contentsline {subsection}{\numberline {4.3.2}Temporal Consistency Metrics}{29}{subsection.4.3.2}%
+\contentsline {subsection}{\numberline {4.3.3}Camera Pose Metrics}{30}{subsection.4.3.3}%
+\contentsline {paragraph}{Absolute Trajectory Error (ATE).}{30}{subsection.4.3.3}%
+\contentsline {paragraph}{Relative Pose Error (RPE).}{31}{equation.4.6}%
+\contentsline {paragraph}{Rotation error.}{31}{equation.4.7}%
+\contentsline {paragraph}{Intrinsic error.}{31}{equation.4.7}%
+\contentsline {section}{\numberline {4.4}Implementation Details}{31}{section.4.4}%
+\contentsline {chapter}{\numberline {5}Results}{32}{chapter.5}%
+\contentsline {section}{\numberline {5.1}3D Baseline Results}{32}{section.5.1}%
+\contentsline {section}{\numberline {5.2}Alignment Strategy Comparison}{34}{section.5.2}%
+\contentsline {section}{\numberline {5.3}Sparse-View Sensitivity}{34}{section.5.3}%
+\contentsline {section}{\numberline {5.4}Native 4D Architectures and Geometry Refinement}{36}{section.5.4}%
+\contentsline {paragraph}{VGGT4D.}{36}{section.5.4}%
+\contentsline {paragraph}{MonoFusion.}{36}{section.5.4}%
+\contentsline {paragraph}{GGPT.}{36}{section.5.4}%
+\contentsline {section}{\numberline {5.5}Temporal smoothing refinement}{37}{section.5.5}%
 \contentsline {subsection}{\numberline {5.5.1}High-frequency Jitter Elimination}{42}{subsection.5.5.1}%
 \contentsline {subsection}{\numberline {5.5.2}Mean Jitter Reduction}{42}{subsection.5.5.2}%
 \contentsline {subsection}{\numberline {5.5.3}Drift and the Limits of Temporal Smoothing}{42}{subsection.5.5.3}%
@@ -80,11 +80,12 @@
 \contentsline {subsection}{\numberline {6.3.2}Drift is Not Corrected}{50}{subsection.6.3.2}%
 \contentsline {subsection}{\numberline {6.3.3}Static Mask Quality}{51}{subsection.6.3.3}%
 \contentsline {subsection}{\numberline {6.3.4}Evaluation Scope}{51}{subsection.6.3.4}%
-\contentsline {section}{\numberline {6.4}Future work}{51}{section.6.4}%
+\contentsline {subsection}{\numberline {6.3.5}Confidence Threshold as a Global Compromise}{51}{subsection.6.3.5}%
+\contentsline {section}{\numberline {6.4}Future work}{52}{section.6.4}%
 \contentsline {subsection}{\numberline {6.4.1}Inference-Time Adaptive Parameter Selection}{52}{subsection.6.4.1}%
-\contentsline {subsection}{\numberline {6.4.2}Global Anchor-Constrained Drift Correction}{52}{subsection.6.4.2}%
-\contentsline {subsection}{\numberline {6.4.3}Reprojection-Error Cross-View Refinement}{52}{subsection.6.4.3}%
+\contentsline {subsection}{\numberline {6.4.2}Global Anchor-Constrained Drift Correction}{53}{subsection.6.4.2}%
+\contentsline {subsection}{\numberline {6.4.3}Reprojection-Error Cross-View Refinement}{53}{subsection.6.4.3}%
 \contentsline {subsection}{\numberline {6.4.4}Extension to Moving Cameras and Broader Evaluation}{53}{subsection.6.4.4}%
-\contentsline {section}{\numberline {6.5}Conclusion}{53}{section.6.5}%
-\contentsline {chapter}{Bibliography}{54}{section*.19}%
-\contentsline {chapter}{\numberline {A}Artifacts Availability}{58}{appendix.A}%
+\contentsline {section}{\numberline {6.5}Conclusion}{54}{section.6.5}%
+\contentsline {chapter}{Bibliography}{55}{section*.20}%
+\contentsline {chapter}{\numberline {A}Artefacts Availability}{59}{appendix.A}%

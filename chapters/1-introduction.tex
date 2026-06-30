@@ -11,9 +11,9 @@ produce drift-prone geometry unsuitable for downstream tasks such as grasping, o
 tracking, and robotic manipulation~\cite{schoenberger2016sfm, hartley2004multiple}.
 
 Recent spatial foundation models address many of these failure modes. MASt3R-SfM~\cite{mast3r},
-VGGT~\cite{vggt}, PI3, and PI3X~\cite{pi3} regress dense 3D pointmaps directly from images,
+VGGT~\cite{vggt}, Pi3, and Pi3X~\cite{pi3} regress dense 3D pointmaps directly from images,
 using learned priors to fill in low-texture and low-overlap regions where classical methods
-collapse. PI3 and PI3X in particular achieve the highest accuracy and completeness at a
+collapse~\cite{dust3r, mast3r}. Pi3 and Pi3X in particular achieve the highest accuracy and completeness at a
 strict 1\,cm robotics threshold among all models evaluated in this thesis. As purely spatial
 estimators, however, these models process each frame independently. Assembled
 frame-by-frame, their outputs exhibit high-frequency jitter and scale fluctuations that
@@ -21,11 +21,11 @@ render them unsuitable for applications requiring smooth, temporally consistent 
 
 Two directions have been explored to close this gap. Geometry-refinement approaches such as
 GGPT~\cite{ggpt} ground spatial predictions with incomplete SfM-derived guidance, but do not
-generalise to sparse-view dynamic scenes, worsening Chamfer distance by $3.8$--$15.9\times$
+generalise to sparse-view dynamic scenes, worsening Chamfer distance by $3.1$--$14.6\times$
 across all evaluated backbones and datasets. Dedicated 4D architectures such as VGGT4D~\cite{vggt4d} and
 MonoFusion~\cite{monofusion} enforce sequence-level consistency directly, but sacrifice
 geometric fidelity to do so: even under a best-case per-frame alignment to ground truth,
-VGGT4D's Chamfer distance remains 62--192\,\% higher than the VGGT baseline across
+VGGT4D's Chamfer distance remains 60--188\,\% higher than the VGGT baseline across
 two-to-four view configurations, and MonoFusion produces duplicated subject artefacts rather
 than coherent reconstructions under the same conditions.
 
@@ -34,7 +34,7 @@ under sparse-view dynamic conditions. The core challenge is that existing method
 
 Motivated by this observation, this thesis proposes a decoupled paradigm: take a strong
 per-frame spatial estimator, align its outputs into a common coordinate frame through a
-lightweight temporal alignment strategy, and apply a confidence-weighted Gaussian filter
+training-free temporal alignment strategy, and apply a confidence-weighted Gaussian filter
 exclusively to static regions to suppress jitter without touching dynamic pixels. Evaluated
 on DexYCB~\cite{dexycb} and Hi4D~\cite{hi4d}, this approach achieves jitter comparable to
 native 4D architectures while retaining the geometric fidelity of the underlying per-frame
