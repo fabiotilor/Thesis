@@ -11,12 +11,12 @@ matches this trade-off. This chapter interprets why, identifies what remains uns
 and proposes directions for future work.
 
 %% -----------------------------------------------------------------------
-\section{Architecture family analysis}
+\section{Architecture Family Analysis}
 \label{sec:architecture_analysis}
 
 The central finding of Chapter~\ref{c:results} is that native 4D architectures fail to
-close the geometry--jitter trade-off that spatial models with Opt smoothing achieve.
-Understanding why requires examining the architectural assumptions each family makes.
+close the geometry--jitter trade-off that spatial models with Opt smoothing achieve,
+which the following sections explain by examining each family's architectural assumptions.
 
 \subsection{Why Spatial Models Succeed}
 Spatial foundation models reconstruct each frame independently, using learned priors to
@@ -30,7 +30,7 @@ consistency.
 \subsection{Why Native 4D Architectures Fail}
 The fundamental limitation of native 4D architectures and temporal estimators stems from a structural coupling: they embed temporal consistency directly into the core scene reconstruction loop, sacrificing frame-level geometric fidelity to enforce sequence-level smoothness~\cite{vggt4d, monofusion}. 
 
-VGGT4D, on the one hand, processes the full multi-view video jointly and enforces consistency through a shared transformer representation~\cite{vggt4d}. This joint processing imposes a steep geometric cost, resulting in elevated Chamfer distances compared to independent per-frame backbones. Although VGGT4D explicitly attempts to decouple static and dynamic regions through attention-based dynamic cue mining, the qualitative analysis in Section~\ref{sec:qualitative} demonstrates that this decoupling remains incomplete under sparse-view conditions. Under these constrained views, the joint architecture produces severe duplication artefacts and structural smearing. These errors stem directly from the temporal averaging of conflicting depth hypotheses. When the joint architecture receives a new viewpoint whose depth estimates conflict with existing ones, the model averages the hypotheses rather than resolving them. This averaging displaces the reconstructed surface and significantly reduces completeness, explaining the non-monotonic completeness patterns observed under sparse viewpoints. 
+VGGT4D, on the one hand, processes the full multi-view video jointly and enforces consistency through a shared transformer representation~\cite{vggt4d}. This joint processing imposes a steep geometric cost, elevating Chamfer distances relative to independent per-frame backbones. Although VGGT4D explicitly attempts to decouple static and dynamic regions through attention-based dynamic cue mining, the qualitative analysis in Section~\ref{sec:qualitative} demonstrates that this decoupling remains incomplete under sparse-view conditions. Under these constrained views, the joint architecture produces severe duplication artefacts and structural smearing. These errors stem directly from the temporal averaging of conflicting depth hypotheses. When the joint architecture receives a new viewpoint whose depth estimates conflict with existing ones, the model averages the hypotheses rather than resolving them. This averaging displaces the reconstructed surface and significantly reduces completeness, explaining the non-monotonic completeness patterns observed under sparse viewpoints. 
 
 MonoFusion, on the other hand, illustrates how optimization-based temporal estimators fall into the same structural trap. Instead of maintaining a shared internal representation, its iterative monocular-to-multi-view depth alignment loop relies on global affine constraints calculated strictly from background pixels~\cite{monofusion}. This specific heuristic remains highly susceptible to local optima under wide camera spacing and large subject-to-camera distances. Consequently, MonoFusion produces duplicated-subject artefacts rather than coherent reconstructions. While this alignment strategy minimizes drift and balances mean jitter, its frame-level geometric fidelity remains the weakest among all evaluated models.
 
@@ -51,7 +51,7 @@ and grounding a refinement network on unreliable geometric evidence
 evidently introduces systematic distortion rather than correcting it.
 
 %% -----------------------------------------------------------------------
-\section{The decoupled framework paradigm}
+\section{The decoupled Framework Paradigm}
 \label{sec:decoupled_paradigm}
 
 The results of Chapter~\ref{c:results} provide consistent evidence for a design
@@ -151,7 +151,7 @@ correspondences are absent after preprocessing.
 
 \subsection{Confidence Threshold as a Global Compromise}
 The 50\,\% confidence threshold used throughout Chapter~\ref{c:results}
-(Section~\ref{sec:evaluation_pipeline}) was validated post hoc through a sweep
+(Section~\ref{sec:evaluation_pipeline}) was validated through a sweep
 across all four spatial backbones (Figure~\ref{fig:conf_sweep}). This sweep
 revealed that MASt3R-SfM, Pi3, and Pi3X share a similarly shaped Chamfer curve
 with an interior minimum between 50\,\% and 80\,\%, while VGGT instead shows a
@@ -168,12 +168,10 @@ rather than substantive: confidence filtering exists to prevent unreliable
 correspondences from biasing the Umeyama alignment, not to optimise the
 reported metrics directly, and an alternative such as confidence-weighted or
 robust alignment (e.g., iterative closest point with outlier rejection~\cite{121791})
-could remove the need for a hard threshold altogether. This direction is noted
-for future work but was not pursued here due to the scope of the evaluation
-already covering six models, two datasets, and three view counts.
+could remove the need for a hard threshold altogether.
 
 %% -----------------------------------------------------------------------
-\section{Future work}
+\section{Future Work}
 \label{sec:future_work}
 
 This thesis established a foundation: spatial foundation models can be lifted to
@@ -182,9 +180,8 @@ training-free temporal low-pass filter, without sacrificing geometric fidelity. 
 remaining open problems are clear. Drift is not corrected. The 2-view to 4-view
 performance gap is not closed. Evaluation is limited to fixed, calibrated camera rigs
 on two datasets. Future work can extend this foundation in four directions: improving
-the smoothing method itself, correcting drift, broadening evaluation to moving cameras
-and more diverse scenes, and exploring whether the decoupled paradigm can be pushed
-further through learned refinement.
+the smoothing method, correcting drift, broadening evaluation to moving cameras
+and diverse scenes, and exploring learned refinement within the decoupled paradigm.
 
 \subsection{Inference-Time Adaptive Parameter Selection}
 The per-backbone parameter calibration limitation motivates replacing the offline sweep
@@ -247,19 +244,17 @@ geometric fidelity or temporal consistency but not both, is resolved by a decoup
 paradigm that keeps the two objectives separate and solves each with the appropriate
 tool.
 
-Three contributions support this conclusion. A unified benchmarking framework subjects
-six reconstruction models to identical evaluation conditions across DexYCB and Hi4D,
-producing the first systematic comparison of spatial, geometry-refinement, and native
-4D architectures under controlled sparse-view conditions. A comparative alignment study
-characterises three strategies for lifting per-frame reconstructions into a coherent 4D
-representation, establishing that pairwise hierarchical alignment provides the best
-balance of geometric stability and computational cost. Confidence-Weighted Temporal
-Smoothing eliminates high-frequency jitter entirely and reduces mean jitter by
-60--91\,\% across four spatial backbones, while preserving geometric fidelity, a
-trade-off that native 4D architectures consistently fail to achieve.
+Three contributions support this conclusion. A unified benchmarking framework evaluates
+six reconstruction models under identical conditions across DexYCB and Hi4D, yielding
+the first systematic comparison of spatial, geometry-refinement, and native 4D
+architectures. A comparative alignment study characterises three strategies for lifting
+per-frame reconstructions into a coherent 4D representation, establishing pairwise
+hierarchical alignment as the best balance of stability and cost. Confidence-Weighted
+Temporal Smoothing eliminates high-frequency jitter and reduces mean jitter by
+60--91\,\% across four backbones while preserving geometric fidelity, a trade-off
+native 4D architectures consistently fail to achieve.
 
-The broader finding is that the decoupled paradigm is not a workaround but a
-principled design choice, as established in Section~\ref{sec:decoupled_paradigm}.
+The broader finding is that the decoupled paradigm is a principled design choice, not a workaround (see Section~\ref{sec:decoupled_paradigm}).
 Geometric accuracy and temporal consistency conflict only when temporal constraints
 penalise motion that is real; enforcing the separation explicitly, rather than
 learning it implicitly as native 4D architectures attempt, makes the approach
