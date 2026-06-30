@@ -30,7 +30,7 @@ The models evaluated in this thesis are grouped into three architectural familie
 Spatial reconstruction models focus on recovering accurate scene geometry from a set of observations without explicitly modelling temporal evolution. Their primary objective is geometric reconstruction, with camera poses, depth, or pointmaps inferred directly from one or more images using learned geometric priors. While these models can be applied independently to each frame of a video sequence, they provide no mechanism for enforcing temporal consistency across successive reconstructions.
 
 \paragraph{MASt3R-SfM.}
-MASt3R-SfM~\cite{mast3rsfm} is a hybrid reconstruction pipeline that combines learned
+MASt3R-SfM~\cite{mast3rsfm} (Matching And Stereo 3D Reconstruction)is a hybrid reconstruction pipeline that combines learned
 geometric reasoning with classical SfM optimisation. The approach builds upon
 DUSt3R~\cite{dust3r}, which introduced dense pointmap regression as an alternative to
 traditional depth estimation and triangulation, and MASt3R~\cite{mast3r}, which further
@@ -57,7 +57,7 @@ capable of solving multiple three-dimensional vision problems within a single le
 representation.
 \paragraph{Pi3 and Pi3X.}
 
-Pi3~\cite{pi3} introduces a reference-free formulation of visual geometry reconstruction that removes the need for a designated anchor image. Using a fully permutation-equivariant architecture, the model jointly predicts camera poses and dense point maps from an unordered set of images, making reconstruction inherently robust to input ordering and reference-view selection. By learning geometric priors from large-scale data, Pi3 can recover accurate scene structure even in sparse-view settings where traditional correspondence-based methods become unreliable. Pi3X extends this framework with improved point-map decoding, more reliable
+Pi3~\cite{pi3} (Permutation-Equivariant Visual Geometry Learning) introduces a reference-free formulation of visual geometry reconstruction that removes the need for a designated anchor image. Using a fully permutation-equivariant architecture, the model jointly predicts camera poses and dense point maps from an unordered set of images, making reconstruction inherently robust to input ordering and reference-view selection. By learning geometric priors from large-scale data, Pi3 can recover accurate scene structure even in sparse-view settings where traditional correspondence-based methods become unreliable. Pi3X extends this framework with improved point-map decoding, more reliable
 confidence estimation, optional conditioning on camera and depth priors, and
 support for approximate metric-scale reconstruction. These modifications are
 designed to improve reconstruction quality while preserving the reference-free

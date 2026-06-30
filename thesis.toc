@@ -57,35 +57,35 @@
 \contentsline {section}{\numberline {5.1}3D Baseline Results}{32}{section.5.1}%
 \contentsline {section}{\numberline {5.2}Alignment Strategy Comparison}{34}{section.5.2}%
 \contentsline {section}{\numberline {5.3}Sparse-View Sensitivity}{34}{section.5.3}%
-\contentsline {section}{\numberline {5.4}Native 4D Architectures and Geometry Refinement}{36}{section.5.4}%
-\contentsline {paragraph}{VGGT4D.}{36}{section.5.4}%
-\contentsline {paragraph}{MonoFusion.}{36}{section.5.4}%
-\contentsline {paragraph}{GGPT.}{36}{section.5.4}%
-\contentsline {section}{\numberline {5.5}Temporal smoothing refinement}{37}{section.5.5}%
-\contentsline {subsection}{\numberline {5.5.1}High-frequency Jitter Elimination}{42}{subsection.5.5.1}%
-\contentsline {subsection}{\numberline {5.5.2}Mean Jitter Reduction}{42}{subsection.5.5.2}%
-\contentsline {subsection}{\numberline {5.5.3}Drift and the Limits of Temporal Smoothing}{42}{subsection.5.5.3}%
-\contentsline {subsection}{\numberline {5.5.4}Geometric Cost}{43}{subsection.5.5.4}%
-\contentsline {subsection}{\numberline {5.5.5}Comparison with Native 4D Architectures}{43}{subsection.5.5.5}%
-\contentsline {subsection}{\numberline {5.5.6}Comparison with GGPT}{44}{subsection.5.5.6}%
-\contentsline {section}{\numberline {5.6}Qualitative Failure Analysis}{44}{section.5.6}%
-\contentsline {chapter}{\numberline {6}Discussion and Conclusion}{47}{chapter.6}%
-\contentsline {section}{\numberline {6.1}Architecture family analysis}{47}{section.6.1}%
-\contentsline {subsection}{\numberline {6.1.1}Why Spatial Models Succeed}{47}{subsection.6.1.1}%
-\contentsline {subsection}{\numberline {6.1.2}Why Native 4D Architectures Fail}{48}{subsection.6.1.2}%
-\contentsline {subsection}{\numberline {6.1.3}Why GGPT Fails Under Sparse-View Dynamic Conditions}{49}{subsection.6.1.3}%
-\contentsline {section}{\numberline {6.2}The decoupled framework paradigm}{49}{section.6.2}%
-\contentsline {section}{\numberline {6.3}Limitations}{50}{section.6.3}%
-\contentsline {subsection}{\numberline {6.3.1}Per-Backbone Parameter Calibration}{50}{subsection.6.3.1}%
-\contentsline {subsection}{\numberline {6.3.2}Drift is Not Corrected}{50}{subsection.6.3.2}%
-\contentsline {subsection}{\numberline {6.3.3}Static Mask Quality}{51}{subsection.6.3.3}%
-\contentsline {subsection}{\numberline {6.3.4}Evaluation Scope}{51}{subsection.6.3.4}%
-\contentsline {subsection}{\numberline {6.3.5}Confidence Threshold as a Global Compromise}{51}{subsection.6.3.5}%
-\contentsline {section}{\numberline {6.4}Future work}{52}{section.6.4}%
-\contentsline {subsection}{\numberline {6.4.1}Inference-Time Adaptive Parameter Selection}{52}{subsection.6.4.1}%
-\contentsline {subsection}{\numberline {6.4.2}Global Anchor-Constrained Drift Correction}{53}{subsection.6.4.2}%
-\contentsline {subsection}{\numberline {6.4.3}Reprojection-Error Cross-View Refinement}{53}{subsection.6.4.3}%
-\contentsline {subsection}{\numberline {6.4.4}Extension to Moving Cameras and Broader Evaluation}{53}{subsection.6.4.4}%
-\contentsline {section}{\numberline {6.5}Conclusion}{54}{section.6.5}%
-\contentsline {chapter}{Bibliography}{55}{section*.20}%
-\contentsline {chapter}{\numberline {A}Artefacts Availability}{59}{appendix.A}%
+\contentsline {section}{\numberline {5.4}Native 4D Architectures and Geometry Refinement}{37}{section.5.4}%
+\contentsline {paragraph}{VGGT4D.}{37}{section.5.4}%
+\contentsline {paragraph}{MonoFusion.}{37}{section.5.4}%
+\contentsline {paragraph}{GGPT.}{38}{section.5.4}%
+\contentsline {section}{\numberline {5.5}Temporal smoothing refinement}{38}{section.5.5}%
+\contentsline {subsection}{\numberline {5.5.1}High-frequency Jitter Elimination}{41}{subsection.5.5.1}%
+\contentsline {subsection}{\numberline {5.5.2}Mean Jitter Reduction}{41}{subsection.5.5.2}%
+\contentsline {subsection}{\numberline {5.5.3}Drift and the Limits of Temporal Smoothing}{41}{subsection.5.5.3}%
+\contentsline {subsection}{\numberline {5.5.4}Geometric Cost}{42}{subsection.5.5.4}%
+\contentsline {subsection}{\numberline {5.5.5}Comparison with Native 4D Architectures}{42}{subsection.5.5.5}%
+\contentsline {subsection}{\numberline {5.5.6}Comparison with GGPT}{43}{subsection.5.5.6}%
+\contentsline {section}{\numberline {5.6}Qualitative Failure Analysis}{43}{section.5.6}%
+\contentsline {chapter}{\numberline {6}Discussion and Conclusion}{46}{chapter.6}%
+\contentsline {section}{\numberline {6.1}Architecture family analysis}{46}{section.6.1}%
+\contentsline {subsection}{\numberline {6.1.1}Why Spatial Models Succeed}{46}{subsection.6.1.1}%
+\contentsline {subsection}{\numberline {6.1.2}Why Native 4D Architectures Fail}{47}{subsection.6.1.2}%
+\contentsline {subsection}{\numberline {6.1.3}Why GGPT Fails Under Sparse-View Dynamic Conditions}{48}{subsection.6.1.3}%
+\contentsline {section}{\numberline {6.2}The decoupled framework paradigm}{48}{section.6.2}%
+\contentsline {section}{\numberline {6.3}Limitations}{49}{section.6.3}%
+\contentsline {subsection}{\numberline {6.3.1}Per-Backbone Parameter Calibration}{49}{subsection.6.3.1}%
+\contentsline {subsection}{\numberline {6.3.2}Drift is Not Corrected}{49}{subsection.6.3.2}%
+\contentsline {subsection}{\numberline {6.3.3}Static Mask Quality}{50}{subsection.6.3.3}%
+\contentsline {subsection}{\numberline {6.3.4}Evaluation Scope}{50}{subsection.6.3.4}%
+\contentsline {subsection}{\numberline {6.3.5}Confidence Threshold as a Global Compromise}{50}{subsection.6.3.5}%
+\contentsline {section}{\numberline {6.4}Future work}{51}{section.6.4}%
+\contentsline {subsection}{\numberline {6.4.1}Inference-Time Adaptive Parameter Selection}{51}{subsection.6.4.1}%
+\contentsline {subsection}{\numberline {6.4.2}Global Anchor-Constrained Drift Correction}{52}{subsection.6.4.2}%
+\contentsline {subsection}{\numberline {6.4.3}Reprojection-Error Cross-View Refinement}{52}{subsection.6.4.3}%
+\contentsline {subsection}{\numberline {6.4.4}Extension to Moving Cameras and Broader Evaluation}{52}{subsection.6.4.4}%
+\contentsline {section}{\numberline {6.5}Conclusion}{53}{section.6.5}%
+\contentsline {chapter}{Bibliography}{54}{section*.20}%
+\contentsline {chapter}{\numberline {A}Artefacts Availability}{58}{appendix.A}%

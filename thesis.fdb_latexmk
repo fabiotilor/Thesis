@@ -1,12 +1,12 @@
 # Fdb version 4
-["biber thesis"] 1782842995.61273 "thesis.bcf" "thesis.bbl" "thesis" 1782843012.65407 0
+["biber thesis"] 1782845096.78567 "thesis.bcf" "thesis.bbl" "thesis" 1782845109.06305 0
   "resources/sources.bib" 1782841989.47978 12536 93dc14553f4e81009e4fe0917cfc747f ""
-  "thesis.bcf" 1782843012.50211 113633 7d97db3fac88d6e821ed1d1c682cdc89 "pdflatex"
+  "thesis.bcf" 1782845108.91061 113633 7d97db3fac88d6e821ed1d1c682cdc89 "pdflatex"
   (generated)
   "thesis.bbl"
   "thesis.blg"
   (rewritten before read)
-["pdflatex"] 1782843007.71073 "thesis.tex" "thesis.pdf" "thesis" 1782843012.65444 0
+["pdflatex"] 1782845103.79596 "thesis.tex" "thesis.pdf" "thesis" 1782845109.06343 0
   "/Users/fabio/Library/TinyTeX/texmf-dist/fonts/enc/dvips/base/8r.enc" 1165713224 4850 80dc9bab7f31fb78a000ccfed0e27cab ""
   "/Users/fabio/Library/TinyTeX/texmf-dist/fonts/enc/dvips/lm/lm-ec.enc" 1254269338 2375 baa924870cfb487815765f9094cf3728 ""
   "/Users/fabio/Library/TinyTeX/texmf-dist/fonts/enc/dvips/lm/lm-mathex.enc" 1202520719 3486 c7eadf5dcc57b3b2d11736679f6636ba ""
@@ -299,10 +299,10 @@
   "chapters/0-abstract-en.tex" 1782720145.22021 1712 3d1ab0ec6bd3353236fd85dd416c40a8 ""
   "chapters/0-acknowledgements.tex" 1782305957.99816 662 b1b2c616d3a5507f6240c25a9199daa2 ""
   "chapters/1-introduction.tex" 1782816344.59513 5433 97a74d4eb7d9bb51725c59dc5294eca0 ""
-  "chapters/2-background-knowledge.tex" 1782816344.5989 22873 ade58aee3773d01196ee2e99747a158b ""
+  "chapters/2-background-knowledge.tex" 1782844941.85539 22963 4cdb3aca1d94a4f3c170e1c0c9436ae0 ""
   "chapters/3-related-work.tex" 1782816344.59542 15457 b37101611dc36f61e8ac69bd63767c6f ""
   "chapters/4-methodology.tex" 1782841739.43543 23902 9aedcf1ba5e3c19e2b2d950d81b6c10a ""
-  "chapters/5-experiments.tex" 1782816344.5952 44430 1b9303ed1b918f43db3e6de5c15edc03 ""
+  "chapters/5-experiments.tex" 1782843383.66776 44436 228ca98b8e7df141d5e633ee06e1326b ""
   "chapters/6-limitations.tex" 1782842014.23225 20031 4224d84fdb3e0cb59c996955a2a1970b ""
   "chapters/A-appendix.tex" 1782748809.47739 516 10118bc6e32ee0884f368cb23eaa2d79 ""
   "ddis-thesis.cls" 1780934327.86342 3088 40e8afe7ba8dd5cbc351bbfb927ac37f ""
@@ -319,7 +319,7 @@
   "figures/VGGT4D3.png" 1782199228.17057 1160591 071172dad0bc95f344a1c29185a9c0c6 ""
   "figures/VGGT4D4.png" 1782199228.83525 958724 8e3a60f35805f4acbd7952a208d0596e ""
   "figures/dast-logo.png" 1777453310.65056 31592 a2a37dbef0c78cedabf47b463a99ebb4 ""
-  "figures/dexycb_confidence_grid.pdf" 1782842974.76265 52055 e3b55a5d117af41b5cbec17873b9de61 ""
+  "figures/dexycb_confidence_grid.pdf" 1782844559.48301 53806 2b733368e33c8fa49d2961472567f00e ""
   "figures/difference_mask.png" 1782392167.3717 4570 6b308ad304fcad0ea85d05d4de5b6f22 ""
   "figures/farneback_07.png" 1776785159.51692 3474 0cbc5543ae70b6ef2a2f59092ea4d46e ""
   "figures/logo-vlg-text.png" 1777453310.65126 90633 3ec0f80426e6069333de73e07397db89 ""
@@ -333,12 +333,12 @@
   "resources/declaration_en.tex" 1782819219.90439 1656 9e6b4c124077495dfa148da21427ef55 ""
   "resources/glossary.tex" 1777453310.65324 172 bcdf6367bf3b23c5af0d702196c0e4d3 ""
   "resources/title-page.tex" 1777453310.65343 1861 59c522abcc032631a28aee500a32d1e7 ""
-  "thesis.aux" 1782843012.49031 49128 5cd69b98710b885c3290187ff5e16a02 "pdflatex"
-  "thesis.bbl" 1782842997.55974 68462 f6588d483a912db784cc18bfa41b9299 "biber thesis"
-  "thesis.out" 1782843012.49902 13256 55fa232b2695fd37d52fc1f7205c0a4c "pdflatex"
-  "thesis.run.xml" 1782843012.50287 2421 26a53457dda4f5223f3b4e8643d070bb "pdflatex"
+  "thesis.aux" 1782845108.89839 49128 e1b407e09b61291a2c19769c68460ed2 "pdflatex"
+  "thesis.bbl" 1782845098.54255 68462 f6588d483a912db784cc18bfa41b9299 "biber thesis"
+  "thesis.out" 1782845108.90701 13256 55fa232b2695fd37d52fc1f7205c0a4c "pdflatex"
+  "thesis.run.xml" 1782845108.91141 2421 26a53457dda4f5223f3b4e8643d070bb "pdflatex"
   "thesis.tex" 1782718153.92713 1655 975b23b37a968ea29a23d1a19a8b97f3 ""
-  "thesis.toc" 1782843012.50296 7808 486ba4164550fdf621c104a12e01e106 "pdflatex"
+  "thesis.toc" 1782845108.91149 7808 8d31f4c93f6acf9c8d2a49abc0a6501e "pdflatex"
   (generated)
   "thesis.acn"
   "thesis.aux"

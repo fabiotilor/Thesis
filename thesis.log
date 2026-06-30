@@ -1,4 +1,4 @@
-This is pdfTeX, Version 3.141592653-2.6-1.40.28 (TeX Live 2025) (preloaded format=pdflatex 2026.4.17)  30 JUN 2026 20:10
+This is pdfTeX, Version 3.141592653-2.6-1.40.28 (TeX Live 2025) (preloaded format=pdflatex 2026.4.17)  30 JUN 2026 20:45
 entering extended mode
  restricted \write18 enabled.
  %&-line parsing enabled.
@@ -1294,17 +1294,32 @@ Overfull \hbox (14.97005pt too wide) in paragraph at lines 6--6
 
 [4
 
-] [5] [6] [7]
+] [5]
+Overfull \hbox (11.66489pt too wide) in paragraph at lines 33--46
+\T1/lmr/m/n/12 son-ing with clas-si-cal SfM op-ti-mi-sa-tion. The ap-proach builds upon DUSt3R [[][]29[][]],
+ []
+
+[6]
+Overfull \hbox (0.17392pt too wide) in paragraph at lines 60--66
+[] []\T1/lmr/bx/n/12 Pi3 and Pi3X.[] \T1/lmr/m/n/12 Pi3 [[][]30[][]] (Permutation-Equivariant Vi-sual Ge-om-e-try Learn-
+ []
+
+
+Overfull \hbox (1.79689pt too wide) in paragraph at lines 60--66
+\T1/lmr/m/n/12 permutation-equivariant ar-chi-tec-ture, the model jointly pre-dicts cam-era poses
+ []
+
+[7]
 Overfull \hbox (0.98065pt too wide) in paragraph at lines 74--75
 [] []\T1/lmr/bx/n/12 GGPT.[] \T1/lmr/m/n/12 GGPT [[][]5[][]] (Geometry-Grounded Point Trans-former) is a geometry-
  []
 
-
+[8]
 Overfull \hbox (17.1978pt too wide) in paragraph at lines 85--86
 [] []\T1/lmr/bx/n/12 VGGT4D.[] \T1/lmr/m/n/12 VGGT4D [[][]14[][]] ex-tends the VGGT ar-chi-tec-ture to four-dimensional
  []
 
-[8] [9]
+[9]
 Overfull \hbox (9.01953pt too wide) in paragraph at lines 109--109
 |[]\T1/phv/b/n/14.4 Similarity Trans-for-ma-tions and Umeyama Align-ment| 
  []
@@ -1442,7 +1457,7 @@ Overfull \hbox (8.78145pt too wide) in paragraph at lines 231--232
  []
 
 [27] [28]
-<figures/Jitter_metrics.png, id=982, 721.69624pt x 441.65pt>
+<figures/Jitter_metrics.png, id=983, 721.69624pt x 441.65pt>
 File: figures/Jitter_metrics.png Graphic file (type png)
 <use figures/Jitter_metrics.png>
 Package pdftex.def Info: figures/Jitter_metrics.png  used on input line 287.
@@ -1456,59 +1471,59 @@ Overfull \hbox (9.48291pt too wide) in paragraph at lines 375--1
 Chapter 5.
 [32
 
-] [33] [34] [35] [36]
-<figures/plotA_pareto_jitter_chamfer_v3.pdf, id=1072, 252.68216pt x 216.56862pt>
+] [33] [34] [35] [36] [37]
+<figures/plotA_pareto_jitter_chamfer_v3.pdf, id=1078, 252.68216pt x 216.56862pt>
 File: figures/plotA_pareto_jitter_chamfer_v3.pdf Graphic file (type pdf)
 <use figures/plotA_pareto_jitter_chamfer_v3.pdf>
 Package pdftex.def Info: figures/plotA_pareto_jitter_chamfer_v3.pdf  used on input line 706.
 (pdftex.def)             Requested size: 331.50238pt x 284.14975pt.
-<figures/plotC_pipeline_progression.pdf, id=1073, 505.67255pt x 233.20525pt>
+<figures/plotC_pipeline_progression.pdf, id=1079, 505.67255pt x 233.20525pt>
 File: figures/plotC_pipeline_progression.pdf Graphic file (type pdf)
 <use figures/plotC_pipeline_progression.pdf>
 Package pdftex.def Info: figures/plotC_pipeline_progression.pdf  used on input line 721.
 (pdftex.def)             Requested size: 390.0pt x 179.86394pt.
- [37] [38 <./figures/plotA_pareto_jitter_chamfer_v3.pdf>] [39] [40] [41 <./figures/plotC_pipeline_progression.pdf>] [42
+ [38] [39 <./figures/plotA_pareto_jitter_chamfer_v3.pdf>] [40 <./figures/plotC_pipeline_progression.pdf>] [41
 
 ]
 Overfull \hbox (5.05377pt too wide) in paragraph at lines 817--831
 \T1/lmr/m/n/12 achieves 0.026m Cham-fer and 0.002m mean jit-ter, against VGGT4D's 0.051m
  []
 
-[43]
-<figures/VGGT4D2.png, id=1156, 858.20625pt x 421.575pt>
+[42]
+<figures/VGGT4D2.png, id=1152, 858.20625pt x 421.575pt>
 File: figures/VGGT4D2.png Graphic file (type png)
 <use figures/VGGT4D2.png>
 Package pdftex.def Info: figures/VGGT4D2.png  used on input line 860.
 (pdftex.def)             Requested size: 124.80286pt x 61.3037pt.
-<figures/VGGT4D3.png, id=1157, 858.20625pt x 421.575pt>
+<figures/VGGT4D3.png, id=1153, 858.20625pt x 421.575pt>
 File: figures/VGGT4D3.png Graphic file (type png)
 <use figures/VGGT4D3.png>
 Package pdftex.def Info: figures/VGGT4D3.png  used on input line 867.
 (pdftex.def)             Requested size: 124.80286pt x 61.3037pt.
-<figures/VGGT4D4.png, id=1158, 858.20625pt x 421.575pt>
+<figures/VGGT4D4.png, id=1154, 858.20625pt x 421.575pt>
 File: figures/VGGT4D4.png Graphic file (type png)
 <use figures/VGGT4D4.png>
 Package pdftex.def Info: figures/VGGT4D4.png  used on input line 874.
 (pdftex.def)             Requested size: 124.80286pt x 61.3037pt.
-<figures/MonoFusionHI4D2.png, id=1161, 851.18pt x 793.96625pt>
+<figures/MonoFusionHI4D2.png, id=1157, 851.18pt x 793.96625pt>
 File: figures/MonoFusionHI4D2.png Graphic file (type png)
 <use figures/MonoFusionHI4D2.png>
 Package pdftex.def Info: figures/MonoFusionHI4D2.png  used on input line 889.
 (pdftex.def)             Requested size: 292.5pt x 272.84042pt.
- [44]
+ [43]
 
-LaTeX Warning: Text page 45 contains only floats.
+LaTeX Warning: Text page 44 contains only floats.
 
-[45 <./figures/VGGT4D2.png> <./figures/VGGT4D3.png> <./figures/VGGT4D4.png> <./figures/MonoFusionHI4D2.png>]) (./chapters/6-limitations.tex [46]
+[44 <./figures/VGGT4D2.png> <./figures/VGGT4D3.png> <./figures/VGGT4D4.png> <./figures/MonoFusionHI4D2.png>]) (./chapters/6-limitations.tex [45]
 Chapter 6.
 
 Overfull \hbox (5.3888pt too wide) in paragraph at lines 22--29
 \T1/lmr/m/n/12 Spatial foun-da-tion mod-els re-con-struct each frame in-de-pen-dently, us-ing learned
  []
 
-[47
+[46
 
-] [48] [49] [50] [51] [52] [53]) [54] [55]
+] [47] [48] [49] [50] [51] [52]) [53] [54]
 LaTeX Font Info:    Trying to load font information for T1+lmtt on input line 57.
  (/Users/fabio/Library/TinyTeX/texmf-dist/tex/latex/lm/t1lmtt.fd
 File: t1lmtt.fd 2015/05/01 v1.6.1 Font defs for Latin Modern
@@ -1522,7 +1537,7 @@ Overfull \hbox (3.01653pt too wide) in paragraph at lines 58--58
 []\T1/lmr/m/n/12 Yu-Wei Chao \T1/lmr/m/it/12 et al\T1/lmr/m/n/12 . ^^P  DexYCB: A Bench-mark for Cap-tur-ing Hand Grasp-
  []
 
-[56
+[55
 
 ]
 Overfull \hbox (4.8738pt too wide) in paragraph at lines 58--58
@@ -1544,14 +1559,14 @@ Overfull \hbox (2.71123pt too wide) in paragraph at lines 58--58
 \T1/lmr/m/it/12 Structure-from-Motion\T1/lmr/m/n/12 . 2025. arXiv: [][]$\T1/lmtt/m/n/12 2504 . 20040$ [cs.CV][][]\T1/lmr/m/n/12 . \T1/lmr/m/sc/12 url\T1/lmr/m/n/12 : [][]$\T1/lmtt/m/n/12 https :
  []
 
-[57]
+[56]
 Overfull \hbox (5.40579pt too wide) in paragraph at lines 58--58
 []\T1/lmr/m/n/12 Yifan Wang \T1/lmr/m/it/12 et al\T1/lmr/m/n/12 . ^^P  $\OML/lmm/m/it/12 ^^Y[]$\T1/lmr/m/n/12 : Permutation-Equivariant Vi-sual Ge-om-e-try Learn-
  []
 
-[58] (./chapters/A-appendix.tex
+[57] (./chapters/A-appendix.tex
 Appendix A.
-) (./resources/declaration_en.tex [59
+) (./resources/declaration_en.tex [58
 
 
 ]
@@ -1590,18 +1605,18 @@ Package logreq Info: Writing requests to 'thesis.run.xml'.
 
  ) 
 Here is how much of TeX's memory you used:
- 43993 strings out of 469443
- 878011 string characters out of 5466399
+ 43992 strings out of 469443
+ 878004 string characters out of 5466399
  1898595 words of memory out of 5000000
  71754 multiletter control sequences out of 15000+600000
  758842 words of font info for 139 fonts, out of 8000000 for 9000
  38 hyphenation exceptions out of 8191
  132i,12n,135p,2593b,2463s stack positions out of 10000i,1000n,20000p,200000b,200000s
 </Users/fabio/Library/TinyTeX/texmf-dist/fonts/type1/public/amsfonts/euler/eufm10.pfb></Users/fabio/Library/TinyTeX/texmf-dist/fonts/type1/public/lm/lmbx12.pfb></Users/fabio/Library/TinyTeX/texmf-dist/fonts/type1/public/lm/lmbx8.pfb></Users/fabio/Library/TinyTeX/texmf-dist/fonts/type1/public/lm/lmcsc10.pfb></Users/fabio/Library/TinyTeX/texmf-dist/fonts/type1/public/lm/lmex10.pfb></Users/fabio/Library/TinyTeX/texmf-dist/fonts/type1/public/lm/lmmi12.pfb></Users/fabio/Library/TinyTeX/texmf-dist/fonts/type1/public/lm/lmmi8.pfb></Users/fabio/Library/TinyTeX/texmf-dist/fonts/type1/public/lm/lmr10.pfb></Users/fabio/Library/TinyTeX/texmf-dist/fonts/type1/public/lm/lmr12.pfb></Users/fabio/Library/TinyTeX/texmf-dist/fonts/type1/public/lm/lmr7.pfb></Users/fabio/Library/TinyTeX/texmf-dist/fonts/type1/public/lm/lmr8.pfb></Users/fabio/Library/TinyTeX/texmf-dist/fonts/type1/public/lm/lmri12.pfb></Users/fabio/Library/TinyTeX/texmf-dist/fonts/type1/public/lm/lmri8.pfb></Users/fabio/Library/TinyTeX/texmf-dist/fonts/type1/public/lm/lmsy10.pfb></Users/fabio/Library/TinyTeX/texmf-dist/fonts/type1/public/lm/lmsy6.pfb></Users/fabio/Library/TinyTeX/texmf-dist/fonts/type1/public/lm/lmsy7.pfb></Users/fabio/Library/TinyTeX/texmf-dist/fonts/type1/public/lm/lmsy8.pfb></Users/fabio/Library/TinyTeX/texmf-dist/fonts/type1/public/lm/lmtt10.pfb></Users/fabio/Library/TinyTeX/texmf-dist/fonts/type1/public/lm/lmtt12.pfb></Users/fabio/Library/TinyTeX/texmf-dist/fonts/type1/public/amsfonts/symbols/msbm10.pfb></Users/fabio/Library/TinyTeX/texmf-dist/fonts/type1/urw/helvetic/uhvb8a.pfb></Users/fabio/Library/TinyTeX/texmf-dist/fonts/type1/urw/helvetic/uhvr8a.pfb>
-Output written on thesis.pdf (67 pages, 23242845 bytes).
+Output written on thesis.pdf (66 pages, 23244445 bytes).
 PDF statistics:
- 1462 PDF objects out of 1728 (max. 8388607)
- 1089 compressed objects within 11 object streams
- 204 named destinations out of 1000 (max. 500000)
+ 1458 PDF objects out of 1728 (max. 8388607)
+ 1085 compressed objects within 11 object streams
+ 203 named destinations out of 1000 (max. 500000)
  679 words of extra memory for PDF output out of 10000 (max. 10000000)
 
